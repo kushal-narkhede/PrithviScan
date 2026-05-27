@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>PrithviScan — Basic Site</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <h1 class="logo">PrithviScan</h1>
+        <nav class="nav">
+          <a href="#">Home</a>
+          <a href="#features">Features</a>
+          <a href="#contact">Contact</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero container">
+        <h2>Simple static website</h2>
+        <p>This is a minimal starter site created for your workspace.</p>
+        <a class="btn" href="#features">Learn more</a>
+      </section>
+
+      <section id="features" class="container features">
+        <h3>Features</h3>
+        <ul>
+          <li>Responsive layout</li>
+          <li>Simple styles and JavaScript</li>
+          <li>Easy to extend</li>
+        </ul>
+      </section>
+
+      <section id="contact" class="container contact">
+        <h3>Contact</h3>
+        <form id="contactForm">
+          <label>Name<input type="text" name="name" required></label>
+          <label>Email<input type="email" name="email" required></label>
+          <label>Message<textarea name="message" rows="4"></textarea></label>
+          <button type="submit" class="btn">Send</button>
+        </form>
+        <p id="formResult" class="muted"></p>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">© <span id="year"></span> PrithviScan</div>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
