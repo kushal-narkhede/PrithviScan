@@ -25,4 +25,16 @@ cp .firebaserc.example .firebaserc
 firebase deploy --only hosting
 ```
 
-Your site will be live at `https://<project-id>.web.app`.
+Your site will be live at `https://prithviscan.web.app`.
+
+## Enable login (Google + email/password)
+
+1. Firebase Console → **Authentication** → **Get started**
+2. Enable **Email/Password** and **Google**
+3. Project settings → **Your apps** → add a **Web** app
+4. Copy `apiKey` and `appId` into `js/firebase-config.js`
+5. Under Authentication → Settings → **Authorized domains**, keep:
+   - `localhost`
+   - `prithviscan.web.app`
+   - `prithviscan.firebaseapp.com`
+6. Redeploy hosting after saving the config
