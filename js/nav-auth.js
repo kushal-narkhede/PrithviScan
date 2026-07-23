@@ -18,7 +18,7 @@ function renderAuthControls(user) {
   const slots = document.querySelectorAll("[data-auth-slot]");
   slots.forEach((slot) => {
     if (!user) {
-      slot.innerHTML = `<a class="nav-cta" href="auth.html">Sign in</a>`;
+      slot.innerHTML = `<a class="nav-cta" href="auth.html">Get started</a>`;
       return;
     }
 
