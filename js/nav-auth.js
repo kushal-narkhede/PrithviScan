@@ -1,6 +1,5 @@
 import {
   watchAuth,
-  logOut,
   isFirebaseConfigured,
 } from "./auth.js";
 
@@ -22,24 +21,12 @@ function renderAuthControls(user) {
       return;
     }
 
-    const name = user.displayName || user.email || "Account";
     slot.innerHTML = `
-      <div class="auth-chip">
-        <span class="auth-avatar" aria-hidden="true">${initials(user)}</span>
-        <span class="auth-name">${name}</span>
-        <button type="button" class="auth-signout" data-signout>Sign out</button>
-      </div>
+      <a class="nav-profile" href="profile.html" aria-label="My Profile">
+        <span class="nav-profile-avatar" aria-hidden="true">${initials(user)}</span>
+        <span class="nav-profile-label">My Profile</span>
+      </a>
     `;
-  });
-
-  document.querySelectorAll("[data-signout]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      try {
-        await logOut();
-      } catch (err) {
-        console.error(err);
-      }
-    });
   });
 }
 

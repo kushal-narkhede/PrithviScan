@@ -354,6 +354,117 @@
   color: #2f7a4d;
 }
 
+/* Profile page */
+.profile-panel {
+  text-align: center;
+}
+
+.profile-avatar {
+  width: 4.25rem;
+  height: 4.25rem;
+  margin: 1.35rem auto 0.85rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #0b2417;
+  color: #8fd9a8;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.profile-name {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.55rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #0b2417;
+}
+
+.profile-email {
+  margin: 0.35rem 0 0;
+  color: #3a5646;
+  font-size: 0.98rem;
+  word-break: break-word;
+}
+
+.profile-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  text-align: left;
+}
+
+.profile-meta > div {
+  padding: 0.9rem 0.95rem;
+  border-radius: 14px;
+  background: #eef6f1;
+  border: 1px solid rgba(16, 37, 26, 0.08);
+}
+
+.profile-meta dt {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #3f9a63;
+}
+
+.profile-meta dd {
+  margin: 0.35rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0b2417;
+}
+
+.profile-actions {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.35rem;
+}
+
+.profile-home {
+  text-decoration: none;
+}
+
+.profile-signout {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  min-height: 3.15rem;
+  border-radius: 999px;
+  border: 1px solid rgba(155, 28, 28, 0.28);
+  background: #fff7f7;
+  color: #9b1c1c;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.profile-signout:hover {
+  background: #ffeaea;
+  transform: translateY(-1px);
+}
+
+.profile-signout:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (max-width: 520px) {
+  .profile-meta {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 520px) {
   .auth-panel {
     padding: 1.6rem 1.2rem 1.4rem;
