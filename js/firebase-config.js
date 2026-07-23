@@ -1,12 +1,12 @@
 // Firebase web app config for project: prithviscan
-// Fill apiKey + appId from Firebase Console → Project settings → Your apps → Web app
 export const firebaseConfig = {
-  apiKey: "REPLACE_WITH_WEB_API_KEY",
+  apiKey: "AIzaSyDKQQssXTzKeLCD4TYxlREOzKOBbwY24BQ",
   authDomain: "prithviscan.firebaseapp.com",
   projectId: "prithviscan",
   storageBucket: "prithviscan.firebasestorage.app",
   messagingSenderId: "767784367361",
-  appId: "REPLACE_WITH_WEB_APP_ID",
+  appId: "1:767784367361:web:8eb2fba17b07441d771700",
+  measurementId: "G-QYZG1R7D3H",
 };
 
 export function isFirebaseConfigured() {

@@ -11,6 +11,7 @@ import {
   onAuthStateChanged,
   signOut,
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+import { getAnalytics, isSupported as isAnalyticsSupported } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-analytics.js";
 import { firebaseConfig, isFirebaseConfigured } from "./firebase-config.js";
 
 let app;
@@ -26,6 +27,11 @@ export function getFirebaseAuth() {
     auth = getAuth(app);
     googleProvider = new GoogleAuthProvider();
     googleProvider.setCustomParameters({ prompt: "select_account" });
+    isAnalyticsSupported()
+      .then((ok) => {
+        if (ok) getAnalytics(app);
+      })
+      .catch(() => {});
   }
   return auth;
 }
