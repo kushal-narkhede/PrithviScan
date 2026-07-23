@@ -38,11 +38,40 @@
 }
 
 .auth-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
   font-family: "Fraunces", Georgia, serif;
   font-size: 1.35rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   text-decoration: none;
+}
+
+.auth-logo-mark {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #050505;
+  box-shadow: 0 0 0 1px rgba(16, 37, 26, 0.12);
+}
+
+.auth-hero-logo {
+  width: 6.5rem;
+  height: 6.5rem;
+  margin: 0 auto 1.15rem;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #050505;
+  box-shadow: 0 16px 40px rgba(6, 22, 14, 0.18), 0 0 0 1px rgba(16, 37, 26, 0.08);
+}
+
+.auth-hero-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .auth-logo-prithvi {
@@ -78,6 +107,25 @@
   border: 1px solid rgba(16, 37, 26, 0.1);
   box-shadow: 0 24px 60px rgba(6, 22, 14, 0.12);
   backdrop-filter: blur(10px);
+  text-align: center;
+}
+
+.auth-stack,
+.auth-switch,
+.auth-banner,
+.auth-sub,
+.auth-google,
+.auth-primary,
+.auth-or {
+  text-align: left;
+}
+
+.auth-sub {
+  text-align: center;
+}
+
+.auth-msg {
+  text-align: center;
 }
 
 .auth-kicker {

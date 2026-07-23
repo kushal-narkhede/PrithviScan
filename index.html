@@ -14,13 +14,18 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <link rel="icon" type="image/png" href="assets/favicon.png" />
+    <link rel="apple-touch-icon" href="assets/logo-mark.png" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <header class="site-header" id="top">
       <div class="nav-shell">
         <a class="brand" href="#top" aria-label="PrithviScan home">
-          <span class="brand-prithvi">Prithvi</span><span class="brand-scan">Scan</span>
+          <img class="brand-mark" src="assets/logo-mark.png" alt="" width="40" height="40" />
+          <span class="brand-wordmark">
+            <span class="brand-prithvi">Prithvi</span><span class="brand-scan">Scan</span>
+          </span>
         </a>
         <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false">
           <span></span><span></span>
@@ -54,13 +59,16 @@
         </div>
 
         <div class="hero-content">
-          <h1 class="hero-brand reveal">
+          <div class="hero-logo reveal" aria-hidden="true">
+            <img src="assets/logo.png" alt="" width="120" height="120" />
+          </div>
+          <h1 class="hero-brand reveal delay-1">
             <span class="brand-prithvi">Prithvi</span><span class="brand-scan">Scan</span>
           </h1>
-          <p class="hero-line reveal delay-1">
+          <p class="hero-line reveal delay-2">
             Earth intelligence for every field — fused from NASA satellites into clear farmer decisions.
           </p>
-          <div class="hero-actions reveal delay-2">
+          <div class="hero-actions reveal delay-3">
             <a class="btn btn-primary" href="auth.html">Get started</a>
             <a class="btn btn-ghost" href="#made-with">See the data stack</a>
           </div>
@@ -216,7 +224,10 @@
     <footer class="site-footer">
       <div class="shell footer-row">
         <a class="brand" href="#top">
-          <span class="brand-prithvi">Prithvi</span><span class="brand-scan">Scan</span>
+          <img class="brand-mark" src="assets/logo-mark.png" alt="" width="40" height="40" />
+          <span class="brand-wordmark">
+            <span class="brand-prithvi">Prithvi</span><span class="brand-scan">Scan</span>
+          </span>
         </a>
         <p>Earth intelligence for agriculture. Built on free, global, continuously updated NASA data.</p>
         <p class="footer-copy">© <span id="year"></span> PrithviScan</p>
