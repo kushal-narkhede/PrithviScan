@@ -1,11 +1,11 @@
 import { watchAuth, isFirebaseConfigured } from "./auth.js";
 import { listFields, createField } from "./fields.js";
 import { createFieldMap, useBrowserLocation } from "./map.js";
+import { callGetAlerts, callMarkAlertRead } from "./api.js";
 
 const statusEl = document.getElementById("appStatus");
 const welcomeLine = document.getElementById("welcomeLine");
 const fieldsList = document.getElementById("fieldsList");
-const fieldsEmpty = document.getElementById("fieldsEmpty");
 const fieldCount = document.getElementById("fieldCount");
 const form = document.getElementById("addFieldForm");
 const latInput = document.getElementById("fieldLat");
@@ -15,7 +15,11 @@ const cropInput = document.getElementById("fieldCrop");
 const saveBtn = document.getElementById("saveFieldBtn");
 const useLocationBtn = document.getElementById("useLocationBtn");
 const openAddField = document.getElementById("openAddField");
-const alertsPanel = document.getElementById("alertsPanel");
+const alertsList = document.getElementById("alertsList");
+const alertBadge = document.getElementById("alertBadge");
+const fieldsTab = document.getElementById("fieldsTab");
+const alertsTab = document.getElementById("alertsTab");
+const tabBtns = document.querySelectorAll(".app-tab-btn");
 
 let currentUser = null;
 let mapApi = null;
@@ -26,34 +30,44 @@ function setStatus(message, type = "") {
   statusEl.className = `app-status${type ? ` is-${type}` : ""}`;
 }
 
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+function esc(v) {
+  return String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function levelClass(level) {
+  if (level === "action") return "level-action";
+  if (level === "watch") return "level-watch";
+  return "level-info";
 }
 
 function renderFields(fields) {
   if (!fieldsList) return;
   fieldCount.textContent = String(fields.length);
 
-  const cards = fields
+  if (!fields.length) {
+    fieldsList.innerHTML = `
+      <div class="empty-state">
+        <strong>No fields yet</strong>
+        <p>Add your first field on the map to start scanning Earth intelligence for your farm.</p>
+      </div>`;
+    return;
+  }
+
+  fieldsList.innerHTML = fields
     .map((f) => {
-      const crop = f.cropType ? ` · ${escapeHtml(f.cropType)}` : "";
+      const insight = f.lastInsight;
+      const lvl = insight?.level || "info";
+      const crop = f.cropType ? ` · ${esc(f.cropType)}` : "";
       return `
-        <a class="field-card" href="field.html?id=${encodeURIComponent(f.id)}">
-          <strong>${escapeHtml(f.name || "Untitled field")}</strong>
-          <span>${Number(f.lat).toFixed(4)}, ${Number(f.lon).toFixed(4)}${crop}</span>
-        </a>
-      `;
+        <a class="field-card ${levelClass(lvl)}" href="field.html?id=${encodeURIComponent(f.id)}">
+          <div class="field-card-head">
+            <strong>${esc(f.name || "Untitled field")}</strong>
+            ${insight ? `<span class="field-card-badge ${levelClass(lvl)}">${esc(insight.title)}</span>` : ""}
+          </div>
+          <span class="field-card-meta">${Number(f.lat).toFixed(4)}, ${Number(f.lon).toFixed(4)}${crop}</span>
+        </a>`;
     })
     .join("");
-
-  fieldsList.innerHTML = `${cards}<div class="empty-state" id="fieldsEmpty" ${fields.length ? "hidden" : ""}>
-    <strong>No fields yet</strong>
-    <p>Add your first field on the map to start scanning Earth intelligence for your farm.</p>
-  </div>`;
 }
 
 async function refreshFields() {
@@ -62,15 +76,84 @@ async function refreshFields() {
     const fields = await listFields(currentUser.uid);
     renderFields(fields);
   } catch (err) {
-    console.error(err);
     setStatus(
       err?.code === "permission-denied"
-        ? "Firestore permission denied. Deploy firestore.rules and enable Firestore in the console."
+        ? "Firestore permission denied — deploy firestore.rules in Firebase console."
         : err?.message || "Could not load fields.",
       "error"
     );
   }
 }
+
+function renderAlerts(alerts) {
+  const unread = alerts.filter((a) => !a.read);
+  if (alertBadge) {
+    alertBadge.textContent = String(unread.length);
+    alertBadge.hidden = unread.length === 0;
+  }
+
+  if (!alertsList) return;
+  if (!alerts.length) {
+    alertsList.innerHTML = `
+      <div class="empty-state">
+        <strong>No alerts</strong>
+        <p>Alerts appear here when fusion detects irrigation needs, heat stress, or disease risk.</p>
+      </div>`;
+    return;
+  }
+
+  alertsList.innerHTML = alerts
+    .map((a) => {
+      const lvl = a.level || "info";
+      const when = a.createdAt?.toDate?.()?.toLocaleDateString?.() || "";
+      return `
+        <div class="alert-item ${levelClass(lvl)} ${a.read ? "is-read" : ""}" data-id="${esc(a.id)}">
+          <div class="alert-item-head">
+            <span class="alert-dot ${levelClass(lvl)}"></span>
+            <strong>${esc(a.title)}</strong>
+            ${when ? `<span class="alert-when">${when}</span>` : ""}
+          </div>
+          <p class="alert-msg">${esc(a.message)}</p>
+          <div class="alert-actions">
+            ${a.fieldId ? `<a class="app-btn-ghost alert-goto" href="field.html?id=${encodeURIComponent(a.fieldId)}">View field</a>` : ""}
+            ${!a.read ? `<button type="button" class="app-btn-ghost mark-read-btn" data-alertid="${esc(a.id)}">Mark read</button>` : ""}
+          </div>
+        </div>`;
+    })
+    .join("");
+
+  alertsList.querySelectorAll(".mark-read-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.alertid;
+      btn.disabled = true;
+      await callMarkAlertRead(id).catch(() => {});
+      await loadAlerts();
+    });
+  });
+}
+
+async function loadAlerts() {
+  try {
+    const data = await callGetAlerts();
+    if (data.ok && Array.isArray(data.alerts)) {
+      renderAlerts(data.alerts);
+    }
+  } catch {
+    // non-fatal
+  }
+}
+
+function switchTab(tab) {
+  const isAlerts = tab === "alerts";
+  fieldsTab.hidden = isAlerts;
+  alertsTab.hidden = !isAlerts;
+  tabBtns.forEach((b) => b.classList.toggle("is-active", b.dataset.tab === tab));
+  if (isAlerts) loadAlerts();
+}
+
+tabBtns.forEach((btn) => {
+  btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+});
 
 function initMap() {
   try {
@@ -81,17 +164,13 @@ function initMap() {
       },
     });
   } catch (err) {
-    console.error(err);
-    setStatus("Map failed to load. Check your network.", "error");
+    setStatus("Map failed to load.", "error");
   }
 }
 
 form?.addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (!currentUser) {
-    window.location.href = "auth.html";
-    return;
-  }
+  if (!currentUser) { window.location.href = "auth.html"; return; }
 
   saveBtn.disabled = true;
   setStatus("Saving field…");
@@ -103,11 +182,10 @@ form?.addEventListener("submit", async (event) => {
       lat: latInput.value,
       lon: lonInput.value,
     });
-    setStatus(`Saved “${field.name}”.`, "ok");
+    setStatus(`"${field.name}" saved. Open it to run insights.`, "ok");
     form.reset();
     await refreshFields();
   } catch (err) {
-    console.error(err);
     setStatus(err?.message || "Could not save field.", "error");
   } finally {
     saveBtn.disabled = false;
@@ -115,7 +193,7 @@ form?.addEventListener("submit", async (event) => {
 });
 
 useLocationBtn?.addEventListener("click", () => {
-  setStatus("Getting your location…");
+  setStatus("Getting location…");
   useBrowserLocation(
     (lat, lon) => {
       latInput.value = lat.toFixed(6);
@@ -129,32 +207,23 @@ useLocationBtn?.addEventListener("click", () => {
 });
 
 openAddField?.addEventListener("click", () => {
-  document.getElementById("fieldMap")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  document.getElementById("addFieldPanel")?.scrollIntoView({ behavior: "smooth", block: "center" });
   nameInput?.focus();
 });
 
-if (window.location.hash === "#alerts" && alertsPanel) {
-  alertsPanel.hidden = false;
+if (window.location.hash === "#alerts") {
+  switchTab("alerts");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  if (!isFirebaseConfigured()) {
-    setStatus("Firebase is not configured.", "error");
-    return;
-  }
-
+  if (!isFirebaseConfigured()) { setStatus("Firebase not configured.", "error"); return; }
   initMap();
 
   watchAuth(async (user) => {
-    if (!user) {
-      window.location.href = "auth.html";
-      return;
-    }
+    if (!user) { window.location.href = "auth.html"; return; }
     currentUser = user;
     const label = user.displayName || user.email || "farmer";
-    if (welcomeLine) {
-      welcomeLine.textContent = `Welcome, ${label}. Add fields on the map to begin.`;
-    }
-    await refreshFields();
+    if (welcomeLine) welcomeLine.textContent = `Welcome, ${label}.`;
+    await Promise.all([refreshFields(), loadAlerts()]);
   });
 });

@@ -40,36 +40,81 @@
 
     <main class="app-main">
       <div class="app-shell">
-        <a class="app-back" href="app.html">← All fields</a>
+        <div class="field-top-row">
+          <a class="app-back" href="app.html">← All fields</a>
+          <button type="button" class="app-btn-danger" id="deleteFieldBtn">Delete field</button>
+        </div>
+
         <header class="app-page-head">
           <div>
-            <p class="app-kicker">Field</p>
+            <p class="app-kicker">Field detail</p>
             <h1 id="fieldTitle">Loading…</h1>
             <p class="app-lead" id="fieldMeta"></p>
           </div>
-          <button type="button" class="app-btn-danger" id="deleteFieldBtn">Delete field</button>
+          <button type="button" class="app-btn-primary" id="refreshBtn">↻ Refresh insights</button>
         </header>
 
         <p id="fieldStatus" class="app-status" role="status" aria-live="polite"></p>
 
-        <section class="app-grid field-detail-grid">
-          <div class="app-panel">
-            <h2>Location</h2>
-            <div id="detailMap" class="field-map field-map-detail" role="application" aria-label="Field location map"></div>
+        <!-- Insight card -->
+        <div class="insight-card-wrap" id="insightWrap">
+          <div class="insight-card insight-info" id="insightCard">
+            <p class="insight-level" id="insightLevel">—</p>
+            <h2 class="insight-title" id="insightTitle">Loading insight…</h2>
+            <p class="insight-message" id="insightMessage"></p>
+            <ul class="insight-factors" id="insightFactors"></ul>
+            <p class="insight-age" id="insightAge"></p>
           </div>
-          <div class="app-panel">
-            <h2>Insight</h2>
-            <div class="insight-card insight-placeholder">
-              <p class="insight-level">Coming next</p>
-              <h3>Weather + fusion recommendations</h3>
-              <p>
-                Days 4–6 will pull NASA POWER weather and Earthdata summaries, then fuse them into
-                plain-language advice for this field.
-              </p>
-            </div>
-            <dl class="field-facts" id="fieldFacts"></dl>
+        </div>
+
+        <!-- Metrics grid -->
+        <div class="metrics-grid" id="metricsGrid" hidden>
+          <div class="metric-card">
+            <span class="metric-label">Rainfall (7d)</span>
+            <span class="metric-value" id="mRain">—</span>
+            <span class="metric-unit">mm</span>
           </div>
-        </section>
+          <div class="metric-card">
+            <span class="metric-label">Avg Temp</span>
+            <span class="metric-value" id="mTemp">—</span>
+            <span class="metric-unit">°C</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Max Temp</span>
+            <span class="metric-value" id="mTempMax">—</span>
+            <span class="metric-unit">°C</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Humidity</span>
+            <span class="metric-value" id="mHumidity">—</span>
+            <span class="metric-unit">%</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">ET demand (7d)</span>
+            <span class="metric-value" id="mET">—</span>
+            <span class="metric-unit">mm</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Solar radiation</span>
+            <span class="metric-value" id="mSolar">—</span>
+            <span class="metric-unit">kWh/m²/d</span>
+          </div>
+        </div>
+
+        <!-- Satellite status -->
+        <div class="satellite-row" id="satelliteRow" hidden>
+          <span class="sat-label">Satellite data</span>
+          <span class="sat-chip" id="satSMAP">SMAP —</span>
+          <span class="sat-chip" id="satMODIS">MODIS —</span>
+          <span class="sat-note" id="satNote"></span>
+        </div>
+
+        <!-- Map -->
+        <div class="app-panel field-map-panel">
+          <h2>Location</h2>
+          <div id="detailMap" class="field-map field-map-detail" role="application" aria-label="Field location map"></div>
+          <dl class="field-facts" id="fieldFacts"></dl>
+        </div>
       </div>
     </main>
 

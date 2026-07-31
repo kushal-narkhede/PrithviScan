@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>App — PrithviScan</title>
-    <meta name="description" content="PrithviScan farmer dashboard — your fields and insights." />
+    <meta name="description" content="PrithviScan farmer dashboard — your fields, weather, and insights." />
     <link rel="icon" type="image/png" href="assets/favicon.png" />
     <link rel="apple-touch-icon" href="assets/logo-mark.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -32,8 +32,11 @@
           </span>
         </a>
         <nav class="app-nav" aria-label="App">
-          <a class="is-active" href="app.html">Fields</a>
-          <a href="app.html#alerts">Alerts</a>
+          <button type="button" class="app-tab-btn is-active" data-tab="fields">Fields</button>
+          <button type="button" class="app-tab-btn" data-tab="alerts">
+            Alerts
+            <span class="alert-badge" id="alertBadge" hidden>0</span>
+          </button>
           <span data-auth-slot></span>
         </nav>
       </div>
@@ -47,59 +50,70 @@
             <h1>Your fields</h1>
             <p class="app-lead" id="welcomeLine">Sign in to manage fields and insights.</p>
           </div>
-          <button type="button" class="app-btn-primary" id="openAddField">Add field</button>
+          <button type="button" class="app-btn-primary" id="openAddField">+ Add field</button>
         </header>
 
         <p id="appStatus" class="app-status" role="status" aria-live="polite"></p>
 
-        <section id="alertsPanel" class="app-panel" hidden>
-          <h2>Alerts</h2>
-          <p class="app-muted">Alerts will appear here after fusion (Day 8). Weather + insights come next.</p>
-        </section>
-
-        <section class="app-grid">
-          <div class="app-panel">
-            <div class="app-panel-head">
-              <h2>Fields</h2>
-              <span class="app-count" id="fieldCount">0</span>
-            </div>
-            <div id="fieldsList" class="fields-list">
-              <div class="empty-state" id="fieldsEmpty">
-                <strong>No fields yet</strong>
-                <p>Add your first field on the map to start scanning Earth intelligence for your farm.</p>
-              </div>
+        <!-- ALERTS TAB -->
+        <section id="alertsTab" class="app-tab-panel" hidden>
+          <div id="alertsList" class="alerts-list">
+            <div class="empty-state">
+              <strong>No alerts</strong>
+              <p>Alerts appear here when fusion detects irrigation needs, heat stress, or disease risk on any of your fields.</p>
             </div>
           </div>
+        </section>
 
-          <div class="app-panel app-panel-map">
-            <div class="app-panel-head">
-              <h2>Place a field</h2>
-              <button type="button" class="app-btn-ghost" id="useLocationBtn">Use my location</button>
-            </div>
-            <p class="app-muted map-hint">Click the map to set the field center, then save.</p>
-            <div id="fieldMap" class="field-map" role="application" aria-label="Field map"></div>
-
-            <form id="addFieldForm" class="add-field-form">
-              <label>
-                Field name
-                <input id="fieldName" name="name" type="text" required placeholder="North paddock" maxlength="80" />
-              </label>
-              <label>
-                Crop (optional)
-                <input id="fieldCrop" name="cropType" type="text" placeholder="Wheat, rice…" maxlength="60" />
-              </label>
-              <div class="coord-row">
-                <label>
-                  Latitude
-                  <input id="fieldLat" name="lat" type="number" step="any" required placeholder="12.97" />
-                </label>
-                <label>
-                  Longitude
-                  <input id="fieldLon" name="lon" type="number" step="any" required placeholder="77.59" />
-                </label>
+        <!-- FIELDS TAB -->
+        <section id="fieldsTab" class="app-tab-panel">
+          <div class="app-grid">
+            <!-- Field cards -->
+            <div class="app-panel">
+              <div class="app-panel-head">
+                <h2>Your fields</h2>
+                <span class="app-count" id="fieldCount">0</span>
               </div>
-              <button type="submit" class="app-btn-primary" id="saveFieldBtn">Save field</button>
-            </form>
+              <div id="fieldsList" class="fields-list">
+                <div class="empty-state">
+                  <strong>No fields yet</strong>
+                  <p>Add your first field on the map to start scanning Earth intelligence for your farm.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Add field map -->
+            <div class="app-panel app-panel-map" id="addFieldPanel">
+              <div class="app-panel-head">
+                <h2>Place a field</h2>
+                <button type="button" class="app-btn-ghost" id="useLocationBtn">📍 My location</button>
+              </div>
+              <p class="app-muted map-hint">Click the map to set the field center, then save.</p>
+              <div id="fieldMap" class="field-map" role="application" aria-label="Field map"></div>
+
+              <form id="addFieldForm" class="add-field-form">
+                <input type="hidden" id="authMode" name="mode" value="signin" />
+                <label>
+                  Field name
+                  <input id="fieldName" name="name" type="text" required placeholder="North paddock" maxlength="80" />
+                </label>
+                <label>
+                  Crop (optional)
+                  <input id="fieldCrop" name="cropType" type="text" placeholder="Wheat, rice, cotton…" maxlength="60" />
+                </label>
+                <div class="coord-row">
+                  <label>
+                    Latitude
+                    <input id="fieldLat" name="lat" type="number" step="any" required placeholder="12.97" />
+                  </label>
+                  <label>
+                    Longitude
+                    <input id="fieldLon" name="lon" type="number" step="any" required placeholder="77.59" />
+                  </label>
+                </div>
+                <button type="submit" class="app-btn-primary" id="saveFieldBtn">Save field</button>
+              </form>
+            </div>
           </div>
         </section>
       </div>
