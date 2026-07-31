@@ -109,6 +109,47 @@
           <span class="sat-note" id="satNote"></span>
         </div>
 
+        <!-- Trends + forecast -->
+        <section class="app-panel trends-panel" id="trendsPanel">
+          <div class="app-panel-head">
+            <h2>Past → trend → next week</h2>
+            <button type="button" class="app-btn-ghost" id="loadTrendsBtn">Load trends</button>
+          </div>
+          <p class="app-muted">We analyse recent NASA weather history for this field, explain the direction, and forecast the next 7 days.</p>
+
+          <div class="outlook-card outlook-stable reveal-up" id="outlookCard" hidden>
+            <p class="outlook-kicker">Where this is heading</p>
+            <h3 id="outlookTitle">—</h3>
+            <p id="outlookMessage"></p>
+            <div class="outlook-stats">
+              <div><span>Predicted rain</span><strong id="predRain">—</strong></div>
+              <div><span>Predicted ET</span><strong id="predET">—</strong></div>
+            </div>
+          </div>
+
+          <div class="trend-explanations" id="trendExplanations"></div>
+
+          <div class="chart-block">
+            <div class="chart-legend">
+              <span class="leg past">Past rainfall</span>
+              <span class="leg future">Forecast</span>
+            </div>
+            <svg id="rainChart" class="trend-chart" viewBox="0 0 360 120" role="img" aria-label="Rainfall trend chart"></svg>
+          </div>
+          <div class="chart-block">
+            <div class="chart-legend">
+              <span class="leg past">Past temperature</span>
+              <span class="leg future">Forecast</span>
+            </div>
+            <svg id="tempChart" class="trend-chart" viewBox="0 0 360 120" role="img" aria-label="Temperature trend chart"></svg>
+          </div>
+
+          <div class="history-strip" id="historyStrip" hidden>
+            <h3>Recent field snapshots</h3>
+            <div class="history-track" id="historyTrack"></div>
+          </div>
+        </section>
+
         <!-- Map -->
         <div class="app-panel field-map-panel">
           <h2>Location</h2>

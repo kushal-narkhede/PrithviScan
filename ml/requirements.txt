@@ -1,0 +1,12 @@
+# PrithviScan ML — image processing, field classifier, trend tools
+numpy>=1.26
+Pillow>=10.2
+opencv-python-headless>=4.9
+scikit-learn>=1.4
+scikit-image>=0.22
+matplotlib>=3.8
+joblib>=1.3
+# Optional deep learning (install when training CNN):
+# tensorflow>=2.15
+# torch>=2.1
+# torchvision>=0.16

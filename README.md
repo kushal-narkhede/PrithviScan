@@ -100,14 +100,33 @@ Functions URL: `https://us-central1-prithviscan.cloudfunctions.net/<name>`
 
 ---
 
-## After MVP (what's next)
+## Image ML + trends
 
-- HLS 10m NDVI raster map overlays
+Python package in [`ml/`](ml/):
+- `preprocess.py` — OpenCV/skimage greenness, NDVI proxy, cloud mask
+- `train_field_classifier.py` — train field vs not-field (RandomForest or CNN)
+- `infer_field.py` — classify an image
+- `trends.py` — trend + 7-day forecast from NASA POWER series
+- [`DATASETS.md`](ml/DATASETS.md) — where to get ~10k field images (EuroSAT, BigEarthNet, …)
+
+Train when you have images:
+
+```bash
+pip install -r ml/requirements.txt
+# put images in ml/data/field and ml/data/not_field
+python -m ml.train_field_classifier
+```
+
+App features:
+- **Map gate:** clicking a point runs `classifyLocation` (imagery heuristic; swap in trained model later)
+- **Field page:** past snapshots, animated trend charts, plain-language explanations, next-week outlook (`fieldTrends`)
+
+## After this MVP
+
+- Replace heuristic classifier with your trained CNN weights
+- HLS 10m NDVI raster overlays
 - GPM 30-minute rainfall streaming
-- ML yield / disease prediction
 - FCM push notifications
-- Multi-farm / org accounts
-- Native mobile apps
 
 ---
 

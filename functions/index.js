@@ -6,6 +6,8 @@ const { setGlobalOptions } = require("firebase-functions/v2");
 const { initializeApp, getApps } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getAuth } = require("firebase-admin/auth");
+const { analyzePowerBundle } = require("./lib/trends");
+const { classifyLatLon } = require("./lib/vision");
 
 setGlobalOptions({ region: "us-central1" });
 
@@ -485,6 +487,153 @@ exports.markAlertRead = onRequest(
     } catch (err) {
       if (err.status === 401) return jsonRes(res, 401, { error: "Unauthenticated" });
       jsonRes(res, 500, { error: err.message });
+    }
+  }
+);
+
+// ---------- Function: fieldTrends (history + forecast) ----------
+exports.fieldTrends = onRequest(
+  { cors: true, timeoutSeconds: 90 },
+  async (req, res) => {
+    try {
+      const decoded = await verifyIdToken(req);
+      const { fieldId, lat, lon } = req.query;
+      if (!fieldId || !lat || !lon) {
+        return jsonRes(res, 400, { error: "fieldId, lat, lon required" });
+      }
+
+      // Prefer latest POWER snapshot; else fetch fresh 30-day POWER
+      const db = getFirestore();
+      let power = null;
+      const snaps = await db
+        .collection("users")
+        .doc(decoded.uid)
+        .collection("fields")
+        .doc(String(fieldId))
+        .collection("snapshots")
+        .orderBy("savedAt", "desc")
+        .limit(10)
+        .get()
+        .catch(() => null);
+
+      const history = [];
+      if (snaps && !snaps.empty) {
+        snaps.docs.forEach((d) => {
+          const data = d.data();
+          history.push({
+            id: d.id,
+            savedAt: data.savedAt || null,
+            hasPower: Boolean(data.power),
+            insightLevel: data.insight?.level || null,
+          });
+          if (!power && data.power) power = data.power;
+        });
+      }
+
+      if (!power) {
+        const days = 30;
+        const endDate = new Date();
+        const startDate = new Date(endDate - days * 86400000);
+        const fmt = (d) => d.toISOString().slice(0, 10).replace(/-/g, "");
+        const powerUrl = new URL("https://power.larc.nasa.gov/api/temporal/daily/point");
+        powerUrl.searchParams.set("parameters", POWER_PARAMS);
+        powerUrl.searchParams.set("community", "AG");
+        powerUrl.searchParams.set("longitude", String(lon));
+        powerUrl.searchParams.set("latitude", String(lat));
+        powerUrl.searchParams.set("start", fmt(startDate));
+        powerUrl.searchParams.set("end", fmt(endDate));
+        powerUrl.searchParams.set("format", "JSON");
+        const powerRes = await fetch(powerUrl.toString());
+        if (powerRes.ok) {
+          const raw = await powerRes.json();
+          const props = raw?.properties?.parameter || {};
+          power = {
+            rainfall: props.PRECTOTCORR || {},
+            temp: props.T2M || {},
+            et: props.EVPTRNS || {},
+            humidity: props.RH2M || {},
+            solar: props.ALLSKY_SFC_SW_DWN || {},
+          };
+          const today = endDate.toISOString().slice(0, 10);
+          await db
+            .collection("users")
+            .doc(decoded.uid)
+            .collection("fields")
+            .doc(String(fieldId))
+            .collection("snapshots")
+            .doc(today)
+            .set({ power: { ...power, fetchedAt: new Date().toISOString() }, savedAt: FieldValue.serverTimestamp() }, { merge: true });
+        }
+      }
+
+      if (!power) {
+        return jsonRes(res, 502, { error: "Could not load weather history from NASA POWER" });
+      }
+
+      const analysis = analyzePowerBundle(power, 7);
+
+      // Past insight history (latest doc + any stored on snapshots)
+      let pastInsights = [];
+      const latestInsight = await db
+        .collection("users")
+        .doc(decoded.uid)
+        .collection("fields")
+        .doc(String(fieldId))
+        .collection("insights")
+        .doc("latest")
+        .get();
+      if (latestInsight.exists) {
+        pastInsights.push({ id: "latest", ...latestInsight.data() });
+      }
+
+      jsonRes(res, 200, {
+        ok: true,
+        fieldId: String(fieldId),
+        historySnapshots: history,
+        pastInsights,
+        ...analysis,
+      });
+    } catch (err) {
+      if (err.status === 401) return jsonRes(res, 401, { error: "Unauthenticated" });
+      console.error("fieldTrends error", err);
+      jsonRes(res, 500, { error: err.message || "Unexpected error" });
+    }
+  }
+);
+
+// ---------- Function: classifyLocation (field vs city/other) ----------
+exports.classifyLocation = onRequest(
+  { cors: true, timeoutSeconds: 60, memory: "512MiB" },
+  async (req, res) => {
+    try {
+      await verifyIdToken(req);
+      const lat = Number(req.query.lat);
+      const lon = Number(req.query.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        return jsonRes(res, 400, { error: "lat and lon required" });
+      }
+
+      const result = await classifyLatLon(lat, lon);
+      const valid = Boolean(result.is_field);
+      jsonRes(res, 200, {
+        ok: true,
+        valid,
+        ...result,
+        message: valid
+          ? "Looks like agricultural land — you can save this field."
+          : "This location does not look like a farm field (city/water/bare land). Pick a cropped area.",
+      });
+    } catch (err) {
+      if (err.status === 401) return jsonRes(res, 401, { error: "Unauthenticated" });
+      console.error("classifyLocation error", err);
+      // Soft-fail: allow save with warning if imagery unavailable
+      jsonRes(res, 200, {
+        ok: false,
+        valid: true,
+        softFail: true,
+        message: "Could not verify imagery right now. You can still save — verification skipped.",
+        error: err.message,
+      });
     }
   }
 );

@@ -42,3 +42,11 @@ export async function callGetAlerts() {
 export async function callMarkAlertRead(alertId) {
   return apiFetch("markAlertRead", { alertId });
 }
+
+export async function callFieldTrends(fieldId, lat, lon) {
+  return apiFetch("fieldTrends", { fieldId, lat, lon });
+}
+
+export async function callClassifyLocation(lat, lon) {
+  return apiFetch("classifyLocation", { lat, lon });
+}

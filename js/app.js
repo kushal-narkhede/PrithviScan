@@ -1,7 +1,7 @@
 import { watchAuth, isFirebaseConfigured } from "./auth.js";
 import { listFields, createField } from "./fields.js";
 import { createFieldMap, useBrowserLocation } from "./map.js";
-import { callGetAlerts, callMarkAlertRead } from "./api.js";
+import { callGetAlerts, callMarkAlertRead, callClassifyLocation } from "./api.js";
 
 const statusEl = document.getElementById("appStatus");
 const welcomeLine = document.getElementById("welcomeLine");
@@ -155,12 +155,38 @@ tabBtns.forEach((btn) => {
   btn.addEventListener("click", () => switchTab(btn.dataset.tab));
 });
 
+async function validateLocation(lat, lon) {
+  setStatus("Checking if this looks like a farm field…");
+  try {
+    const result = await callClassifyLocation(lat, lon);
+    if (result.softFail) {
+      setStatus(result.message || "Verification skipped — you can still save.", "ok");
+      return true;
+    }
+    if (!result.valid) {
+      setStatus(
+        result.message || "Not a field — pick cropland on the map.",
+        "error"
+      );
+      return false;
+    }
+    const pct = Math.round((result.confidence || result.field_probability || 0) * 100);
+    setStatus(`Looks like a field (${pct}% confidence). ${result.reason || ""}`, "ok");
+    return true;
+  } catch (err) {
+    // Functions may not be deployed yet (Blaze) — allow save with note
+    setStatus("Field check unavailable until Functions deploy. You can still save.", "ok");
+    return true;
+  }
+}
+
 function initMap() {
   try {
     mapApi = createFieldMap("fieldMap", {
-      onPick(lat, lon) {
+      async onPick(lat, lon) {
         if (latInput) latInput.value = lat.toFixed(6);
         if (lonInput) lonInput.value = lon.toFixed(6);
+        await validateLocation(lat, lon);
       },
     });
   } catch (err) {
@@ -173,16 +199,24 @@ form?.addEventListener("submit", async (event) => {
   if (!currentUser) { window.location.href = "auth.html"; return; }
 
   saveBtn.disabled = true;
-  setStatus("Saving field…");
+  const lat = Number(latInput.value);
+  const lon = Number(lonInput.value);
 
+  const ok = await validateLocation(lat, lon);
+  if (!ok) {
+    saveBtn.disabled = false;
+    return;
+  }
+
+  setStatus("Saving field…");
   try {
     const field = await createField(currentUser.uid, {
       name: nameInput.value,
       cropType: cropInput.value,
-      lat: latInput.value,
-      lon: lonInput.value,
+      lat,
+      lon,
     });
-    setStatus(`"${field.name}" saved. Open it to run insights.`, "ok");
+    setStatus(`"${field.name}" saved. Open it to see trends and insights.`, "ok");
     form.reset();
     await refreshFields();
   } catch (err) {
@@ -195,12 +229,12 @@ form?.addEventListener("submit", async (event) => {
 useLocationBtn?.addEventListener("click", () => {
   setStatus("Getting location…");
   useBrowserLocation(
-    (lat, lon) => {
+    async (lat, lon) => {
       latInput.value = lat.toFixed(6);
       lonInput.value = lon.toFixed(6);
       mapApi?.setMarker(lat, lon);
       mapApi?.map.setView([lat, lon], 14);
-      setStatus("Location set — name the field and save.", "ok");
+      await validateLocation(lat, lon);
     },
     () => setStatus("Could not get location. Click the map instead.", "error")
   );

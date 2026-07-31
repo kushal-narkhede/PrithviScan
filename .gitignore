@@ -6,3 +6,13 @@ node_modules/
 !.env.example
 *.pem
 serviceAccount*.json
+.venv/
+ml/data/field/*
+!ml/data/field/.gitkeep
+ml/data/not_field/*
+!ml/data/not_field/.gitkeep
+ml/models/*.joblib
+ml/models/*.keras
+ml/models/*_meta.json
+__pycache__/
+*.pyc
