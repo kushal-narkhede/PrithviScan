@@ -18,7 +18,7 @@ let app;
 let auth;
 let googleProvider;
 
-export function getFirebaseAuth() {
+export function getFirebaseApp() {
   if (!isFirebaseConfigured()) {
     throw new Error("Firebase web config is incomplete. Add apiKey and appId in js/firebase-config.js");
   }
@@ -33,6 +33,11 @@ export function getFirebaseAuth() {
       })
       .catch(() => {});
   }
+  return app;
+}
+
+export function getFirebaseAuth() {
+  getFirebaseApp();
   return auth;
 }
 

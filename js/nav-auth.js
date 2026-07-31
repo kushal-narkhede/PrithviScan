@@ -21,7 +21,11 @@ function renderAuthControls(user) {
       return;
     }
 
+    const onApp = window.location.pathname.endsWith("app.html")
+      || window.location.pathname.endsWith("field.html");
+
     slot.innerHTML = `
+      ${onApp ? "" : `<a class="nav-app" href="app.html">Open app</a>`}
       <a class="nav-profile" href="profile.html" aria-label="My Profile">
         <span class="nav-profile-avatar" aria-hidden="true">${initials(user)}</span>
         <span class="nav-profile-label">My Profile</span>

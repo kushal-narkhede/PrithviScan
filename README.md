@@ -2,13 +2,25 @@
 
 PrithviScan is an Earth‑intelligence platform that uses satellite imagery to help farmers understand their land with clarity and precision. It blends Sanskrit heritage with modern technology to deliver real‑time insights for healthier crops and smarter decisions.
 
-## Preview the homepage
-
-Open `index.html` in your browser, or run a simple HTTP server from the project root:
+## Preview locally
 
 ```bash
-python -m http.server 8000
-# then open http://localhost:8000
+python3 -m http.server 8000
+# marketing: http://localhost:8000
+# farmer app: http://localhost:8000/app.html (requires sign-in)
+```
+
+## Farmer app (Days 1–3 done)
+
+After sign-in you land on **`app.html`**:
+- Add a field by clicking the **Leaflet/OSM map** (or Use my location)
+- Fields saved under Firestore `users/{uid}/fields/{fieldId}`
+- Open a field → `field.html?id=...`
+
+Deploy rules once Firestore is enabled in the console:
+
+```bash
+firebase deploy --only firestore:rules,hosting
 ```
 
 The hero uses `assets/hero-canopy.mp4` (muted autoplay loop).

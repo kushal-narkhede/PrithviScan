@@ -1,0 +1,382 @@
+/* Farmer app shell — green theme, fields + map */
+
+.app-body {
+  margin: 0;
+  min-height: 100svh;
+  background:
+    radial-gradient(70% 50% at 10% 0%, rgba(98, 192, 132, 0.16), transparent 55%),
+    #f3faf5;
+  color: #10251a;
+  font-family: "Figtree", sans-serif;
+}
+
+.app-top {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(243, 250, 245, 0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(16, 37, 26, 0.1);
+}
+
+.app-top-inner {
+  width: min(1120px, calc(100% - 2rem));
+  margin: 0 auto;
+  min-height: 4.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.app-top .brand-prithvi {
+  color: #0b2417;
+}
+
+.app-top .brand-scan {
+  color: #3f9a63;
+}
+
+.app-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.app-nav > a {
+  font-weight: 600;
+  color: #3a5646;
+  text-decoration: none;
+}
+
+.app-nav > a.is-active,
+.app-nav > a:hover {
+  color: #0b2417;
+}
+
+.app-main {
+  padding: 1.75rem 0 3rem;
+}
+
+.app-shell {
+  width: min(1120px, calc(100% - 2rem));
+  margin: 0 auto;
+}
+
+.app-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.app-kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #3f9a63;
+}
+
+.app-page-head h1 {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  letter-spacing: -0.03em;
+  color: #0b2417;
+}
+
+.app-lead {
+  margin: 0.4rem 0 0;
+  color: #3a5646;
+}
+
+.app-back {
+  display: inline-block;
+  margin-bottom: 0.85rem;
+  font-weight: 600;
+  color: #3a5646;
+  text-decoration: none;
+}
+
+.app-back:hover {
+  color: #0b2417;
+}
+
+.app-btn-primary,
+.app-btn-ghost,
+.app-btn-danger {
+  appearance: none;
+  border-radius: 999px;
+  min-height: 2.75rem;
+  padding: 0.65rem 1.15rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+}
+
+.app-btn-primary {
+  background: #3f9a63;
+  color: #06160e;
+}
+
+.app-btn-primary:hover {
+  background: #62c084;
+}
+
+.app-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.app-btn-ghost {
+  background: #ffffff;
+  border: 1px solid rgba(16, 37, 26, 0.14);
+  color: #0b2417;
+}
+
+.app-btn-danger {
+  background: #fff7f7;
+  border: 1px solid rgba(155, 28, 28, 0.28);
+  color: #9b1c1c;
+}
+
+.app-status {
+  min-height: 1.35em;
+  margin: 0 0 1rem;
+  color: #3a5646;
+  font-size: 0.95rem;
+}
+
+.app-status.is-error {
+  color: #9b1c1c;
+}
+
+.app-status.is-ok {
+  color: #2f7a4d;
+}
+
+.app-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 1.1rem;
+  align-items: start;
+}
+
+.app-panel {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(16, 37, 26, 0.1);
+  border-radius: 20px;
+  padding: 1.15rem 1.15rem 1.25rem;
+  box-shadow: 0 16px 40px rgba(6, 22, 14, 0.06);
+}
+
+.app-panel h2 {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.25rem;
+  color: #0b2417;
+}
+
+.app-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.app-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: #eef6f1;
+  color: #0b2417;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.app-muted {
+  margin: 0 0 0.85rem;
+  color: #3a5646;
+  font-size: 0.92rem;
+}
+
+.field-map {
+  width: 100%;
+  height: 280px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(16, 37, 26, 0.1);
+  background: #e8f2eb;
+  z-index: 1;
+}
+
+.field-map-detail {
+  height: 320px;
+  margin-top: 0.75rem;
+}
+
+.add-field-form {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.add-field-form label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0b2417;
+}
+
+.add-field-form input {
+  min-height: 2.75rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid rgba(16, 37, 26, 0.14);
+  font: inherit;
+  font-weight: 500;
+}
+
+.coord-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.fields-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.field-card {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  background: #eef6f1;
+  border: 1px solid rgba(16, 37, 26, 0.08);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.field-card:hover {
+  border-color: rgba(63, 154, 99, 0.45);
+  transform: translateY(-1px);
+}
+
+.field-card strong {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.1rem;
+  color: #0b2417;
+}
+
+.field-card span {
+  font-size: 0.88rem;
+  color: #3a5646;
+}
+
+.empty-state {
+  padding: 1.25rem 0.25rem 0.5rem;
+  color: #3a5646;
+}
+
+.empty-state strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #0b2417;
+  font-size: 1.05rem;
+}
+
+.empty-state[hidden],
+#fieldsEmpty[hidden] {
+  display: none !important;
+}
+
+.insight-card {
+  margin-top: 0.75rem;
+  padding: 1rem;
+  border-radius: 14px;
+  background: #eef6f1;
+  border: 1px solid rgba(16, 37, 26, 0.08);
+}
+
+.insight-level {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #3f9a63;
+}
+
+.insight-card h3 {
+  margin: 0 0 0.4rem;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.2rem;
+  color: #0b2417;
+}
+
+.insight-card p {
+  margin: 0;
+  color: #3a5646;
+  font-size: 0.95rem;
+}
+
+.field-facts {
+  display: grid;
+  gap: 0.65rem;
+  margin: 1.1rem 0 0;
+}
+
+.field-facts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid rgba(16, 37, 26, 0.08);
+  font-size: 0.92rem;
+}
+
+.field-facts dt {
+  margin: 0;
+  color: #3a5646;
+  font-weight: 600;
+}
+
+.field-facts dd {
+  margin: 0;
+  color: #0b2417;
+  font-weight: 700;
+  text-align: right;
+}
+
+@media (max-width: 860px) {
+  .app-grid,
+  .field-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app-page-head {
+    flex-direction: column;
+  }
+
+  .app-btn-primary,
+  .app-btn-danger {
+    width: 100%;
+  }
+}

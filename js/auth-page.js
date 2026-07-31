@@ -54,8 +54,8 @@ tabs.forEach((tab) => {
 });
 
 async function finishLogin() {
-  setStatus("Signed in — redirecting…", "ok");
-  window.location.href = "index.html";
+  setStatus("Signed in — opening your app…", "ok");
+  window.location.href = "app.html";
 }
 
 form?.addEventListener("submit", async (event) => {
@@ -130,9 +130,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   watchAuth((user) => {
     if (user) {
-      setStatus(`Signed in as ${user.email || user.displayName}. Redirecting…`, "ok");
+      setStatus(`Signed in as ${user.email || user.displayName}. Opening app…`, "ok");
       window.setTimeout(() => {
-        window.location.href = "index.html";
+        window.location.href = "app.html";
       }, 600);
     }
   });
