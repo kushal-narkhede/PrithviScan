@@ -24,9 +24,17 @@ python -m ml.train_field_classifier
 
 ## Best sources for ~10,000 labeled patches
 
-### 1) EuroSAT (easiest start — ~27,000 tiles)
-- **What:** Sentinel-2 64×64 patches, 10 land-cover classes including **AnnualCrop**, **PermanentCrop**, **Pasture**, plus urban/water/forest.
-- **How to use for PrithviScan:** map crop/pasture → `field/`; Industrial/Residential/Highway/River/SeaLake/Forest → `not_field/`.
+### 1) EuroSAT (wired for your PC — ~27,000 tiles)
+- **What:** Sentinel-2 64×64 patches, 10 land-cover classes.
+- **Your path (already downloaded):** `D:\Kushal\EuroSAT_RGB\EuroSAT_RGB`
+- **Folders used:** AnnualCrop, Forest, HerbaceousVegetation, Highway, Industrial, Pasture, PermanentCrop, Residential, River, SeaLake
+- **Mapping:** AnnualCrop / PermanentCrop / Pasture → **field**; Residential / Industrial / Highway / River / SeaLake / Forest / HerbaceousVegetation → **not_field**
+- **Train on Windows (no copy into the repo):**
+  ```bat
+  cd path\to\PrithviScan
+  ml\train_eurosat.bat
+  ```
+  Or: `python -m ml.train_field_classifier` (auto-uses that path if it exists)
 - **Link:** https://github.com/phelber/eurosat  
 - **Size:** ~27k images (enough for your 10k target).
 
