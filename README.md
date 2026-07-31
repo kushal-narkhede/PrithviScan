@@ -38,3 +38,32 @@ Your site will be live at `https://prithviscan.web.app`.
    - `prithviscan.web.app`
    - `prithviscan.firebaseapp.com`
 6. Redeploy hosting after saving the config
+
+## Earthdata token (Firebase Secret — server only)
+
+**Never put the Earthdata token in `js/` or any public hosting file.**  
+Browsers would expose it to every visitor.
+
+1. Save locally (gitignored):
+```bash
+mkdir -p .secrets
+cp .env.example .secrets/earthdata.env
+# paste your real token into EARTHDATA_TOKEN=...
+```
+
+2. Upload to Firebase Secret Manager (run on your machine while logged in):
+```bash
+firebase login
+firebase functions:secrets:set EARTHDATA_TOKEN
+# paste the token when prompted, then Enter, then Ctrl+D
+```
+
+3. Install + deploy functions:
+```bash
+cd functions && npm install && cd ..
+firebase deploy --only functions
+```
+
+4. Test:
+- `https://us-central1-prithviscan.cloudfunctions.net/earthdataStatus`
+- `https://us-central1-prithviscan.cloudfunctions.net/cmrSearch`
