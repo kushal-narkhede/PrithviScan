@@ -51,14 +51,29 @@ export function simulateScenario(metrics = {}, opts = {}) {
   const expectedYieldKgHa = baselineYieldKgHa * yieldIndex;
   const yieldDeltaPct = (yieldIndex - 1) * 100;
 
+  // Uncertainty band widens with stress / missing weather (feature 6.2)
+  const uncertainty = Math.min(0.35, 0.08 + stress * 0.2 + (et === 0 ? 0.1 : 0));
+  const yieldLow = Math.round(expectedYieldKgHa * (1 - uncertainty));
+  const yieldHigh = Math.round(expectedYieldKgHa * (1 + uncertainty * 0.6));
+
+  const pricePerKg = 0.25; // illustrative
+  const expectedRevenue = expectedYieldKgHa * fieldHa * pricePerKg;
+  const baselineRevenue = baselineYieldKgHa * fieldHa * pricePerKg;
+  const roi = totalCost > 0 ? (expectedRevenue - baselineRevenue - totalCost) / totalCost : null;
+
   return {
     effectiveWater_mm: Number(effectiveWater.toFixed(1)),
     deficit_mm: Number(deficit.toFixed(1)),
     stressIndex: Number(stress.toFixed(2)),
     expectedYieldKgHa: Math.round(expectedYieldKgHa),
+    yieldLowKgHa: yieldLow,
+    yieldHighKgHa: yieldHigh,
+    uncertaintyPct: Number((uncertainty * 100).toFixed(0)),
     yieldDeltaPct: Number(yieldDeltaPct.toFixed(1)),
     waterUse_mm: Number(appliedMm.toFixed(1)),
     estimatedCost: Number(totalCost.toFixed(2)),
+    expectedRevenue: Number(expectedRevenue.toFixed(2)),
+    roi: roi == null ? null : Number(roi.toFixed(2)),
     notes: buildNotes({ irrigateWhen, appliedMm, deficit, stress, fertilizerKgHa }),
   };
 }

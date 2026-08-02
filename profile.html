@@ -53,6 +53,25 @@
           </div>
         </dl>
 
+        <div class="profile-prefs" id="profilePrefs">
+          <h3 class="profile-prefs-title">Accessibility</h3>
+          <label class="check-row"><input type="checkbox" id="prefLargeText" /> Larger text</label>
+          <label class="check-row"><input type="checkbox" id="prefContrast" /> High contrast</label>
+          <label class="check-row"><input type="checkbox" id="prefSimple" /> Simplified mode (fewer words)</label>
+
+          <h3 class="profile-prefs-title">Data sharing</h3>
+          <label class="check-row">
+            <input type="checkbox" id="prefAggregateOptIn" />
+            Opt in to anonymized aggregated insights (you can turn off anytime)
+          </label>
+          <p class="profile-prefs-note"><a href="privacy.html">Read data ownership policy</a> · <a href="partners.html">Local partners</a></p>
+
+          <h3 class="profile-prefs-title">Alerts</h3>
+          <label class="check-row"><input type="checkbox" id="prefCriticalOnly" /> Critical alerts only</label>
+          <label class="check-row"><input type="checkbox" id="prefQuietHours" /> Quiet hours (21:00–07:00, critical still shown)</label>
+          <button type="button" class="auth-google" id="prefSnoozeBtn">Snooze alerts 6 hours</button>
+        </div>
+
         <div class="profile-actions">
           <a class="auth-primary profile-home" href="app.html">Open my fields</a>
           <a class="auth-google profile-home" href="index.html">Go to homepage</a>
@@ -63,6 +82,8 @@
       </section>
     </main>
 
+    <script type="module" src="js/a11y.js"></script>
+    <script type="module" src="js/tenant.js"></script>
     <script type="module" src="js/nav-auth.js"></script>
     <script type="module" src="js/profile-page.js"></script>
   </body>

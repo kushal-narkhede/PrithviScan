@@ -11,6 +11,9 @@ import {
   fieldsToGeoJson,
   downloadText,
 } from "./import-export.js";
+import { ensureDemoField, startOnboardingTour } from "./onboarding.js";
+import { filterAlertsForDisplay, alertPriority } from "./alert-prefs.js";
+import "./a11y.js";
 
 const statusEl = document.getElementById("appStatus");
 const welcomeLine = document.getElementById("welcomeLine");
@@ -168,31 +171,40 @@ async function handleImportFile(file) {
   setStatus(parts.join(" · "), failed.length ? "error" : "ok");
 }
 
-function renderAlerts(alerts) {
-  const unread = alerts.filter((a) => !a.read);
+function renderAlerts(rawAlerts) {
+  const { alerts, mutedReason } = filterAlertsForDisplay(rawAlerts);
+  const unread = rawAlerts.filter((a) => !a.read && a.level === "action");
   if (alertBadge) {
-    alertBadge.textContent = String(unread.length);
-    alertBadge.hidden = unread.length === 0;
+    alertBadge.textContent = String(unread.length || rawAlerts.filter((a) => !a.read).length);
+    alertBadge.hidden = Number(alertBadge.textContent) === 0;
   }
 
   if (!alertsList) return;
   if (!alerts.length) {
     alertsList.innerHTML = `
       <div class="empty-state">
-        <strong>No alerts</strong>
-        <p>Alerts appear here when fusion detects irrigation needs, heat stress, or disease risk.</p>
+        <strong>${mutedReason || "No alerts"}</strong>
+        <p>${mutedReason ? "Adjust alert preferences in Profile." : "Alerts appear here when fusion detects irrigation needs, heat stress, or disease risk."}</p>
       </div>`;
     return;
   }
 
-  alertsList.innerHTML = alerts
-    .map((a) => {
-      const lvl = a.level || "info";
-      const when = a.createdAt?.toDate?.()?.toLocaleDateString?.() || "";
-      return `
+  const muteNote = mutedReason
+    ? `<p class="app-muted alert-mute-note">${esc(mutedReason)}</p>`
+    : "";
+
+  alertsList.innerHTML =
+    muteNote +
+    alerts
+      .map((a) => {
+        const lvl = a.level || "info";
+        const pri = alertPriority(lvl);
+        const when = a.createdAt?.toDate?.()?.toLocaleDateString?.() || "";
+        return `
         <div class="alert-item ${levelClass(lvl)} ${a.read ? "is-read" : ""}" data-id="${esc(a.id)}">
           <div class="alert-item-head">
             <span class="alert-dot ${levelClass(lvl)}"></span>
+            <span class="alert-priority">${esc(pri)}</span>
             <strong>${esc(a.title)}</strong>
             ${when ? `<span class="alert-when">${when}</span>` : ""}
           </div>
@@ -202,8 +214,8 @@ function renderAlerts(alerts) {
             ${!a.read ? `<button type="button" class="app-btn-ghost mark-read-btn" data-alertid="${esc(a.id)}">Mark read</button>` : ""}
           </div>
         </div>`;
-    })
-    .join("");
+      })
+      .join("");
 
   alertsList.querySelectorAll(".mark-read-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
@@ -375,6 +387,15 @@ document.addEventListener("DOMContentLoaded", () => {
     currentUser = user;
     const label = user.displayName || user.email || "farmer";
     if (welcomeLine) welcomeLine.textContent = `Welcome, ${label}.`;
+
+    try {
+      const demo = await ensureDemoField(user.uid);
+      if (demo.created) setStatus("Added a demo field so you can explore immediately.", "ok");
+    } catch {
+      // non-fatal
+    }
+
     await Promise.all([refreshFields(), loadAlerts(), showContinueBanner(user.uid)]);
+    startOnboardingTour();
   });
 });

@@ -7,6 +7,8 @@ import { callFuseInsight, callFieldTrends } from "./api.js";
 import { bindSessionPersistence, restoreScroll } from "./session.js";
 import { submitGroundTruth } from "./feedback.js";
 import { simulateScenario } from "./scenario.js";
+import { assessInsightRisk, confirmRiskyAction } from "./safety.js";
+import "./a11y.js";
 
 const titleEl  = document.getElementById("fieldTitle");
 const metaEl   = document.getElementById("fieldMeta");
@@ -34,8 +36,11 @@ const sensitivityValue = document.getElementById("sensitivityValue");
 const scenarioForm = document.getElementById("scenarioForm");
 const scenarioResult = document.getElementById("scenarioResult");
 const feedbackForm = document.getElementById("feedbackForm");
+const safetyBanner = document.getElementById("safetyBanner");
+const printReportBtn = document.getElementById("printReportBtn");
 
 let latestMetrics = null;
+let latestInsight = null;
 let ruleSensitivity = Number(localStorage.getItem("prithvi_rule_sensitivity") || "1") || 1;
 const metricsGrid    = document.getElementById("metricsGrid");
 const satelliteRow   = document.getElementById("satelliteRow");
@@ -74,11 +79,34 @@ function levelLabel(level) {
 
 function renderInsight(insight) {
   if (!insightCard || !insight) return;
+  latestInsight = insight;
   const lvl = insight.level || "info";
   insightCard.className = `insight-card ${levelClass(lvl)}`;
   insightLevel.textContent = levelLabel(lvl);
   insightTitle.textContent = insight.title || "—";
   insightMessage.textContent = insight.message || "";
+
+  const risk = assessInsightRisk(insight);
+  if (safetyBanner) {
+    if (risk.needsConfirmation) {
+      safetyBanner.hidden = false;
+      safetyBanner.className = `safety-banner ${risk.escalateToHuman ? "is-high" : "is-action"}`;
+      safetyBanner.innerHTML = `
+        <strong>${risk.escalateToHuman ? "Human review recommended" : "Confirm before acting"}</strong>
+        <p>${esc(risk.reason || "")}</p>
+        <p class="safety-disclaimer">${esc(risk.disclaimer)}</p>
+        <button type="button" class="app-btn-primary" id="confirmRiskBtn">I understand — mark reviewed</button>`;
+      safetyBanner.querySelector("#confirmRiskBtn")?.addEventListener("click", () => {
+        if (confirmRiskyAction(risk)) {
+          safetyBanner.classList.add("is-confirmed");
+          setStatus("Safety confirmation recorded for this session.", "ok");
+        }
+      });
+    } else {
+      safetyBanner.hidden = true;
+      safetyBanner.innerHTML = "";
+    }
+  }
 
   if (insightAction) {
     if (insight.action) {
@@ -401,11 +429,20 @@ document.addEventListener("DOMContentLoaded", () => {
             <div><span>Deficit</span><strong>${result.deficit_mm} mm</strong></div>
             <div><span>Stress index</span><strong>${result.stressIndex}</strong></div>
             <div><span>Expected yield</span><strong>${result.expectedYieldKgHa} kg/ha</strong></div>
+            <div><span>Yield range (±${result.uncertaintyPct}%)</span><strong>${result.yieldLowKgHa}–${result.yieldHighKgHa}</strong></div>
             <div><span>Yield vs baseline</span><strong>${result.yieldDeltaPct > 0 ? "+" : ""}${result.yieldDeltaPct}%</strong></div>
             <div><span>Est. cost</span><strong>${result.estimatedCost}</strong></div>
+            <div><span>Est. revenue</span><strong>${result.expectedRevenue}</strong></div>
+            <div><span>ROI</span><strong>${result.roi == null ? "—" : `${(result.roi * 100).toFixed(0)}%`}</strong></div>
           </div>
           <ul>${result.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>
-          <p class="app-muted">Illustrative heuristic — not a full crop model.</p>`;
+          <p class="app-muted">Illustrative heuristic with uncertainty bands — not a full crop model.</p>`;
+      });
+
+      printReportBtn?.addEventListener("click", () => {
+        document.body.classList.add("print-report");
+        window.print();
+        setTimeout(() => document.body.classList.remove("print-report"), 300);
       });
 
       feedbackForm?.addEventListener("submit", async (e) => {

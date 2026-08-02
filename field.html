@@ -51,10 +51,14 @@
             <h1 id="fieldTitle">Loading…</h1>
             <p class="app-lead" id="fieldMeta"></p>
           </div>
-          <button type="button" class="app-btn-primary" id="refreshBtn">↻ Refresh insights</button>
+          <div class="field-actions-row">
+            <button type="button" class="app-btn-ghost" id="printReportBtn">Print / save report</button>
+            <button type="button" class="app-btn-primary" id="refreshBtn">↻ Refresh insights</button>
+          </div>
         </header>
 
         <p id="fieldStatus" class="app-status" role="status" aria-live="polite"></p>
+        <div class="safety-banner" id="safetyBanner" hidden></div>
 
         <!-- Insight card (action + confidence + provenance) -->
         <div class="insight-card-wrap" id="insightWrap">

@@ -645,6 +645,124 @@
   color: var(--tenant-primary, #276749);
 }
 
+/* Accessibility modes (5.4) */
+html.a11y-large {
+  font-size: 118%;
+}
+html.a11y-contrast body,
+html.a11y-contrast .app-body {
+  filter: contrast(1.12);
+}
+html.a11y-contrast .insight-card,
+html.a11y-contrast .app-panel {
+  border: 2px solid #0b2417;
+}
+html.a11y-simple .app-muted,
+html.a11y-simple .app-kicker,
+html.a11y-simple .insight-provenance,
+html.a11y-simple .insight-evidence,
+html.a11y-simple .insight-rules {
+  display: none !important;
+}
+html.a11y-simple h1,
+html.a11y-simple h2 {
+  font-size: 1.35em;
+  line-height: 1.25;
+}
+
+/* Onboarding (7.1) */
+.onboard-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(8, 24, 16, 0.45);
+  display: grid;
+  place-items: end center;
+  padding: 1.25rem;
+}
+.onboard-card {
+  width: min(440px, 100%);
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.15rem 1.2rem 1rem;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+}
+.onboard-step {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #276749;
+}
+.onboard-card h2 {
+  margin: 0 0 0.4rem;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.35rem;
+  color: #0b2417;
+}
+.onboard-card p { margin: 0 0 0.9rem; color: #3a5646; }
+.onboard-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.onboard-highlight {
+  outline: 3px solid #38a169;
+  outline-offset: 4px;
+  border-radius: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Safety (5.3) */
+.safety-banner {
+  margin: 0 0 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  background: #fffaf0;
+  border: 1px solid #d69e2e;
+}
+.safety-banner.is-high {
+  background: #fff5f5;
+  border-color: #c53030;
+}
+.safety-banner.is-confirmed {
+  opacity: 0.7;
+}
+.safety-banner strong { display: block; margin-bottom: 0.35rem; color: #0b2417; }
+.safety-banner p { margin: 0 0 0.45rem; color: #3a5646; font-size: 0.92rem; }
+.safety-disclaimer { font-size: 0.8rem !important; color: #718096 !important; }
+
+.field-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.alert-priority {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #718096;
+}
+.alert-mute-note { margin: 0 0 0.75rem; }
+
+@media print {
+  .app-top,
+  .field-top-row,
+  .field-actions-row,
+  #refreshBtn,
+  #loadTrendsBtn,
+  #feedbackPanel,
+  #scenarioForm,
+  .sensitivity-row,
+  .onboard-overlay { display: none !important; }
+  .app-main { padding: 0; }
+  .insight-card, .app-panel { break-inside: avoid; }
+}
+
 /* ---- Metrics grid ---- */
 .metrics-grid {
   display: grid;

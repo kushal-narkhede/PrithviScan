@@ -423,61 +423,222 @@ Make the platform enterprise-grade and easy to integrate.
 
 ---
 
-## 13. Quick status matrix
+## 13. Trust, safety, and adoption
+
+Critical for farmer uptake and ethical deployment.
+
+### 5.1 Transparent data ownership and revenue sharing
+| | |
+|---|---|
+| **Status** | Live (policy + opt-in); revenue share Planned |
+| **Priority** | Critical |
+| **What** | Clear policies: farmers own their data; optional revenue share for aggregated insights. |
+| **Implementation** | [`privacy.html`](privacy.html); Profile opt-in → `users/{uid}.preferences.aggregateOptIn`. |
+
+### 5.2 Local partnerships and extension integration
+| | |
+|---|---|
+| **Status** | Live (partner page); full portal Planned |
+| **Priority** | Critical |
+| **What** | Partner with extension services, cooperatives, and NGOs. |
+| **Implementation** | [`partners.html`](partners.html) + training pack notes; white-label + bulk import already support distribution. |
+
+### 5.3 Safety checks and human escalation
+| | |
+|---|---|
+| **Status** | Live (client flags + confirmation) |
+| **Priority** | Critical |
+| **What** | Flag high-risk recommendations; require confirmation for risky actions. |
+| **Implementation** | `js/safety.js` + field **safety banner**; confirm dialog + disclaimer. Server-side human-in-loop queue Planned. |
+
+### 5.4 Accessibility and inclusive design
+| | |
+|---|---|
+| **Status** | Live (prefs) |
+| **Priority** | High |
+| **What** | Large fonts, high contrast, simplified / low-literacy mode. |
+| **Implementation** | Profile toggles → `js/a11y.js` CSS classes. Voice UI Planned. |
+
+---
+
+## 14. Differentiators and advanced features
+
+### 6.1 Marketplace for inputs and services
+| | |
+|---|---|
+| **Status** | Planned |
+| **Priority** | Medium |
+| **What** | Connect farmers to vetted suppliers, equipment rental, local services. |
+
+### 6.2 Yield forecasting and ROI calculators
+| | |
+|---|---|
+| **Status** | Live (heuristic + uncertainty bands) |
+| **Priority** | High |
+| **What** | Field-level yield forecasts and ROI estimates for recommended actions. |
+| **Implementation** | What-if panel shows yield range, revenue, ROI (`js/scenario.js`). |
+
+### 6.3 Pest/disease early-warning network
+| | |
+|---|---|
+| **Status** | Planned (disease rule exists in fusion) |
+| **Priority** | High |
+| **What** | Aggregate reports and model alerts for outbreaks across regions. |
+
+### 6.4 Insurance & credit integrations
+| | |
+|---|---|
+| **Status** | Planned |
+| **Priority** | Medium |
+| **What** | Link insights to parametric insurance triggers and microcredit offers. |
+
+### 6.5 Visual reports and compliance exports
+| | |
+|---|---|
+| **Status** | Live (print / save report) |
+| **Priority** | Medium |
+| **What** | Printable, shareable reports for certification, loans, or compliance. |
+| **Implementation** | Field page **Print / save report** + print CSS. Server PDF Planned. |
+
+### 6.6 Community & knowledge base
+| | |
+|---|---|
+| **Status** | Planned |
+| **Priority** | Medium |
+| **What** | Farmer forums, Q&A, best practices, region-specific guides. |
+
+### 6.7 Satellite imagery time-lapse and overlays
+| | |
+|---|---|
+| **Status** | Planned |
+| **Priority** | Medium |
+| **What** | Time-series imagery and NDVI/EVI overlays for fields. |
+
+### 6.8 Smart alerts and prioritization
+| | |
+|---|---|
+| **Status** | Live (client prefs) |
+| **Priority** | High |
+| **What** | Alert triage: critical vs informational, escalation and snooze. |
+| **Implementation** | Profile: critical-only, quiet hours, snooze 6h (`js/alert-prefs.js`). |
+
+---
+
+## 15. UX, onboarding, and farmer success
+
+### 7.1 Guided onboarding and demo fields
+| | |
+|---|---|
+| **Status** | Live |
+| **Priority** | Critical |
+| **What** | Walkthroughs, demo fields, and sample insights to show value quickly. |
+| **Implementation** | `js/onboarding.js` tour + auto-created **Demo field (sample)** with sample insight badge. |
+
+### 7.2 In-app training and micro-learning
+| | |
+|---|---|
+| **Status** | Planned (starter tips on partners page) |
+| **Priority** | Medium |
+| **What** | Short lessons on irrigation, pest ID, and interpreting insights. |
+
+### 7.3 Incentives and referral programs
+| | |
+|---|---|
+| **Status** | Planned |
+| **Priority** | Medium |
+| **What** | Credits for referrals, data contributions, or verified yields. |
+
+---
+
+## 16. Implementation roadmap (suggested milestones)
+
+### Phase 0
+- Enable Functions, secrets, and staging deploy
+- Harden Firestore rules and add indexes
+- Observability / error tracking
+- Persistent last-view and restore — **done (2.1)**
+
+### Phase 1
+- PWA / offline support and local sync
+- Actionable recommendations with confidence/provenance — **UI done (2.2); Functions need Blaze**
+- Role-based access and advisor workflows
+- SMS / IVR alerts MVP
+
+### Phase 2
+- Photo uploads + edge inference
+- Ensemble data sources and model ops — **partial (3.1, 3.2)**
+- Task lists and action tracking
+- API / webhooks and bulk import — **bulk import done (4.2); API contract (4.1)**
+
+### Phase 3
+- Marketplace, insurance/credit, yield forecasting — **yield/ROI heuristic done (6.2)**
+- White-label and multi-tenant — **theming hook done (4.3)**
+- Advanced analytics, scenario simulation, parametric triggers — **scenarios done (3.5)**
+
+---
+
+## 17. Metrics to track (KPIs)
+
+| Area | Metrics |
+|------|---------|
+| **Adoption** | DAU / MAU, fields saved per user |
+| **Engagement** | Tasks created/completed, photos uploaded, messages sent |
+| **Impact** | % recommendations acted upon, yield improvements (where available) |
+| **Reliability** | API latency, function error rate, sync success rate |
+| **Trust** | Opt-in rate for data sharing, churn, NPS |
+| **Monetization** | ARPU, conversion to paid features, marketplace GMV |
+
+---
+
+## 18. Final notes and priorities
+
+1. Start with **reliability**, **offline support**, and **clear, explainable recommendations** — they drive trust and retention.  
+2. **Localize aggressively** (language, units, channels) and partner with local extension for distribution.  
+3. Design for **low bandwidth and low literacy**: SMS/IVR, voice prompts, simple visuals.  
+4. Make **data ownership explicit** and reward ground-truth sharing (better models, credits).  
+5. Differentiate with **economics**: yield forecasts, ROI calculators, marketplace/finance integrations.
+
+---
+
+## 19. Quick status matrix
 
 | Feature | Status |
 |---------|--------|
 | Homepage + branding + hero video | Live |
-| Sign in / Sign up (email + Google) | Live |
-| My Profile + sign out | Live |
-| Farmer dashboard | Live |
-| Add / list / open / delete fields | Live |
-| Leaflet map + my location | Live |
-| Firestore security rules | Live |
-| **2.1 Last-view / session restore** | **Live** |
-| **2.2 Confidence + provenance UI** | **Live (data needs Blaze)** |
-| **3.3 Farmer ground-truth feedback** | **Live** |
-| **3.4 Rule traces + sensitivity** | **Live (data needs Blaze)** |
-| **3.5 What-if scenarios** | **Live** |
-| **4.2 Bulk CSV / GeoJSON import-export** | **Live** |
-| **3.1 Model versioning / registry** | **Partial (local)** |
-| **3.2 Ensemble data layer** | **Partial (POWER + stubs)** |
-| **4.1 Partner API / webhooks** | **Contract only** |
-| **4.3 White-label theming** | **Partial** |
-| Map field classifier API | Paused |
-| NASA POWER weather | Paused |
-| Fusion insights (“Irrigate tomorrow”, etc.) | Paused |
-| In-app alerts | Paused |
-| Field trends + 7-day forecast charts | Paused |
-| SMAP / MODIS Earthdata status | Paused |
-| Python EuroSAT training / inference | Local-only |
-| 2.3 Localization (language + units) | Planned |
-| 2.4 SMS / WhatsApp / IVR | Planned |
-| 2.5 Offline capture + sync | Planned |
-| 2.6 Photo diagnostics / uploads | Planned |
-| 2.7 Action tracking / tasks | Planned |
-| 2.8 Multi-field portfolio views | Planned |
-| 2.9 Role-based advisor workflows | Planned |
-| 2.10 Market & input price signals | Planned |
-| 3.6 Edge / TFLite / ONNX | Planned |
-| 4.4 Payments / credits / subsidies | Planned |
-| 4.5 Offline field agent app | Planned |
-| HLS NDVI overlays | Not built yet |
-| GPM realtime rainfall stream | Not built yet |
-| Push notifications (FCM) | Not built yet |
-| Swap production classifier to trained ML model | Not built yet |
+| Auth + profile | Live |
+| Fields CRUD + map | Live |
+| **2.1 Session restore** | Live |
+| **2.2 Confidence / provenance UI** | Live (data needs Blaze) |
+| **3.3 Ground-truth feedback** | Live |
+| **3.4 Rule traces + sensitivity** | Live (data needs Blaze) |
+| **3.5 What-if scenarios** | Live |
+| **4.2 Bulk import/export** | Live |
+| **5.1 Data ownership + opt-in** | Live |
+| **5.2 Partners page** | Live |
+| **5.3 Safety confirmations** | Live |
+| **5.4 Accessibility modes** | Live |
+| **6.2 Yield / ROI calculator** | Live |
+| **6.5 Printable field report** | Live |
+| **6.8 Smart alert prefs** | Live |
+| **7.1 Onboarding + demo field** | Live |
+| 4.1 Partner API | Contract only |
+| 4.3 White-label theming | Partial |
+| Cloud Functions / NASA fusion | Paused (Blaze) |
+| 2.3–2.10 remaining farmer features | Planned |
+| 6.1 / 6.3 / 6.4 / 6.6 / 6.7 | Planned |
+| 7.2 Training · 7.3 Referrals | Planned |
 
 ---
 
-## 14. What you can try right now
+## 20. What you can try right now
 
-1. Open https://prithviscan.web.app  
-2. Create an account / sign in  
-3. Open the app → drop a pin on the map → save a field  
-4. Use **Export CSV / GeoJSON** or **Import CSV / GeoJSON** on the dashboard  
-5. Open a field — try **What-if** and **Help improve recommendations**  
-6. On your PC (optional): run `ml\train_eurosat.bat` — check `ml/models/registry.json` for version/accuracy  
+1. Open https://prithviscan.web.app and sign in  
+2. Complete the **onboarding tour** (or Skip) — a **demo field** is created for you  
+3. Profile → accessibility, data opt-in, alert quiet hours / snooze  
+4. Open a field → safety banner, what-if ROI, **Print / save report**  
+5. Dashboard → Import / Export CSV · GeoJSON  
+6. Read [Data ownership](privacy.html) and [Partners](partners.html)  
 
 ---
 
-*This file is the product feature inventory for PrithviScan. Update it when major capabilities ship or change status.*
+*This file is the product feature inventory and roadmap for PrithviScan. Update it when major capabilities ship or change status.*
