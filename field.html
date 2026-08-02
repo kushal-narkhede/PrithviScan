@@ -19,7 +19,7 @@
       crossorigin=""
     />
     <link rel="stylesheet" href="styles.css?v=nav3" />
-    <link rel="stylesheet" href="app.css?v=nav3" />
+    <link rel="stylesheet" href="app.css?v=satarch1" />
   </head>
   <body class="app-body">
     <header class="app-top">
@@ -136,13 +136,60 @@
           <span class="sat-note" id="satNote"></span>
         </div>
 
+        <!-- Satellite archive: MODIS / SMAP / HLS browse + history -->
+        <section class="app-panel sat-archive-panel" id="satArchivePanel">
+          <div class="app-panel-head">
+            <h2>Satellite imagery &amp; past scenes</h2>
+            <button type="button" class="app-btn-ghost" id="loadSatArchiveBtn">Load archive</button>
+          </div>
+          <p class="app-muted">
+            Browse NASA granules over this field — MODIS vegetation, SMAP moisture, and HLS (Sentinel-2).
+            Pick a date to open the official browse preview and track change over time.
+          </p>
+          <div class="sat-archive-controls">
+            <label>
+              Mission / product
+              <select id="satProductSelect">
+                <option value="modis_terra">MODIS Terra VI (MOD13Q1)</option>
+                <option value="modis_aqua">MODIS Aqua VI (MYD13Q1)</option>
+                <option value="smap">SMAP soil moisture</option>
+                <option value="hls">HLS Sentinel-2 (HLSS30)</option>
+              </select>
+            </label>
+            <label>
+              Lookback
+              <select id="satDaysSelect">
+                <option value="30">Last 30 days</option>
+                <option value="90" selected>Last 90 days</option>
+                <option value="180">Last 180 days</option>
+                <option value="365">Last year</option>
+              </select>
+            </label>
+          </div>
+          <div class="sat-catalog" id="satCatalog" hidden></div>
+          <div class="sat-archive-layout">
+            <div class="sat-granule-list" id="satGranuleList" aria-label="Granule dates"></div>
+            <div class="sat-browse-pane">
+              <div class="sat-browse-empty" id="satBrowseEmpty">
+                Load the archive, then select a date to view satellite browse imagery.
+              </div>
+              <figure class="sat-browse-figure" id="satBrowseFigure" hidden>
+                <img id="satBrowseImg" alt="NASA satellite browse preview" />
+                <figcaption id="satBrowseCaption"></figcaption>
+                <p class="sat-browse-links" id="satBrowseLinks"></p>
+              </figure>
+            </div>
+          </div>
+          <p class="sat-archive-status" id="satArchiveStatus" role="status"></p>
+        </section>
+
         <!-- Trends + forecast -->
         <section class="app-panel trends-panel" id="trendsPanel">
           <div class="app-panel-head">
-            <h2>Past → trend → next week</h2>
-            <button type="button" class="app-btn-ghost" id="loadTrendsBtn">Load trends</button>
+            <h2>Weather past → trend → next week</h2>
+            <button type="button" class="app-btn-ghost" id="loadTrendsBtn">Load weather trends</button>
           </div>
-          <p class="app-muted">We analyse recent NASA weather history for this field, explain the direction, and forecast the next 7 days.</p>
+          <p class="app-muted">NASA POWER weather history for this field — rainfall, temperature, ET — plus a 7-day outlook. Pair with satellite scenes above for vegetation/moisture context.</p>
 
           <div class="outlook-card outlook-stable reveal-up" id="outlookCard" hidden>
             <p class="outlook-kicker">Where this is heading</p>
@@ -256,6 +303,6 @@
     ></script>
     <script type="module" src="js/tenant.js"></script>
     <script type="module" src="js/nav-auth.js?v=ai1"></script>
-    <script type="module" src="js/field-page.js"></script>
+    <script type="module" src="js/field-page.js?v=satarch1"></script>
   </body>
 </html>

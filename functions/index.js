@@ -707,6 +707,174 @@ exports.markAlertRead = onRequest(
   }
 );
 
+// ---------- Function: fieldSatelliteArchive (MODIS / SMAP / HLS browse + history) ----------
+const SAT_PRODUCTS = {
+  modis_terra: {
+    shortName: "MOD13Q1",
+    label: "MODIS Terra VI (MOD13Q1)",
+    description: "16-day vegetation index — greening / stress over time",
+  },
+  modis_aqua: {
+    shortName: "MYD13Q1",
+    label: "MODIS Aqua VI (MYD13Q1)",
+    description: "Aqua twin of MOD13Q1 for denser vegetation history",
+  },
+  smap: {
+    shortName: "SPL3SMP_E",
+    label: "SMAP soil moisture",
+    description: "Surface soil moisture granules near your field",
+  },
+  hls: {
+    shortName: "HLSS30",
+    label: "HLS (Sentinel-2)",
+    description: "Higher-resolution harmonized surface reflectance",
+  },
+};
+
+function pickBrowseUrl(entry) {
+  const links = entry?.links || [];
+  const browse = links.find(
+    (l) =>
+      typeof l.rel === "string" &&
+      (l.rel.includes("browse") || l.rel.includes("thumbnail") || l.rel.includes("browse#"))
+  );
+  if (browse?.href) return browse.href;
+  const img = links.find((l) => /\.(jpe?g|png|gif|webp)(\?|$)/i.test(l.href || ""));
+  return img?.href || null;
+}
+
+function pickDataUrl(entry) {
+  const links = entry?.links || [];
+  const data = links.find(
+    (l) => typeof l.rel === "string" && (l.rel.includes("/data#") || l.rel.endsWith("/data"))
+  );
+  return data?.href || null;
+}
+
+exports.fieldSatelliteArchive = onRequest(
+  { secrets: [earthdataToken], cors: true, timeoutSeconds: 120, invoker: "public" },
+  async (req, res) => {
+    try {
+      await verifyIdToken(req);
+      const token = earthdataToken.value();
+      if (!isTokenReal(token)) {
+        return jsonRes(res, 200, {
+          ok: false,
+          reason: "token_placeholder",
+          message: "Earthdata token required for satellite archive.",
+        });
+      }
+
+      const lat = Number(req.query.lat);
+      const lon = Number(req.query.lon);
+      const days = Math.min(365, Math.max(14, Number(req.query.days) || 90));
+      const productKey = String(req.query.product || "modis_terra");
+      const product = SAT_PRODUCTS[productKey] || SAT_PRODUCTS.modis_terra;
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        return jsonRes(res, 400, { error: "lat and lon required" });
+      }
+
+      const margin = 0.15;
+      const bbox = `${lon - margin},${lat - margin},${lon + margin},${lat + margin}`;
+      const end = new Date();
+      const start = new Date(end.getTime() - days * 86400000);
+      const temporal = `${start.toISOString().slice(0, 10)}T00:00:00Z,${end
+        .toISOString()
+        .slice(0, 10)}T23:59:59Z`;
+
+      const params = new URLSearchParams({
+        short_name: product.shortName,
+        bounding_box: bbox,
+        temporal,
+        page_size: "40",
+        sort_key: "-start_date",
+      });
+
+      const r = await fetch(
+        `https://cmr.earthdata.nasa.gov/search/granules.json?${params}`,
+        { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } }
+      );
+
+      if (!r.ok) {
+        const text = await r.text();
+        return jsonRes(res, 200, {
+          ok: false,
+          error: `CMR search failed (${r.status})`,
+          detail: text.slice(0, 300),
+          product: productKey,
+        });
+      }
+
+      const body = await r.json();
+      const entries = body?.feed?.entry || [];
+      const granules = entries.map((e) => ({
+        id: e.id,
+        title: e.title || e.producer_granule_id || e.id,
+        timeStart: e.time_start || null,
+        timeEnd: e.time_end || null,
+        browseUrl: pickBrowseUrl(e),
+        dataUrl: pickDataUrl(e),
+        cloudCover: e.cloud_cover != null ? Number(e.cloud_cover) : null,
+      }));
+
+      // Catalog availability for all products (lightweight counts)
+      const catalog = {};
+      await Promise.all(
+        Object.entries(SAT_PRODUCTS).map(async ([key, p]) => {
+          const q = new URLSearchParams({
+            short_name: p.shortName,
+            bounding_box: bbox,
+            temporal,
+            page_size: "1",
+          });
+          try {
+            const cr = await fetch(
+              `https://cmr.earthdata.nasa.gov/search/granules.json?${q}`,
+              { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } }
+            );
+            const hits = cr.headers.get("cmr-hits");
+            catalog[key] = {
+              shortName: p.shortName,
+              label: p.label,
+              description: p.description,
+              hits: hits != null ? Number(hits) : null,
+              available: cr.ok,
+            };
+          } catch {
+            catalog[key] = {
+              shortName: p.shortName,
+              label: p.label,
+              description: p.description,
+              hits: null,
+              available: false,
+            };
+          }
+        })
+      );
+
+      jsonRes(res, 200, {
+        ok: true,
+        product: productKey,
+        productMeta: product,
+        days,
+        bbox,
+        temporal,
+        count: granules.length,
+        granules,
+        catalog,
+        fetchedAt: new Date().toISOString(),
+        note:
+          "Browse images are NASA CMR previews. Scientific rasters (HDF/NetCDF) open via Earthdata when a data link is present.",
+      });
+    } catch (err) {
+      if (err.status === 401) return jsonRes(res, 401, { error: "Unauthenticated" });
+      console.error("fieldSatelliteArchive error", err);
+      jsonRes(res, 500, { ok: false, error: err.message || "Unexpected error" });
+    }
+  }
+);
+
 // ---------- Function: fieldTrends (history + forecast) ----------
 exports.fieldTrends = onRequest(
   { cors: true, timeoutSeconds: 90 },

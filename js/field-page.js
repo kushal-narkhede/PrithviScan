@@ -3,7 +3,7 @@ import { getField, deleteField } from "./fields.js";
 import { getDb } from "./firebase-db.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 import { createFieldMap } from "./map.js?v=sat2";
-import { callFuseInsight, callFieldTrends } from "./api.js";
+import { callFuseInsight, callFieldTrends, callSatelliteArchive } from "./api.js";
 import { bindSessionPersistence, restoreScroll } from "./session.js";
 import { submitGroundTruth } from "./feedback.js";
 import { simulateScenario } from "./scenario.js";
@@ -17,6 +17,17 @@ const factsEl  = document.getElementById("fieldFacts");
 const deleteBtn  = document.getElementById("deleteFieldBtn");
 const refreshBtn = document.getElementById("refreshBtn");
 const loadTrendsBtn = document.getElementById("loadTrendsBtn");
+const loadSatArchiveBtn = document.getElementById("loadSatArchiveBtn");
+const satProductSelect = document.getElementById("satProductSelect");
+const satDaysSelect = document.getElementById("satDaysSelect");
+const satCatalog = document.getElementById("satCatalog");
+const satGranuleList = document.getElementById("satGranuleList");
+const satBrowseEmpty = document.getElementById("satBrowseEmpty");
+const satBrowseFigure = document.getElementById("satBrowseFigure");
+const satBrowseImg = document.getElementById("satBrowseImg");
+const satBrowseCaption = document.getElementById("satBrowseCaption");
+const satBrowseLinks = document.getElementById("satBrowseLinks");
+const satArchiveStatus = document.getElementById("satArchiveStatus");
 const insightCard    = document.getElementById("insightCard");
 const insightLevel   = document.getElementById("insightLevel");
 const insightTitle   = document.getElementById("insightTitle");
@@ -58,6 +69,8 @@ const historyTrack = document.getElementById("historyTrack");
 
 let currentField = null;
 let currentUser = null;
+let archiveData = null;
+let selectedGranuleId = null;
 
 function setStatus(msg, type = "") {
   if (!statusEl) return;
@@ -354,7 +367,7 @@ async function loadSavedInsight(uid, fieldId) {
 
 async function loadTrends() {
   if (!currentUser || !currentField) return;
-  loadTrendsBtn.disabled = true;
+  if (loadTrendsBtn) loadTrendsBtn.disabled = true;
   setStatus("Analysing past weather and forecasting next week…");
   try {
     const data = await callFieldTrends(currentField.id, currentField.lat, currentField.lon);
@@ -369,7 +382,149 @@ async function loadTrends() {
   } catch (err) {
     setStatus(err.message || "Trends unavailable until Functions are deployed (Blaze).", "error");
   } finally {
-    loadTrendsBtn.disabled = false;
+    if (loadTrendsBtn) loadTrendsBtn.disabled = false;
+  }
+}
+
+function setArchiveStatus(msg) {
+  if (satArchiveStatus) satArchiveStatus.textContent = msg || "";
+}
+
+function renderCatalog(catalog) {
+  if (!satCatalog || !catalog) return;
+  const keys = Object.keys(catalog);
+  if (!keys.length) {
+    satCatalog.hidden = true;
+    satCatalog.innerHTML = "";
+    return;
+  }
+  satCatalog.hidden = false;
+  satCatalog.innerHTML = keys
+    .map((key) => {
+      const c = catalog[key];
+      const hits = c.hits != null ? `${c.hits} scene(s)` : c.available ? "available" : "n/a";
+      const active = (satProductSelect?.value || "modis_terra") === key ? " is-active" : "";
+      return `<button type="button" class="sat-catalog-chip${active}" data-product="${esc(key)}" title="${esc(c.description || "")}">
+        <strong>${esc(c.label || key)}</strong>
+        <span>${esc(hits)}</span>
+      </button>`;
+    })
+    .join("");
+  satCatalog.querySelectorAll("[data-product]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (!satProductSelect) return;
+      satProductSelect.value = btn.dataset.product;
+      loadSatelliteArchive();
+    });
+  });
+}
+
+function selectGranule(id) {
+  selectedGranuleId = id;
+  const g = archiveData?.granules?.find((x) => x.id === id);
+  satGranuleList?.querySelectorAll(".sat-granule").forEach((el) => {
+    el.classList.toggle("is-active", el.dataset.id === id);
+  });
+  if (!g) return;
+
+  if (g.browseUrl && satBrowseImg && satBrowseFigure && satBrowseEmpty) {
+    satBrowseEmpty.hidden = true;
+    satBrowseFigure.hidden = false;
+    satBrowseImg.src = g.browseUrl;
+    satBrowseImg.alt = `Browse preview: ${g.title || "NASA granule"}`;
+  } else if (satBrowseEmpty && satBrowseFigure) {
+    satBrowseFigure.hidden = true;
+    satBrowseEmpty.hidden = false;
+    satBrowseEmpty.textContent = "No browse preview for this granule. Use the data link below if available.";
+  }
+
+  const when = g.timeStart ? new Date(g.timeStart).toLocaleString() : "unknown date";
+  if (satBrowseCaption) {
+    satBrowseCaption.textContent = [
+      g.title || "Granule",
+      when,
+      g.cloudCover != null && Number.isFinite(g.cloudCover) ? `cloud ${g.cloudCover}%` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
+
+  if (satBrowseLinks) {
+    const links = [];
+    if (g.browseUrl) {
+      links.push(`<a href="${esc(g.browseUrl)}" target="_blank" rel="noopener noreferrer">Open browse image</a>`);
+    }
+    if (g.dataUrl) {
+      links.push(`<a href="${esc(g.dataUrl)}" target="_blank" rel="noopener noreferrer">Earthdata data link</a>`);
+    }
+    satBrowseLinks.innerHTML = links.join(" · ") || "";
+  }
+}
+
+function renderArchive(data) {
+  archiveData = data;
+  renderCatalog(data.catalog);
+
+  if (!satGranuleList) return;
+  satGranuleList.innerHTML = "";
+
+  const granules = data.granules || [];
+  if (!granules.length) {
+    if (satBrowseEmpty && satBrowseFigure) {
+      satBrowseFigure.hidden = true;
+      satBrowseEmpty.hidden = false;
+      satBrowseEmpty.textContent =
+        data.message || data.note || "No granules found for this product/window. Try a longer lookback or another mission.";
+    }
+    if (satBrowseCaption) satBrowseCaption.textContent = "";
+    if (satBrowseLinks) satBrowseLinks.innerHTML = "";
+    return;
+  }
+
+  granules.forEach((g, idx) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "sat-granule" + (idx === 0 ? " is-active" : "");
+    btn.dataset.id = g.id;
+    const when = g.timeStart ? new Date(g.timeStart).toLocaleDateString() : "—";
+    btn.innerHTML = `
+      <strong>${esc(when)}</strong>
+      <span>${esc((g.title || "").slice(0, 42))}${g.title && g.title.length > 42 ? "…" : ""}</span>
+      <small>${g.browseUrl ? "Browse preview" : "Metadata only"}</small>
+    `;
+    btn.addEventListener("click", () => selectGranule(g.id));
+    satGranuleList.appendChild(btn);
+  });
+
+  selectGranule(granules[0].id);
+}
+
+async function loadSatelliteArchive() {
+  if (!currentUser || !currentField) return;
+  if (loadSatArchiveBtn) loadSatArchiveBtn.disabled = true;
+  setArchiveStatus("Searching NASA CMR for past scenes…");
+  try {
+    const product = satProductSelect?.value || "modis_terra";
+    const days = Number(satDaysSelect?.value || 90);
+    const data = await callSatelliteArchive(currentField.lat, currentField.lon, { product, days });
+    if (data.ok) {
+      renderArchive(data);
+      const label = data.productMeta?.label || data.product || product;
+      setArchiveStatus(
+        `${label}: ${data.count ?? data.granules?.length ?? 0} scene(s) in the last ${data.days || days} days.`
+      );
+    } else if (data.disabled) {
+      setArchiveStatus("Satellite archive needs Cloud Functions (Blaze).");
+    } else if (data.reason === "token_placeholder") {
+      setArchiveStatus(data.message || "Earthdata token required for satellite archive.");
+    } else {
+      setArchiveStatus(data.error || data.message || "Could not load satellite archive.");
+      if (data.catalog) renderCatalog(data.catalog);
+    }
+  } catch (err) {
+    setArchiveStatus(err.message || "Satellite archive unavailable.");
+  } finally {
+    if (loadSatArchiveBtn) loadSatArchiveBtn.disabled = false;
   }
 }
 
@@ -470,10 +625,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
 
-      // Auto-load trends (non-blocking)
+      // Auto-load trends + satellite archive (non-blocking)
       loadTrends();
+      loadSatelliteArchive();
 
       loadTrendsBtn?.addEventListener("click", loadTrends);
+      loadSatArchiveBtn?.addEventListener("click", loadSatelliteArchive);
+      satProductSelect?.addEventListener("change", loadSatelliteArchive);
+      satDaysSelect?.addEventListener("change", loadSatelliteArchive);
 
       refreshBtn?.addEventListener("click", async () => {
         refreshBtn.disabled = true;

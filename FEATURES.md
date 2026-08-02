@@ -252,6 +252,7 @@ Person icon → dropdown: Home · My profile · Organization · Price calculator
 | `fuseFieldInsight` | Fusion rules → field recommendation |
 | `fieldEarthSummary` | Earthdata / related summary |
 | `fieldTrends` | Rain/temp trends |
+| `fieldSatelliteArchive` | MODIS / SMAP / HLS CMR granules + browse previews over a lookback window |
 | `getAlerts` / `markAlertRead` | Alert feed |
 | `classifyLocation` | Field-vs-not-field heuristic / vision hook |
 | `aiChat` | Server-side Gemini / OpenRouter / Ollama proxy |

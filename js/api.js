@@ -59,6 +59,11 @@ export async function callFieldTrends(fieldId, lat, lon) {
   return apiFetch("fieldTrends", { fieldId, lat, lon });
 }
 
+/** Historical NASA granules + browse imagery (MODIS / SMAP / HLS) */
+export async function callSatelliteArchive(lat, lon, { product = "modis_terra", days = 90 } = {}) {
+  return apiFetch("fieldSatelliteArchive", { lat, lon, product, days });
+}
+
 export async function callClassifyLocation(lat, lon) {
   return apiFetch("classifyLocation", { lat, lon });
 }

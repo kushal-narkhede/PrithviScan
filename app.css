@@ -997,6 +997,161 @@ html.a11y-simple h2 {
 .leg.past::before { background: #0b2417; }
 .leg.future::before { background: #3f9a63; }
 
+/* ---- Satellite archive (MODIS / SMAP / HLS) ---- */
+.sat-archive-panel { margin-bottom: 1.25rem; }
+.sat-archive-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin: 0.85rem 0 1rem;
+}
+.sat-archive-controls label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #3a5646;
+}
+.sat-archive-controls select {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(16,37,26,0.14);
+  background: #fff;
+  color: #0b2417;
+  font: inherit;
+}
+.sat-catalog {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+.sat-catalog-chip {
+  appearance: none;
+  border: 1px solid rgba(16,37,26,0.12);
+  background: #f4faf6;
+  color: #0b2417;
+  border-radius: 12px;
+  padding: 0.55rem 0.75rem;
+  display: grid;
+  gap: 0.15rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.sat-catalog-chip:hover { transform: translateY(-1px); border-color: rgba(63,154,99,0.45); }
+.sat-catalog-chip.is-active {
+  background: #2f855a;
+  border-color: #2f855a;
+  color: #fff;
+}
+.sat-catalog-chip strong { font-size: 0.82rem; }
+.sat-catalog-chip span { font-size: 0.74rem; opacity: 0.85; }
+.sat-archive-layout {
+  display: grid;
+  grid-template-columns: minmax(11rem, 15rem) minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: stretch;
+}
+.sat-granule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: 22rem;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+.sat-granule {
+  appearance: none;
+  border: 1px solid rgba(16,37,26,0.1);
+  background: #fff;
+  border-radius: 12px;
+  padding: 0.65rem 0.75rem;
+  display: grid;
+  gap: 0.15rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.sat-granule:hover { border-color: rgba(63,154,99,0.4); }
+.sat-granule.is-active {
+  background: #eef6f1;
+  border-color: #2f855a;
+}
+.sat-granule strong { font-size: 0.9rem; color: #0b2417; }
+.sat-granule span { font-size: 0.74rem; color: #3a5646; line-height: 1.3; }
+.sat-granule small { font-size: 0.7rem; color: #2f855a; font-weight: 700; }
+.sat-browse-pane {
+  min-height: 16rem;
+  border-radius: 16px;
+  border: 1px solid rgba(16,37,26,0.1);
+  background:
+    radial-gradient(circle at 20% 15%, rgba(63,154,99,0.12), transparent 45%),
+    linear-gradient(160deg, #f7fbf8, #eef4f0 70%, #e7f0ea);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+.sat-browse-empty {
+  margin: 0;
+  padding: 1.5rem;
+  text-align: center;
+  color: #3a5646;
+  font-size: 0.92rem;
+  max-width: 22rem;
+}
+.sat-browse-figure {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-rows: 1fr auto auto;
+  animation: satFade 0.45s ease;
+}
+.sat-browse-figure img {
+  width: 100%;
+  max-height: 20rem;
+  object-fit: contain;
+  background: #0b2417;
+  display: block;
+}
+.sat-browse-figure figcaption,
+.sat-browse-links {
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.82rem;
+  color: #3a5646;
+  background: rgba(255,255,255,0.92);
+}
+.sat-browse-links a {
+  color: #2f855a;
+  font-weight: 700;
+  text-decoration: none;
+}
+.sat-browse-links a:hover { text-decoration: underline; }
+.sat-archive-status {
+  margin: 0.75rem 0 0;
+  font-size: 0.85rem;
+  color: #3a5646;
+  min-height: 1.2em;
+}
+@keyframes satFade {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@media (max-width: 860px) {
+  .sat-archive-layout { grid-template-columns: 1fr; }
+  .sat-granule-list {
+    flex-direction: row;
+    max-height: none;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+  }
+  .sat-granule { min-width: 10.5rem; }
+  .sat-archive-controls { grid-template-columns: 1fr; }
+}
+
 .trend-chart {
   width: 100%;
   height: auto;
