@@ -502,6 +502,115 @@
   color: #0b2417;
 }
 
+.insight-rules {
+  margin: 0.85rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(11, 36, 23, 0.08);
+  font-size: 0.86rem;
+  color: #3a5646;
+}
+.rule-trace-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+.rule-trace-list li {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.55);
+}
+.rule-fired { border-left: 3px solid #c53030; }
+.rule-quiet { border-left: 3px solid #a0aec0; opacity: 0.85; }
+.rule-flag {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #718096;
+}
+.rule-fired .rule-flag { color: #c53030; }
+.rule-cond { color: #4a5568; font-family: ui-monospace, monospace; font-size: 0.78rem; }
+.rule-reason { color: #2d5016; }
+
+.sensitivity-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.65rem;
+  align-items: center;
+  margin: 0.9rem 0 0;
+  font-size: 0.86rem;
+  color: #3a5646;
+}
+.sensitivity-row input[type="range"] { width: 100%; }
+
+.scenario-form,
+.feedback-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+  margin-top: 0.75rem;
+}
+.scenario-form label,
+.feedback-form label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.86rem;
+  color: #3a5646;
+}
+.scenario-form input,
+.scenario-form select,
+.feedback-form input,
+.feedback-form textarea {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(11, 36, 23, 0.15);
+  border-radius: 10px;
+  font: inherit;
+  background: #fff;
+}
+.feedback-form textarea { resize: vertical; }
+.scenario-form button,
+.feedback-form button { grid-column: 1 / -1; justify-self: start; }
+.check-row {
+  grid-column: 1 / -1;
+  display: flex !important;
+  align-items: center;
+  gap: 0.5rem;
+}
+.scenario-result {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  background: #f4faf6;
+  border: 1px solid rgba(47, 133, 90, 0.2);
+}
+.scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+}
+.scenario-grid div {
+  display: grid;
+  gap: 0.15rem;
+}
+.scenario-grid span {
+  font-size: 0.75rem;
+  color: #718096;
+}
+.scenario-grid strong {
+  color: #0b2417;
+  font-size: 1.05rem;
+}
+@media (max-width: 720px) {
+  .scenario-form,
+  .feedback-form,
+  .scenario-grid { grid-template-columns: 1fr; }
+}
+
 /* ---- Metrics grid ---- */
 .metrics-grid {
   display: grid;

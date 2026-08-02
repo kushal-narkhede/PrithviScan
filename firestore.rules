@@ -25,6 +25,12 @@ service cloud.firestore {
           allow read: if request.auth != null && request.auth.uid == userId;
           allow write: if false; // Functions only
         }
+
+        // Farmer ground-truth for local calibration (feature 3.3)
+        match /feedback/{feedbackId} {
+          allow read, create: if request.auth != null && request.auth.uid == userId;
+          allow update, delete: if false;
+        }
       }
 
       match /alerts/{alertId} {

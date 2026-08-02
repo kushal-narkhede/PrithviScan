@@ -296,7 +296,15 @@ exports.fuseFieldInsight = onRequest(
         return vals.reduce((a, b) => a + b, 0);
       }
 
-      const metrics = {
+      // Ensemble-ready normalization (3.2) — POWER today; GPM/ECMWF stubs later
+      const { fetchWeatherEnsemble } = require("./lib/data-layer");
+      const weatherBundle = await fetchWeatherEnsemble({
+        lat: Number(lat),
+        lon: Number(lon),
+        days,
+        powerParameter: power,
+      });
+      const metrics = weatherBundle.normalized || {
         totalRain_mm: sum(power.PRECTOTCORR),
         avgTemp_c: avg(power.T2M),
         maxTemp_c: avg(power.T2M_MAX),
@@ -329,12 +337,16 @@ exports.fuseFieldInsight = onRequest(
         }
       }
 
-      // ---- Fusion rules (with confidence + provenance — feature 2.2) ----
+      // ---- Fusion rules (2.2 provenance + 3.4 explainable rule traces) ----
       const factors = [];
       const evidence = [];
+      const ruleTraces = [];
       let level = "info";
       let titleKey = "conditions_ok";
       let confidence = 0.55;
+
+      // Sensitivity multiplier from client (0.7 = stricter, 1.3 = more sensitive)
+      const sensitivity = Math.min(1.5, Math.max(0.6, Number(req.query.sensitivity) || 1));
 
       const rain = metrics.totalRain_mm;
       const et = metrics.totalET_mm;
@@ -383,46 +395,146 @@ exports.fuseFieldInsight = onRequest(
         });
       }
 
+      const thr = {
+        irrigateRain: 5 * sensitivity,
+        irrigateET: 10 / sensitivity,
+        moistureRain: 12 * sensitivity,
+        moistureET: 8 / sensitivity,
+        heatMax: 37 / sensitivity,
+        excessRain: 60 / sensitivity,
+        diseaseHumidity: 85 / sensitivity,
+        diseaseTemp: 28 / sensitivity,
+      };
+
       // Rule 1: Irrigation needed
-      if (rain !== null && et !== null && rain < 5 && et > 10) {
+      if (rain !== null && et !== null && rain < thr.irrigateRain && et > thr.irrigateET) {
         level = "action";
         titleKey = "irrigate_soon";
         confidence = 0.88;
-        factors.push(`Only ${rain?.toFixed(1)} mm rain in 7 days vs ${et?.toFixed(1)} mm ET demand`);
-      } else if (rain !== null && et !== null && rain < 12 && et > 8) {
+        const reason = `Only ${rain?.toFixed(1)} mm rain in 7 days vs ${et?.toFixed(1)} mm ET demand`;
+        factors.push(reason);
+        ruleTraces.push({
+          id: "R1_irrigate_soon",
+          fired: true,
+          level: "action",
+          condition: `rain < ${thr.irrigateRain.toFixed(1)} mm AND et > ${thr.irrigateET.toFixed(1)} mm`,
+          inputs: { rain_mm: rain, et_mm: et },
+          reason,
+        });
+      } else if (rain !== null && et !== null && rain < thr.moistureRain && et > thr.moistureET) {
         level = "watch";
         titleKey = "low_moisture";
         confidence = 0.74;
-        factors.push(`Low rainfall (${rain?.toFixed(1)} mm) relative to ET demand`);
+        const reason = `Low rainfall (${rain?.toFixed(1)} mm) relative to ET demand`;
+        factors.push(reason);
+        ruleTraces.push({
+          id: "R1b_low_moisture",
+          fired: true,
+          level: "watch",
+          condition: `rain < ${thr.moistureRain.toFixed(1)} mm AND et > ${thr.moistureET.toFixed(1)} mm`,
+          inputs: { rain_mm: rain, et_mm: et },
+          reason,
+        });
+      } else {
+        ruleTraces.push({
+          id: "R1_irrigate_soon",
+          fired: false,
+          level: "action",
+          condition: `rain < ${thr.irrigateRain.toFixed(1)} mm AND et > ${thr.irrigateET.toFixed(1)} mm`,
+          inputs: { rain_mm: rain, et_mm: et },
+          reason: "Irrigation urgency thresholds not met",
+        });
       }
 
       // Rule 2: Heat stress
-      if (maxTemp !== null && maxTemp > 37) {
+      if (maxTemp !== null && maxTemp > thr.heatMax) {
         level = level === "action" ? "action" : "watch";
         titleKey = titleKey === "irrigate_soon" ? "irrigate_soon" : "heat_stress";
         confidence = Math.max(confidence, 0.82);
-        factors.push(`Max temperature ${maxTemp?.toFixed(1)}°C exceeds heat stress threshold`);
+        const reason = `Max temperature ${maxTemp?.toFixed(1)}°C exceeds heat stress threshold`;
+        factors.push(reason);
+        ruleTraces.push({
+          id: "R2_heat_stress",
+          fired: true,
+          level: "watch",
+          condition: `maxTemp > ${thr.heatMax.toFixed(1)} °C`,
+          inputs: { maxTemp_c: maxTemp },
+          reason,
+        });
+      } else {
+        ruleTraces.push({
+          id: "R2_heat_stress",
+          fired: false,
+          level: "watch",
+          condition: `maxTemp > ${thr.heatMax.toFixed(1)} °C`,
+          inputs: { maxTemp_c: maxTemp },
+          reason: "Heat threshold not exceeded",
+        });
       }
 
       // Rule 3: Heavy rainfall risk
-      if (rain !== null && rain > 60) {
+      if (rain !== null && rain > thr.excessRain) {
         level = level === "action" ? "action" : "watch";
         titleKey = "excess_rain";
         confidence = Math.max(confidence, 0.8);
-        factors.push(`Heavy rainfall: ${rain?.toFixed(1)} mm in 7 days — watch for waterlogging`);
+        const reason = `Heavy rainfall: ${rain?.toFixed(1)} mm in 7 days — watch for waterlogging`;
+        factors.push(reason);
+        ruleTraces.push({
+          id: "R3_excess_rain",
+          fired: true,
+          level: "watch",
+          condition: `rain > ${thr.excessRain.toFixed(1)} mm`,
+          inputs: { rain_mm: rain },
+          reason,
+        });
+      } else {
+        ruleTraces.push({
+          id: "R3_excess_rain",
+          fired: false,
+          level: "watch",
+          condition: `rain > ${thr.excessRain.toFixed(1)} mm`,
+          inputs: { rain_mm: rain },
+          reason: "Rainfall below excess threshold",
+        });
       }
 
       // Rule 4: High humidity disease risk
-      if (humidity !== null && humidity > 85 && maxTemp !== null && maxTemp > 28) {
+      if (humidity !== null && humidity > thr.diseaseHumidity && maxTemp !== null && maxTemp > thr.diseaseTemp) {
         if (level === "info") { level = "watch"; titleKey = "disease_risk"; }
         confidence = Math.max(confidence, 0.7);
-        factors.push(`High humidity (${humidity?.toFixed(0)}%) + warm temps increase disease risk`);
+        const reason = `High humidity (${humidity?.toFixed(0)}%) + warm temps increase disease risk`;
+        factors.push(reason);
+        ruleTraces.push({
+          id: "R4_disease_risk",
+          fired: true,
+          level: "watch",
+          condition: `humidity > ${thr.diseaseHumidity.toFixed(0)}% AND maxTemp > ${thr.diseaseTemp.toFixed(1)}°C`,
+          inputs: { humidity_pct: humidity, maxTemp_c: maxTemp },
+          reason,
+        });
+      } else {
+        ruleTraces.push({
+          id: "R4_disease_risk",
+          fired: false,
+          level: "watch",
+          condition: `humidity > ${thr.diseaseHumidity.toFixed(0)}% AND maxTemp > ${thr.diseaseTemp.toFixed(1)}°C`,
+          inputs: { humidity_pct: humidity, maxTemp_c: maxTemp },
+          reason: "Disease risk thresholds not met",
+        });
       }
 
       // Rule 5: Good conditions
       if (factors.length === 0) {
         factors.push("Rainfall, temperature and ET are within normal range");
         confidence = 0.68;
+        ruleTraces.push({
+          id: "R5_conditions_ok",
+          fired: true,
+          level: "info",
+          condition: "no stress rules fired",
+          inputs: { rain_mm: rain, et_mm: et, maxTemp_c: maxTemp, humidity_pct: humidity },
+          reason: "All stress rules quiet — conditions look good",
+        });
       }
 
       // Satellite availability nudges confidence slightly
@@ -480,6 +592,8 @@ exports.fuseFieldInsight = onRequest(
         why,
         factors,
         evidence,
+        ruleTraces,
+        sensitivity,
         confidence: Number(confidence.toFixed(2)),
         provenance: {
           sources,
@@ -489,6 +603,12 @@ exports.fuseFieldInsight = onRequest(
           lat: Number(lat),
           lon: Number(lon),
           earthFlags,
+          sensitivity,
+          weatherProviders: (weatherBundle.sources || []).map((s) => ({
+            provider: s.provider,
+            available: s.available,
+            reason: s.reason || null,
+          })),
         },
         metrics,
         earthFlags,

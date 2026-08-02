@@ -5,6 +5,8 @@ import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-
 import { createFieldMap } from "./map.js";
 import { callFuseInsight, callFieldTrends } from "./api.js";
 import { bindSessionPersistence, restoreScroll } from "./session.js";
+import { submitGroundTruth } from "./feedback.js";
+import { simulateScenario } from "./scenario.js";
 
 const titleEl  = document.getElementById("fieldTitle");
 const metaEl   = document.getElementById("fieldMeta");
@@ -21,11 +23,20 @@ const insightMessage = document.getElementById("insightMessage");
 const insightWhy     = document.getElementById("insightWhy");
 const insightFactors = document.getElementById("insightFactors");
 const insightEvidence = document.getElementById("insightEvidence");
+const insightRules = document.getElementById("insightRules");
 const insightProvenance = document.getElementById("insightProvenance");
 const insightConfidenceWrap = document.getElementById("insightConfidenceWrap");
 const insightConfidenceLabel = document.getElementById("insightConfidenceLabel");
 const insightConfidenceFill = document.getElementById("insightConfidenceFill");
 const insightAge     = document.getElementById("insightAge");
+const sensitivitySlider = document.getElementById("sensitivitySlider");
+const sensitivityValue = document.getElementById("sensitivityValue");
+const scenarioForm = document.getElementById("scenarioForm");
+const scenarioResult = document.getElementById("scenarioResult");
+const feedbackForm = document.getElementById("feedbackForm");
+
+let latestMetrics = null;
+let ruleSensitivity = Number(localStorage.getItem("prithvi_rule_sensitivity") || "1") || 1;
 const metricsGrid    = document.getElementById("metricsGrid");
 const satelliteRow   = document.getElementById("satelliteRow");
 const satSMAP  = document.getElementById("satSMAP");
@@ -119,6 +130,38 @@ function renderInsight(insight) {
       insightEvidence.innerHTML = "";
     }
   }
+
+  if (insightRules) {
+    const traces = insight.ruleTraces || [];
+    if (traces.length) {
+      insightRules.hidden = false;
+      insightRules.innerHTML = `
+        <p class="insight-evidence-title">Rule transparency</p>
+        <ul class="rule-trace-list">
+          ${traces
+            .map(
+              (r) => `
+            <li class="${r.fired ? "rule-fired" : "rule-quiet"}">
+              <strong>${esc(r.id)}</strong>
+              <span class="rule-flag">${r.fired ? "triggered" : "quiet"}</span>
+              <span class="rule-cond">${esc(r.condition || "")}</span>
+              <span class="rule-reason">${esc(r.reason || "")}</span>
+            </li>`
+            )
+            .join("")}
+        </ul>`;
+    } else {
+      insightRules.hidden = true;
+      insightRules.innerHTML = "";
+    }
+  }
+
+  if (typeof insight.sensitivity === "number" && sensitivitySlider) {
+    sensitivitySlider.value = String(insight.sensitivity);
+    if (sensitivityValue) sensitivityValue.textContent = `${Number(insight.sensitivity).toFixed(2)}×`;
+  }
+
+  latestMetrics = insight.metrics || latestMetrics;
 
   if (insightProvenance) {
     const p = insight.provenance || {};
@@ -331,6 +374,65 @@ document.addEventListener("DOMContentLoaded", () => {
       restoreScroll(lv.scrollY, lv.section);
       bindSessionPersistence(user.uid, fieldId);
 
+      if (sensitivitySlider) {
+        sensitivitySlider.value = String(ruleSensitivity);
+        if (sensitivityValue) sensitivityValue.textContent = `${ruleSensitivity.toFixed(2)}×`;
+        sensitivitySlider.addEventListener("input", () => {
+          ruleSensitivity = Number(sensitivitySlider.value) || 1;
+          localStorage.setItem("prithvi_rule_sensitivity", String(ruleSensitivity));
+          if (sensitivityValue) sensitivityValue.textContent = `${ruleSensitivity.toFixed(2)}×`;
+        });
+      }
+
+      scenarioForm?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const metrics = latestMetrics || {};
+        const result = simulateScenario(metrics, {
+          irrigateWhen: document.getElementById("scenarioIrrigate")?.value,
+          irrigateMm: document.getElementById("scenarioMm")?.value,
+          fertilizerKgHa: document.getElementById("scenarioFert")?.value,
+          fieldHa: document.getElementById("scenarioHa")?.value,
+        });
+        if (!scenarioResult) return;
+        scenarioResult.hidden = false;
+        scenarioResult.innerHTML = `
+          <div class="scenario-grid">
+            <div><span>Effective water</span><strong>${result.effectiveWater_mm} mm</strong></div>
+            <div><span>Deficit</span><strong>${result.deficit_mm} mm</strong></div>
+            <div><span>Stress index</span><strong>${result.stressIndex}</strong></div>
+            <div><span>Expected yield</span><strong>${result.expectedYieldKgHa} kg/ha</strong></div>
+            <div><span>Yield vs baseline</span><strong>${result.yieldDeltaPct > 0 ? "+" : ""}${result.yieldDeltaPct}%</strong></div>
+            <div><span>Est. cost</span><strong>${result.estimatedCost}</strong></div>
+          </div>
+          <ul>${result.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>
+          <p class="app-muted">Illustrative heuristic — not a full crop model.</p>`;
+      });
+
+      feedbackForm?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = feedbackForm.querySelector('button[type="submit"]');
+        if (btn) btn.disabled = true;
+        setStatus("Saving ground-truth feedback…");
+        try {
+          await submitGroundTruth(user.uid, fieldId, {
+            kind: "ground_truth",
+            soilMoisture: document.getElementById("fbMoisture")?.value,
+            yieldKgHa: document.getElementById("fbYield")?.value,
+            irrigated: document.getElementById("fbIrrigated")?.checked,
+            notes: document.getElementById("fbNotes")?.value,
+            consentShareForCalibration: document.getElementById("fbConsent")?.checked,
+            lat: field.lat,
+            lon: field.lon,
+          });
+          feedbackForm.reset();
+          setStatus("Thanks — feedback saved for local calibration.", "ok");
+        } catch (err) {
+          setStatus(err?.message || "Could not save feedback.", "error");
+        } finally {
+          if (btn) btn.disabled = false;
+        }
+      });
+
       // Auto-load trends (non-blocking)
       loadTrends();
 
@@ -340,7 +442,7 @@ document.addEventListener("DOMContentLoaded", () => {
         refreshBtn.disabled = true;
         setStatus("Fetching NASA data and computing insight…");
         try {
-          const result = await callFuseInsight(fieldId, field.lat, field.lon);
+          const result = await callFuseInsight(fieldId, field.lat, field.lon, ruleSensitivity);
           if (result.ok && result.insight) {
             renderInsight(result.insight);
             setStatus("Insight updated.", "ok");

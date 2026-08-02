@@ -40,8 +40,8 @@ export async function callPowerSummary(fieldId, lat, lon, days = 7) {
   return apiFetch("powerSummary", { fieldId, lat, lon, days });
 }
 
-export async function callFuseInsight(fieldId, lat, lon) {
-  return apiFetch("fuseFieldInsight", { fieldId, lat, lon });
+export async function callFuseInsight(fieldId, lat, lon, sensitivity = 1) {
+  return apiFetch("fuseFieldInsight", { fieldId, lat, lon, sensitivity });
 }
 
 export async function callEarthSummary(fieldId, lat, lon) {

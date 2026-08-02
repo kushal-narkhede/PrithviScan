@@ -14,5 +14,7 @@ ml/data/not_field/*
 ml/models/*.joblib
 ml/models/*.keras
 ml/models/*_meta.json
+ml/models/registry.json
+ml/models/versions/
 __pycache__/
 *.pyc

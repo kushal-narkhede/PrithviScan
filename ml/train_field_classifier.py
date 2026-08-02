@@ -18,12 +18,19 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
+from datetime import datetime, timezone
 from pathlib import Path
 
 import joblib
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+)
 from sklearn.model_selection import train_test_split
 
 from .preprocess import extract_features, load_rgb
@@ -154,14 +161,27 @@ def train_sklearn(field, not_field, source: str):
     pred = clf.predict(Xte)
     report = classification_report(yte, pred, target_names=["not_field", "field"])
     cm = confusion_matrix(yte, pred).tolist()
+    acc = float(accuracy_score(yte, pred))
+    f1 = float(f1_score(yte, pred, average="weighted"))
     print(report)
+    print(f"accuracy={acc:.4f}  weighted_f1={f1:.4f}")
 
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    versions_dir = MODEL_DIR / "versions"
+    versions_dir.mkdir(parents=True, exist_ok=True)
+
+    version = datetime.now(timezone.utc).strftime("v%Y%m%dT%H%M%SZ")
     model_path = MODEL_DIR / "field_classifier.joblib"
+    versioned_path = versions_dir / f"field_classifier_{version}.joblib"
     joblib.dump(clf, model_path)
+    shutil.copy2(model_path, versioned_path)
+
     meta = {
+        "version": version,
         "type": "random_forest",
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "source": source,
+        "fallback": "heuristic_v1 (ExG / veg fraction) when model missing",
         "eurosat_classes_field": sorted(EUROSAT_FIELD),
         "eurosat_classes_not_field": sorted(EUROSAT_NOT_FIELD),
         "features": [
@@ -173,13 +193,51 @@ def train_sklearn(field, not_field, source: str):
             "cloud_fraction",
             "mean_brightness",
         ],
+        "metrics": {
+            "accuracy": acc,
+            "weighted_f1": f1,
+            "n_test": int(len(yte)),
+        },
         "n_field": int(len(field)),
         "n_not_field": int(len(not_field)),
         "confusion_matrix": cm,
         "model_path": str(model_path),
+        "versioned_path": str(versioned_path),
+        "classification_report": report,
     }
-    (MODEL_DIR / "field_classifier_meta.json").write_text(json.dumps(meta, indent=2))
+    meta_path = MODEL_DIR / "field_classifier_meta.json"
+    meta_path.write_text(json.dumps(meta, indent=2))
+    (versions_dir / f"field_classifier_{version}_meta.json").write_text(
+        json.dumps(meta, indent=2)
+    )
+
+    # Append to local model registry (feature 3.1)
+    registry_path = MODEL_DIR / "registry.json"
+    registry = {"models": []}
+    if registry_path.exists():
+        try:
+            registry = json.loads(registry_path.read_text())
+        except json.JSONDecodeError:
+            registry = {"models": []}
+    registry.setdefault("models", []).append(
+        {
+            "version": version,
+            "type": meta["type"],
+            "accuracy": acc,
+            "weighted_f1": f1,
+            "created_at": meta["created_at"],
+            "path": str(versioned_path),
+            "active": True,
+        }
+    )
+    # Only the newest is marked active
+    for i, row in enumerate(registry["models"]):
+        row["active"] = i == len(registry["models"]) - 1
+    registry_path.write_text(json.dumps(registry, indent=2))
+
     print(f"Saved {model_path}")
+    print(f"Versioned copy: {versioned_path}")
+    print(f"Registry: {registry_path}")
     return model_path
 
 
