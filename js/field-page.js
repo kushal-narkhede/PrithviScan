@@ -1,5 +1,5 @@
 import { watchAuth, isFirebaseConfigured } from "./auth.js";
-import { getField, deleteField } from "./fields.js";
+import { getField, deleteField, updateField } from "./fields.js";
 import { getDb } from "./firebase-db.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 import { createFieldMap } from "./map.js?v=sat2";
@@ -8,6 +8,16 @@ import { bindSessionPersistence, restoreScroll } from "./session.js";
 import { submitGroundTruth } from "./feedback.js";
 import { simulateScenario } from "./scenario.js";
 import { assessInsightRisk, confirmRiskyAction } from "./safety.js";
+import { matchCropGuide, predictHarvest, listGuideOptions } from "./crop-guides.js";
+import {
+  fertilizerOptions,
+  machineOptions,
+  addFieldUsage,
+  listFieldUsages,
+  deleteFieldUsage,
+} from "./field-inputs.js";
+import { nearestMarkets, mapsLink } from "./nearby-markets.js";
+import { CROP_MSP, formatINR } from "./market-prices.js";
 import "./a11y.js";
 
 const titleEl  = document.getElementById("fieldTitle");
@@ -49,9 +59,41 @@ const scenarioResult = document.getElementById("scenarioResult");
 const feedbackForm = document.getElementById("feedbackForm");
 const safetyBanner = document.getElementById("safetyBanner");
 const printReportBtn = document.getElementById("printReportBtn");
+const cropPlanForm = document.getElementById("cropPlanForm");
+const fieldCropInput = document.getElementById("fieldCropInput");
+const fieldSownAt = document.getElementById("fieldSownAt");
+const cropGuideList = document.getElementById("cropGuideList");
+const cropGuideBody = document.getElementById("cropGuideBody");
+const cropGuideEmpty = document.getElementById("cropGuideEmpty");
+const cropInfoLink = document.getElementById("cropInfoLink");
+const harvestCard = document.getElementById("harvestCard");
+const harvestTitle = document.getElementById("harvestTitle");
+const harvestMessage = document.getElementById("harvestMessage");
+const harvestProgressFill = document.getElementById("harvestProgressFill");
+const harvestElapsed = document.getElementById("harvestElapsed");
+const harvestExpected = document.getElementById("harvestExpected");
+const harvestWindow = document.getElementById("harvestWindow");
+const harvestStage = document.getElementById("harvestStage");
+const harvestNote = document.getElementById("harvestNote");
+const fieldInputForm = document.getElementById("fieldInputForm");
+const inputKind = document.getElementById("inputKind");
+const inputItem = document.getElementById("inputItem");
+const inputItemLabel = document.getElementById("inputItemLabel");
+const inputOtherNameLabel = document.getElementById("inputOtherNameLabel");
+const inputOtherName = document.getElementById("inputOtherName");
+const inputQty = document.getElementById("inputQty");
+const inputAppliedAt = document.getElementById("inputAppliedAt");
+const inputNotes = document.getElementById("inputNotes");
+const usageList = document.getElementById("usageList");
+const usageEmpty = document.getElementById("usageEmpty");
+const usageTotal = document.getElementById("usageTotal");
+const marketList = document.getElementById("marketList");
+const marketMspNote = document.getElementById("marketMspNote");
 
 let latestMetrics = null;
 let latestInsight = null;
+let activeGuide = null;
+let fieldUsages = [];
 let ruleSensitivity = Number(localStorage.getItem("prithvi_rule_sensitivity") || "1") || 1;
 const metricsGrid    = document.getElementById("metricsGrid");
 const satelliteRow   = document.getElementById("satelliteRow");
@@ -203,6 +245,15 @@ function renderInsight(insight) {
   }
 
   latestMetrics = insight.metrics || latestMetrics;
+  if (currentField && activeGuide) {
+    renderHarvest(
+      predictHarvest({
+        guide: activeGuide,
+        sownAt: currentField.sownAt,
+        avgTemp_c: latestMetrics?.avgTemp_c ?? null,
+      })
+    );
+  }
 
   if (insightProvenance) {
     const p = insight.provenance || {};
@@ -268,8 +319,243 @@ function renderFacts(field) {
     ["Latitude",  Number(field.lat).toFixed(6)],
     ["Longitude", Number(field.lon).toFixed(6)],
     ["Crop",      field.cropType || "—"],
+    ["Sown",      field.sownAt || "—"],
   ];
   factsEl.innerHTML = rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("");
+}
+
+function populateCropDatalist() {
+  if (!cropGuideList) return;
+  cropGuideList.innerHTML = listGuideOptions()
+    .map((g) => `<option value="${esc(g.name)}"></option>`)
+    .join("");
+}
+
+function formatShortDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(`${String(iso).slice(0, 10)}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
+function renderCropGuide(field) {
+  activeGuide = matchCropGuide(field?.cropType);
+  if (fieldCropInput) fieldCropInput.value = field?.cropType || "";
+  if (fieldSownAt) fieldSownAt.value = field?.sownAt ? String(field.sownAt).slice(0, 10) : "";
+
+  if (!activeGuide) {
+    if (cropGuideEmpty) cropGuideEmpty.hidden = false;
+    if (cropGuideBody) {
+      cropGuideBody.innerHTML = `<p class="app-muted" id="cropGuideEmpty">No matching crop guide yet. Try Wheat, Rice/Paddy, Maize, Cotton, Chickpea, Tomato, Mustard, or Soybean — or keep your own crop name and still log inputs below.</p>`;
+    }
+    if (cropInfoLink) cropInfoLink.hidden = true;
+    renderHarvest(null);
+    renderNearbyMarkets(field, null);
+    return;
+  }
+
+  if (cropInfoLink) {
+    if (activeGuide.infoId) {
+      cropInfoLink.hidden = false;
+      cropInfoLink.href = `info.html#${activeGuide.infoId}`;
+    } else {
+      cropInfoLink.hidden = true;
+    }
+  }
+
+  const fertHtml = activeGuide.fertilizers
+    .map(
+      (f) => `
+      <li>
+        <strong>${esc(f.name)}</strong>
+        <span>${esc(f.stage)}</span>
+        <small>${esc(f.note || "")}</small>
+      </li>`
+    )
+    .join("");
+  const machHtml = activeGuide.machines
+    .map(
+      (m) => `
+      <li>
+        <strong>${esc(m.name)}</strong>
+        <span>${esc(m.stage)}</span>
+      </li>`
+    )
+    .join("");
+  const tipsHtml = (activeGuide.tips || []).map((t) => `<li>${esc(t)}</li>`).join("");
+
+  if (cropGuideBody) {
+    cropGuideBody.innerHTML = `
+      <div class="crop-guide-hero reveal-up">
+        <p class="outlook-kicker">${esc(activeGuide.season)} season</p>
+        <h3>${esc(activeGuide.name)}</h3>
+        <p>${esc(activeGuide.summary)}</p>
+      </div>
+      <div class="crop-meta-grid">
+        <div><span>Sow window</span><strong>${esc(activeGuide.sowWindow)}</strong></div>
+        <div><span>Harvest season</span><strong>${esc(activeGuide.harvestWindow)}</strong></div>
+        <div><span>Cultivate length</span><strong>${activeGuide.durationDays.min}–${activeGuide.durationDays.max} days</strong></div>
+        <div><span>Typical</span><strong>~${activeGuide.durationDays.typical} days</strong></div>
+      </div>
+      <div class="crop-guide-columns">
+        <div>
+          <h4>Best fertilizers</h4>
+          <ul class="crop-rec-list">${fertHtml}</ul>
+        </div>
+        <div>
+          <h4>Useful machines</h4>
+          <ul class="crop-rec-list">${machHtml}</ul>
+        </div>
+      </div>
+      <div class="crop-tips-block">
+        <h4>Field tips</h4>
+        <ul>${tipsHtml}</ul>
+        <p class="app-muted">${esc(activeGuide.markets)}</p>
+      </div>`;
+  }
+
+  const avgTemp = latestMetrics?.avgTemp_c ?? null;
+  const prediction = predictHarvest({
+    guide: activeGuide,
+    sownAt: field?.sownAt,
+    avgTemp_c: avgTemp,
+  });
+  renderHarvest(prediction);
+  renderNearbyMarkets(field, activeGuide);
+}
+
+function renderHarvest(prediction) {
+  if (!harvestCard) return;
+  if (!prediction) {
+    harvestCard.hidden = true;
+    return;
+  }
+  harvestCard.hidden = false;
+  harvestCard.className = `harvest-card harvest-${prediction.status} reveal-up`;
+  if (harvestTitle) harvestTitle.textContent = prediction.statusLabel;
+  if (harvestMessage) {
+    harvestMessage.textContent =
+      prediction.daysRemaining >= 0
+        ? `About ${prediction.daysRemaining} day(s) until the typical harvest date for ${activeGuide?.name || "this crop"}.`
+        : `Typical harvest date has passed by ${Math.abs(prediction.daysRemaining)} day(s) — verify maturity in the field.`;
+  }
+  if (harvestProgressFill) {
+    harvestProgressFill.style.width = `${Math.round(prediction.progress * 100)}%`;
+  }
+  if (harvestElapsed) harvestElapsed.textContent = String(prediction.daysElapsed);
+  if (harvestExpected) harvestExpected.textContent = formatShortDate(prediction.expectedHarvestAt);
+  if (harvestWindow) {
+    harvestWindow.textContent = `${formatShortDate(prediction.windowStart)} – ${formatShortDate(prediction.windowEnd)}`;
+  }
+  if (harvestStage) harvestStage.textContent = prediction.stage;
+  if (harvestNote) {
+    const extra = prediction.notes?.length ? ` ${prediction.notes.join(" ")}` : "";
+    harvestNote.textContent = `${prediction.disclaimer}${extra}`;
+  }
+}
+
+function renderNearbyMarkets(field, guide) {
+  if (!marketList) return;
+  const hint = guide?.name?.split(/\s+/)[0] || field?.cropType || "";
+  const markets = nearestMarkets(Number(field.lat), Number(field.lon), {
+    limit: 6,
+    cropHint: hint.toLowerCase(),
+  });
+  if (!markets.length) {
+    marketList.innerHTML = `<p class="app-muted">Could not rank markets for this location.</p>`;
+    return;
+  }
+  marketList.innerHTML = markets
+    .map((m, i) => {
+      const km = m.km < 10 ? m.km.toFixed(1) : Math.round(m.km);
+      return `
+        <article class="market-card reveal-up" style="animation-delay:${i * 50}ms">
+          <div>
+            <h3>${esc(m.name)}</h3>
+            <p>${esc(m.place)} · ${esc(m.type)}</p>
+            <p class="market-goods">${esc(m.goods)}</p>
+          </div>
+          <div class="market-side">
+            <strong>~${km} km</strong>
+            <a href="${esc(mapsLink(m.lat, m.lon, m.name))}" target="_blank" rel="noopener noreferrer">Directions</a>
+          </div>
+        </article>`;
+    })
+    .join("");
+
+  if (marketMspNote) {
+    if (guide?.mspId) {
+      const msp = CROP_MSP.find((c) => c.id === guide.mspId);
+      marketMspNote.innerHTML = msp
+        ? `Reference MSP for <strong>${esc(msp.name)}</strong>: ${formatINR(msp.mspPerQuintal)} / quintal (${esc(msp.season)}). Compare with local mandi offers before selling. <a href="prices.html">Open price calculator</a>`
+        : "";
+    } else {
+      marketMspNote.textContent =
+        "No national MSP row for this crop — use local vegetable/trader rates and the price calculator for input costs.";
+    }
+  }
+}
+
+function fillInputItemSelect() {
+  if (!inputKind || !inputItem) return;
+  const kind = inputKind.value;
+  const isOther = kind === "other";
+  if (inputItemLabel) inputItemLabel.hidden = isOther;
+  if (inputOtherNameLabel) inputOtherNameLabel.hidden = !isOther;
+  if (isOther) return;
+  const opts = kind === "machine" ? machineOptions() : fertilizerOptions();
+  inputItem.innerHTML = opts
+    .map((o) => `<option value="${esc(o.id)}">${esc(o.name)} — ${esc(o.meta)}</option>`)
+    .join("");
+}
+
+function renderUsages(rows) {
+  fieldUsages = rows || [];
+  if (!usageList) return;
+  if (!fieldUsages.length) {
+    usageList.innerHTML = "";
+    if (usageEmpty) usageEmpty.hidden = false;
+    if (usageTotal) usageTotal.hidden = true;
+    return;
+  }
+  if (usageEmpty) usageEmpty.hidden = true;
+  usageList.innerHTML = fieldUsages
+    .map((u) => {
+      const when = u.appliedAt || (u.createdAt?.toDate ? u.createdAt.toDate().toISOString().slice(0, 10) : "");
+      const cost = u.estCost != null ? formatINR(u.estCost) : "—";
+      return `
+        <li class="usage-row">
+          <div>
+            <strong>${esc(u.itemName || u.itemId || "Input")}</strong>
+            <span>${esc(u.kind)} · ${esc(String(u.qty))} ${esc(u.unit || "")}${when ? ` · ${esc(formatShortDate(when))}` : ""}</span>
+            ${u.notes ? `<small>${esc(u.notes)}</small>` : ""}
+          </div>
+          <div class="usage-side">
+            <strong>${esc(cost)}</strong>
+            <button type="button" class="app-btn-ghost usage-del" data-id="${esc(u.id)}">Remove</button>
+          </div>
+        </li>`;
+    })
+    .join("");
+  const sum = fieldUsages.reduce((a, u) => a + (Number(u.estCost) || 0), 0);
+  if (usageTotal) {
+    usageTotal.hidden = false;
+    usageTotal.textContent = `Logged input cost (reference): ${formatINR(sum)}`;
+  }
+  usageList.querySelectorAll(".usage-del").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!currentUser || !currentField) return;
+      if (!confirm("Remove this input log?")) return;
+      try {
+        await deleteFieldUsage(currentUser.uid, currentField.id, btn.dataset.id);
+        const rowsNext = await listFieldUsages(currentUser.uid, currentField.id);
+        renderUsages(rowsNext);
+        setStatus("Input removed.", "ok");
+      } catch (err) {
+        setStatus(err?.message || "Could not remove input.", "error");
+      }
+    });
+  });
 }
 
 function addDaysIso(isoDate, days) {
@@ -787,7 +1073,17 @@ document.addEventListener("DOMContentLoaded", () => {
       titleEl.textContent = field.name || "Untitled field";
       metaEl.textContent  = `${Number(field.lat).toFixed(4)}, ${Number(field.lon).toFixed(4)}`;
       renderFacts(field);
+      populateCropDatalist();
+      fillInputItemSelect();
+      renderCropGuide(field);
       createFieldMap("detailMap", { lat: field.lat, lon: field.lon, pickable: false, detailZoom: 14 });
+
+      try {
+        const usages = await listFieldUsages(user.uid, fieldId);
+        renderUsages(usages);
+      } catch {
+        renderUsages([]);
+      }
 
       await loadSavedInsight(user.uid, fieldId);
 
@@ -872,6 +1168,62 @@ document.addEventListener("DOMContentLoaded", () => {
       loadSatArchiveBtn?.addEventListener("click", loadSatelliteArchive);
       satProductSelect?.addEventListener("change", loadSatelliteArchive);
       satDaysSelect?.addEventListener("change", loadSatelliteArchive);
+      inputKind?.addEventListener("change", fillInputItemSelect);
+
+      cropPlanForm?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!currentUser || !currentField) return;
+        const cropType = String(fieldCropInput?.value || "").trim() || null;
+        const sownAt = String(fieldSownAt?.value || "").trim() || null;
+        const btn = cropPlanForm.querySelector('button[type="submit"]');
+        if (btn) btn.disabled = true;
+        setStatus("Saving crop plan…");
+        try {
+          const guide = matchCropGuide(cropType);
+          await updateField(currentUser.uid, currentField.id, {
+            cropType,
+            sownAt,
+            cropGuideId: guide?.id || null,
+            expectedHarvestAt: guide && sownAt
+              ? predictHarvest({ guide, sownAt, avgTemp_c: latestMetrics?.avgTemp_c })?.expectedHarvestAt || null
+              : null,
+          });
+          currentField = { ...currentField, cropType, sownAt, cropGuideId: guide?.id || null };
+          renderFacts(currentField);
+          renderCropGuide(currentField);
+          setStatus("Crop plan saved.", "ok");
+        } catch (err) {
+          setStatus(err?.message || "Could not save crop plan.", "error");
+        } finally {
+          if (btn) btn.disabled = false;
+        }
+      });
+
+      fieldInputForm?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!currentUser || !currentField) return;
+        const btn = fieldInputForm.querySelector('button[type="submit"]');
+        if (btn) btn.disabled = true;
+        setStatus("Logging input…");
+        try {
+          await addFieldUsage(currentUser.uid, currentField.id, {
+            kind: inputKind?.value,
+            itemId: inputItem?.value,
+            itemName: inputOtherName?.value,
+            qty: inputQty?.value,
+            appliedAt: inputAppliedAt?.value,
+            notes: inputNotes?.value,
+          });
+          const rows = await listFieldUsages(currentUser.uid, currentField.id);
+          renderUsages(rows);
+          if (inputNotes) inputNotes.value = "";
+          setStatus("Input logged on this field.", "ok");
+        } catch (err) {
+          setStatus(err?.message || "Could not log input.", "error");
+        } finally {
+          if (btn) btn.disabled = false;
+        }
+      });
 
       refreshBtn?.addEventListener("click", async () => {
         refreshBtn.disabled = true;

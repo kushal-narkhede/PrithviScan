@@ -140,6 +140,9 @@
 | Refresh NASA fusion | `fuseFieldInsight` | Live |
 | Satellite imagery archive | MODIS / SMAP / HLS browse + date list (`fieldSatelliteArchive`) | Live |
 | Trends / forecast charts | POWER weather past → outlook; hover shows date + rainfall/temp | Live |
+| Crop guide & harvest plan | Season, fertilizers, machines, cultivate days; sown-date harvest prediction | Live |
+| Field inputs log | Add fertilizer bags / machine hire on a field with reference cost | Live |
+| Nearby markets | Distance-ranked APMC/wholesale yards + MSP reference link | Live |
 | Delete field | Removes field | Live |
 
 ---

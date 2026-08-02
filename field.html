@@ -19,7 +19,7 @@
       crossorigin=""
     />
     <link rel="stylesheet" href="styles.css?v=nav3" />
-    <link rel="stylesheet" href="app.css?v=chartgrid1" />
+    <link rel="stylesheet" href="app.css?v=cropguide1" />
   </head>
   <body class="app-body">
     <header class="app-top">
@@ -230,6 +230,102 @@
           </div>
         </section>
 
+        <!-- Crop guide + harvest + inputs + nearby markets -->
+        <section class="app-panel crop-guide-panel" id="cropGuidePanel">
+          <div class="app-panel-head">
+            <h2>Crop guide &amp; harvest plan</h2>
+            <a class="app-btn-ghost" id="cropInfoLink" href="info.html" hidden>Full crop info</a>
+          </div>
+          <p class="app-muted">
+            Season, fertilizers, machines, and a harvest-date estimate for this field’s crop.
+            Set the sowing date to predict when harvest is due.
+          </p>
+
+          <form id="cropPlanForm" class="crop-plan-form">
+            <label>
+              Crop on this field
+              <input id="fieldCropInput" type="text" maxlength="60" list="cropGuideList" placeholder="e.g. Wheat, Paddy, Cotton" />
+              <datalist id="cropGuideList"></datalist>
+            </label>
+            <label>
+              Sowing date
+              <input id="fieldSownAt" type="date" />
+            </label>
+            <button type="submit" class="app-btn-primary">Save crop plan</button>
+          </form>
+
+          <div class="crop-guide-body" id="cropGuideBody">
+            <p class="app-muted" id="cropGuideEmpty">Add a crop name above to see season, fertilizers, and cultivation length.</p>
+          </div>
+
+          <div class="harvest-card" id="harvestCard" hidden>
+            <p class="outlook-kicker">Harvest prediction</p>
+            <h3 id="harvestTitle">—</h3>
+            <p id="harvestMessage"></p>
+            <div class="harvest-progress" aria-hidden="true">
+              <div class="harvest-progress-fill" id="harvestProgressFill"></div>
+            </div>
+            <div class="outlook-stats harvest-stats">
+              <div><span>Days since sown</span><strong id="harvestElapsed">—</strong></div>
+              <div><span>Expected harvest</span><strong id="harvestExpected">—</strong></div>
+              <div><span>Window</span><strong id="harvestWindow">—</strong></div>
+              <div><span>Stage</span><strong id="harvestStage">—</strong></div>
+            </div>
+            <p class="app-muted" id="harvestNote"></p>
+          </div>
+        </section>
+
+        <section class="app-panel" id="fieldInputsPanel">
+          <div class="app-panel-head">
+            <h2>Fertilizers &amp; machines used</h2>
+            <a class="app-btn-ghost" href="prices.html">Price calculator</a>
+          </div>
+          <p class="app-muted">Log bags of fertilizer or machine hire on this field. Costs use notified / CHC reference rates.</p>
+          <form id="fieldInputForm" class="field-input-form">
+            <label>
+              Type
+              <select id="inputKind">
+                <option value="fertilizer">Fertilizer</option>
+                <option value="machine">Machine / hire</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <label id="inputItemLabel">
+              Item
+              <select id="inputItem"></select>
+            </label>
+            <label id="inputOtherNameLabel" hidden>
+              Name
+              <input id="inputOtherName" type="text" maxlength="80" placeholder="e.g. Neem cake" />
+            </label>
+            <label>
+              Quantity
+              <input id="inputQty" type="number" min="0.1" step="0.1" value="1" />
+            </label>
+            <label>
+              Date applied
+              <input id="inputAppliedAt" type="date" />
+            </label>
+            <label class="span-2">
+              Notes
+              <input id="inputNotes" type="text" maxlength="200" placeholder="Optional" />
+            </label>
+            <button type="submit" class="app-btn-primary">Add to field</button>
+          </form>
+          <ul class="usage-list" id="usageList"></ul>
+          <p class="app-muted" id="usageEmpty">No inputs logged yet.</p>
+          <p class="usage-total" id="usageTotal" hidden></p>
+        </section>
+
+        <section class="app-panel" id="nearbyMarketsPanel">
+          <div class="app-panel-head">
+            <h2>Nearby markets to sell</h2>
+          </div>
+          <p class="app-muted">Suggested APMC / wholesale yards near this field. Confirm today’s rates and transport before selling.</p>
+          <div class="market-list" id="marketList"></div>
+          <p class="app-muted" id="marketMspNote"></p>
+        </section>
+
         <!-- What-if scenarios (3.5) -->
         <section class="app-panel" id="scenarioPanel">
           <div class="app-panel-head">
@@ -309,6 +405,6 @@
     ></script>
     <script type="module" src="js/tenant.js"></script>
     <script type="module" src="js/nav-auth.js?v=ai1"></script>
-    <script type="module" src="js/field-page.js?v=chartgrid1"></script>
+    <script type="module" src="js/field-page.js?v=cropguide1"></script>
   </body>
 </html>

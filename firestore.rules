@@ -104,6 +104,11 @@ service cloud.firestore {
           allow read, create: if isSelf(userId);
           allow update, delete: if false;
         }
+
+        match /usages/{usageId} {
+          allow read, create, delete: if isSelf(userId);
+          allow update: if false;
+        }
       }
 
       match /alerts/{alertId} {
