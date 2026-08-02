@@ -10,6 +10,8 @@ import {
   updateProfile,
   onAuthStateChanged,
   signOut,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
 import { getAnalytics, isSupported as isAnalyticsSupported } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-analytics.js";
 import { firebaseConfig, isFirebaseConfigured } from "./firebase-config.js";
@@ -96,6 +98,39 @@ export async function logOut() {
   await signOut(a);
 }
 
+let recaptchaVerifier = null;
+let phoneConfirmation = null;
+
+/** Prepare invisible reCAPTCHA for phone OTP (container id in auth.html). */
+export function setupPhoneRecaptcha(containerId = "phoneRecaptcha") {
+  const a = getFirebaseAuth();
+  if (recaptchaVerifier) {
+    try {
+      recaptchaVerifier.clear();
+    } catch {
+      /* ignore */
+    }
+    recaptchaVerifier = null;
+  }
+  recaptchaVerifier = new RecaptchaVerifier(a, containerId, { size: "invisible" });
+  return recaptchaVerifier;
+}
+
+/** Send OTP to E.164 phone, e.g. +9198XXXXXXXX */
+export async function sendPhoneOtp(phoneE164) {
+  const a = getFirebaseAuth();
+  if (!recaptchaVerifier) setupPhoneRecaptcha();
+  phoneConfirmation = await signInWithPhoneNumber(a, phoneE164, recaptchaVerifier);
+  return true;
+}
+
+export async function confirmPhoneOtp(code) {
+  if (!phoneConfirmation) throw new Error("Request an OTP first.");
+  const cred = await phoneConfirmation.confirm(String(code || "").trim());
+  phoneConfirmation = null;
+  return cred.user;
+}
+
 export function authErrorMessage(err) {
   const code = err?.code || "";
   const map = {
@@ -111,6 +146,11 @@ export function authErrorMessage(err) {
     "auth/network-request-failed": "Network error. Check your connection.",
     "auth/operation-not-allowed": "This sign-in method is not enabled in Firebase yet.",
     "auth/unauthorized-domain": "Add this domain under Firebase Auth → Settings → Authorized domains.",
+    "auth/invalid-phone-number": "Enter a valid phone with country code (e.g. +91…).",
+    "auth/invalid-verification-code": "That OTP is incorrect. Try again.",
+    "auth/code-expired": "OTP expired. Request a new code.",
+    "auth/missing-phone-number": "Enter your phone number.",
+    "auth/too-many-requests": "Too many attempts. Wait a moment and try again.",
   };
   return map[code] || err?.message || "Something went wrong. Please try again.";
 }

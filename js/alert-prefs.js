@@ -1,6 +1,9 @@
 /**
- * Smart alerts & prioritization preferences (feature 6.8).
+ * Alert preferences — local cache + Firestore sync for delivery.
  */
+
+import { doc, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+import { getDb } from "./firebase-db.js";
 
 const KEY = "prithvi_alert_prefs";
 
@@ -10,6 +13,13 @@ const DEFAULTS = {
   quietStart: 21,
   quietEnd: 7,
   snoozedUntil: 0,
+  pushEnabled: true,
+  emailEnabled: true,
+  smsEnabled: false,
+  whatsappEnabled: false,
+  phoneE164: "",
+  email: "",
+  fcmToken: "",
 };
 
 export function loadAlertPrefs() {
@@ -24,6 +34,46 @@ export function saveAlertPrefs(prefs) {
   const next = { ...DEFAULTS, ...prefs };
   localStorage.setItem(KEY, JSON.stringify(next));
   return next;
+}
+
+export async function syncAlertPrefsToCloud(uid, prefs = loadAlertPrefs()) {
+  if (!uid) return prefs;
+  const next = saveAlertPrefs(prefs);
+  await setDoc(
+    doc(getDb(), "users", uid),
+    {
+      alertPrefs: {
+        showCriticalOnly: Boolean(next.showCriticalOnly),
+        quietHoursEnabled: Boolean(next.quietHoursEnabled),
+        quietStart: Number(next.quietStart) || 21,
+        quietEnd: Number(next.quietEnd) || 7,
+        snoozedUntil: Number(next.snoozedUntil) || 0,
+        pushEnabled: Boolean(next.pushEnabled),
+        emailEnabled: Boolean(next.emailEnabled),
+        smsEnabled: Boolean(next.smsEnabled),
+        whatsappEnabled: Boolean(next.whatsappEnabled),
+        phoneE164: String(next.phoneE164 || ""),
+        email: String(next.email || ""),
+        fcmToken: String(next.fcmToken || ""),
+      },
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+  return next;
+}
+
+export async function loadAlertPrefsFromCloud(uid) {
+  if (!uid) return loadAlertPrefs();
+  try {
+    const snap = await getDoc(doc(getDb(), "users", uid));
+    if (snap.exists() && snap.data().alertPrefs) {
+      return saveAlertPrefs({ ...loadAlertPrefs(), ...snap.data().alertPrefs });
+    }
+  } catch {
+    /* fall through */
+  }
+  return loadAlertPrefs();
 }
 
 export function snoozeAlerts(hours = 6) {
@@ -42,7 +92,6 @@ function inQuietHours(prefs, date = new Date()) {
   return h >= start || h < end;
 }
 
-/** Filter alerts for UI: critical-only, snooze, quiet hours. */
 export function filterAlertsForDisplay(alerts = [], prefs = loadAlertPrefs()) {
   if (prefs.snoozedUntil && Date.now() < prefs.snoozedUntil) {
     return { alerts: [], mutedReason: "Alerts snoozed" };

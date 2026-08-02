@@ -19,7 +19,7 @@
       crossorigin=""
     />
     <link rel="stylesheet" href="styles.css?v=nav3" />
-    <link rel="stylesheet" href="app.css?v=fieldtools1" />
+    <link rel="stylesheet" href="app.css?v=realworld1" />
   </head>
   <body class="app-body">
     <header class="app-top">
@@ -140,13 +140,17 @@
         <nav class="field-tools" id="fieldTools" aria-label="Field tools">
           <p class="field-tools-label">Explore this field</p>
           <div class="field-tools-grid" role="tablist">
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="health" aria-controls="healthPanel" data-i18n-title="tool.health">
+              <span class="field-tool-title" data-i18n="tool.health">Field health</span>
+              <span class="field-tool-desc" data-i18n="tool.health.desc">NDVI stress map</span>
+            </button>
             <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="satellite" aria-controls="satArchivePanel">
-              <span class="field-tool-title">Satellite imagery</span>
-              <span class="field-tool-desc">MODIS, SMAP &amp; HLS scenes</span>
+              <span class="field-tool-title" data-i18n="tool.satellite">Satellite imagery</span>
+              <span class="field-tool-desc" data-i18n="tool.satellite.desc">MODIS, SMAP &amp; HLS scenes</span>
             </button>
             <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="weather" aria-controls="trendsPanel">
-              <span class="field-tool-title">Weather</span>
-              <span class="field-tool-desc">Rain, temp &amp; outlook</span>
+              <span class="field-tool-title" data-i18n="tool.weather">Weather</span>
+              <span class="field-tool-desc" data-i18n="tool.weather.desc">Rain, temp &amp; outlook</span>
             </button>
             <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="crop" aria-controls="cropGuidePanel">
               <span class="field-tool-title">Crop &amp; harvest</span>
@@ -171,7 +175,41 @@
           </div>
         </nav>
 
-        <p class="field-tool-hint" id="fieldToolHint">Pick a button above to open satellite imagery, weather, crop plan, and more. Your analysis stays here at the top.</p>
+        <p class="field-tool-hint" id="fieldToolHint" data-i18n="tools.hint">Pick a button above to open satellite imagery, weather, crop plan, and more. Your analysis stays here at the top.</p>
+
+        <!-- Field health NDVI -->
+        <section class="app-panel field-tool-panel" id="healthPanel" data-tool-panel="health" hidden>
+          <div class="app-panel-head">
+            <h2>Field health map</h2>
+            <button type="button" class="app-btn-ghost" id="loadHealthBtn">Refresh health</button>
+          </div>
+          <p class="app-muted">Vegetation index proxy from satellite RGB over this pin — green healthy, amber watch, red stress. Scrub past snapshots to spot change.</p>
+          <div class="health-card" id="healthCard">
+            <p class="outlook-kicker">Current index</p>
+            <h3 id="healthTitle">—</h3>
+            <p id="healthMessage"></p>
+            <div class="outlook-stats harvest-stats">
+              <div><span>NDVI proxy</span><strong id="healthNdvi">—</strong></div>
+              <div><span>EVI proxy</span><strong id="healthEvi">—</strong></div>
+              <div><span>Veg cover</span><strong id="healthVeg">—</strong></div>
+              <div><span>Source</span><strong id="healthSource">—</strong></div>
+            </div>
+            <div id="healthMap" class="field-map field-map-detail health-map" role="application" aria-label="Field health map"></div>
+            <p class="app-muted" id="healthChange"></p>
+            <div class="health-scrub" id="healthScrub" hidden>
+              <label>
+                Compare snapshots
+                <input type="range" id="healthScrubRange" min="0" max="1" step="1" value="0" />
+              </label>
+              <p id="healthScrubLabel"></p>
+            </div>
+            <div class="health-actions">
+              <button type="button" class="app-btn-primary" id="exportRxCsvBtn">Export prescription CSV</button>
+              <button type="button" class="app-btn-ghost" id="exportRxGeoBtn">Export GeoJSON</button>
+            </div>
+            <p class="app-muted" id="healthProvenance"></p>
+          </div>
+        </section>
 
         <!-- Satellite archive: MODIS / SMAP / HLS browse + history -->
         <section class="app-panel sat-archive-panel field-tool-panel" id="satArchivePanel" data-tool-panel="satellite" hidden>
@@ -444,6 +482,11 @@
     ></script>
     <script type="module" src="js/tenant.js"></script>
     <script type="module" src="js/nav-auth.js?v=ai1"></script>
-    <script type="module" src="js/field-page.js?v=fieldtools1"></script>
+    <script type="module" src="js/field-page.js?v=realworld1"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("sw.js").catch(() => {});
+      }
+    </script>
   </body>
 </html>

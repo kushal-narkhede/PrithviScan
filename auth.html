@@ -120,6 +120,30 @@
           <button id="authSubmit" class="auth-primary" type="submit">Sign in</button>
         </form>
 
+        <div class="auth-or"><span>or phone OTP</span></div>
+
+        <div class="auth-stack auth-phone-stack">
+          <div class="auth-row">
+            <label for="phoneInput">Mobile (+country code)</label>
+            <input
+              id="phoneInput"
+              type="tel"
+              name="phone"
+              autocomplete="tel"
+              placeholder="+9198XXXXXXXX"
+            />
+          </div>
+          <div class="auth-row" id="otpRow" hidden>
+            <label for="otpInput">OTP code</label>
+            <input id="otpInput" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit code" />
+          </div>
+          <div class="auth-phone-actions">
+            <button id="phoneSendBtn" class="auth-google" type="button">Send OTP</button>
+            <button id="phoneConfirmBtn" class="auth-primary" type="button" hidden>Verify &amp; sign in</button>
+          </div>
+          <div id="phoneRecaptcha"></div>
+        </div>
+
         <div class="auth-or"><span>or continue with</span></div>
 
         <button id="googleBtn" class="auth-google" type="button">

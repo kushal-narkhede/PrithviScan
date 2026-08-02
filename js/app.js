@@ -1,7 +1,7 @@
 import { watchAuth, isFirebaseConfigured } from "./auth.js";
 import { listFields, createField, createFieldsBulk, getField } from "./fields.js";
 import { createFieldMap, useBrowserLocation } from "./map.js?v=sat2";
-import { callGetAlerts, callMarkAlertRead, callClassifyLocation } from "./api.js";
+import { callGetAlerts, callMarkAlertRead, callClassifyLocation, callProcessAlertOutbox } from "./api.js";
 import { loadLastSession, saveLastSession } from "./session.js";
 import {
   parseFieldsCsv,
@@ -13,6 +13,10 @@ import {
 } from "./import-export.js";
 import { ensureDemoField, startOnboardingTour } from "./onboarding.js";
 import { filterAlertsForDisplay, alertPriority } from "./alert-prefs.js";
+import { getUserMeta } from "./org.js";
+import { listOrgTasks, createTask, completeTask, TASK_TYPES } from "./tasks.js";
+import { cacheFieldsList, readCachedFieldsList } from "./offline-cache.js";
+import { applyI18n } from "./i18n.js";
 import "./a11y.js";
 
 const statusEl = document.getElementById("appStatus");
@@ -31,9 +35,16 @@ const alertsList = document.getElementById("alertsList");
 const alertBadge = document.getElementById("alertBadge");
 const fieldsTab = document.getElementById("fieldsTab");
 const alertsTab = document.getElementById("alertsTab");
+const actionsTab = document.getElementById("actionsTab");
 const tabBtns = document.querySelectorAll(".app-tab-btn");
+const orgFieldsNote = document.getElementById("orgFieldsNote");
+const taskForm = document.getElementById("taskForm");
+const taskList = document.getElementById("taskList");
+const taskEmpty = document.getElementById("taskEmpty");
+const taskField = document.getElementById("taskField");
 
 let currentUser = null;
+let currentMeta = null;
 let mapApi = null;
 let cachedFields = [];
 /** Only allow save after classifier says the pin is a field */
@@ -89,12 +100,13 @@ function renderFields(fields) {
       const lvl = insight?.level || "info";
       const crop = f.cropType ? ` · ${esc(f.cropType)}` : "";
       return `
-        <a class="field-card ${levelClass(lvl)}" href="field.html?id=${encodeURIComponent(f.id)}" data-field-id="${esc(f.id)}">
+        <a class="field-card ${levelClass(lvl)}" href="field.html?id=${encodeURIComponent(f.id)}${f.orgId ? `&org=${encodeURIComponent(f.orgId)}` : ""}" data-field-id="${esc(f.id)}">
           <div class="field-card-head">
             <strong>${esc(f.name || "Untitled field")}</strong>
+            ${f.orgId ? `<span class="field-card-badge">Org</span>` : ""}
             ${insight ? `<span class="field-card-badge ${levelClass(lvl)}">${esc(insight.title)}</span>` : ""}
           </div>
-          <span class="field-card-meta">${Number(f.lat).toFixed(4)}, ${Number(f.lon).toFixed(4)}${crop}</span>
+          <span class="field-card-meta">${Number(f.lat).toFixed(4)}, ${Number(f.lon).toFixed(4)}${crop}${f.healthLabel ? ` · ${esc(f.healthLabel)}` : ""}</span>
         </a>`;
     })
     .join("");
@@ -136,14 +148,75 @@ async function refreshFields() {
   try {
     const fields = await listFields(currentUser.uid);
     cachedFields = fields;
+    cacheFieldsList(fields);
     renderFields(fields);
+    if (orgFieldsNote) orgFieldsNote.hidden = !fields.some((f) => f.orgId);
+    fillTaskFieldSelect(fields);
   } catch (err) {
+    const cached = readCachedFieldsList();
+    if (cached?.fields?.length) {
+      cachedFields = cached.fields;
+      renderFields(cached.fields);
+      setStatus("Showing offline cached fields.", "ok");
+      return;
+    }
     setStatus(
       err?.code === "permission-denied"
         ? "Firestore permission denied — deploy firestore.rules in Firebase console."
         : err?.message || "Could not load fields.",
       "error"
     );
+  }
+}
+
+function fillTaskFieldSelect(fields) {
+  if (!taskField) return;
+  taskField.innerHTML = (fields || [])
+    .map((f) => `<option value="${esc(f.id)}" data-org="${esc(f.orgId || "")}">${esc(f.name || f.id)}</option>`)
+    .join("");
+}
+
+async function refreshTasks() {
+  if (!currentUser || !currentMeta?.orgId) {
+    if (taskList) taskList.innerHTML = "";
+    if (taskEmpty) {
+      taskEmpty.hidden = false;
+      taskEmpty.textContent = "Join or create an organization to coordinate crew tasks.";
+    }
+    return;
+  }
+  try {
+    const tasks = await listOrgTasks(currentMeta.orgId);
+    const open = tasks.filter((t) => t.status !== "done");
+    if (taskEmpty) taskEmpty.hidden = open.length > 0;
+    if (!taskList) return;
+    taskList.innerHTML = open
+      .map(
+        (t) => `
+      <li class="usage-row">
+        <div>
+          <strong>${esc(t.title || t.type)}</strong>
+          <span>${esc(t.fieldName || t.fieldId || "Field")} · ${esc(t.assigneeName || "")}${t.dueAt ? ` · due ${esc(t.dueAt)}` : ""}</span>
+          ${t.note ? `<small>${esc(t.note)}</small>` : ""}
+        </div>
+        <div class="usage-side">
+          <button type="button" class="app-btn-ghost" data-done="${esc(t.id)}">Done</button>
+        </div>
+      </li>`
+      )
+      .join("");
+    taskList.querySelectorAll("[data-done]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        await completeTask(currentMeta.orgId, btn.dataset.done);
+        await refreshTasks();
+        setStatus("Task marked done.", "ok");
+      });
+    });
+  } catch (err) {
+    if (taskEmpty) {
+      taskEmpty.hidden = false;
+      taskEmpty.textContent = err?.message || "Could not load tasks.";
+    }
   }
 }
 
@@ -263,11 +336,13 @@ async function loadAlerts() {
 }
 
 function switchTab(tab) {
-  const isAlerts = tab === "alerts";
-  fieldsTab.hidden = isAlerts;
-  alertsTab.hidden = !isAlerts;
-  tabBtns.forEach((b) => b.classList.toggle("is-active", b.dataset.tab === tab));
-  if (isAlerts) loadAlerts();
+  const which = tab || "fields";
+  if (fieldsTab) fieldsTab.hidden = which !== "fields";
+  if (alertsTab) alertsTab.hidden = which !== "alerts";
+  if (actionsTab) actionsTab.hidden = which !== "actions";
+  tabBtns.forEach((b) => b.classList.toggle("is-active", b.dataset.tab === which));
+  if (which === "alerts") loadAlerts();
+  if (which === "actions") refreshTasks();
 }
 
 tabBtns.forEach((btn) => {
@@ -439,11 +514,53 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!isFirebaseConfigured()) { setStatus("Firebase not configured.", "error"); return; }
   initMap();
 
+  applyI18n(document);
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+
+  taskForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!currentUser || !currentMeta?.orgId) {
+      setStatus("Create or join an organization first (Organization page).", "error");
+      return;
+    }
+    const fieldId = taskField?.value;
+    const field = cachedFields.find((f) => f.id === fieldId);
+    try {
+      await createTask(
+        currentMeta.orgId,
+        currentUser,
+        {
+          type: document.getElementById("taskType")?.value,
+          title: TASK_TYPES.find((t) => t.id === document.getElementById("taskType")?.value)?.label,
+          fieldId,
+          fieldName: field?.name,
+          assigneeUid: document.getElementById("taskAssignee")?.value?.trim() || currentUser.uid,
+          assigneeName: currentUser.displayName || currentUser.email || "Me",
+          dueAt: document.getElementById("taskDue")?.value || null,
+          note: document.getElementById("taskNote")?.value,
+        },
+        currentMeta.orgRole || "scout"
+      );
+      document.getElementById("taskNote").value = "";
+      await refreshTasks();
+      setStatus("Task created for your crew.", "ok");
+    } catch (err) {
+      setStatus(err?.message || "Could not create task.", "error");
+    }
+  });
+
   watchAuth(async (user) => {
     if (!user) { window.location.href = "auth.html"; return; }
     currentUser = user;
-    const label = user.displayName || user.email || "farmer";
-    if (welcomeLine) welcomeLine.textContent = `Welcome, ${label}.`;
+    currentMeta = await getUserMeta(user.uid).catch(() => null);
+    const label = user.displayName || user.email || user.phoneNumber || "farmer";
+    if (welcomeLine) {
+      welcomeLine.textContent = currentMeta?.orgId
+        ? `Welcome, ${label}. Organization fields are shared with your team.`
+        : `Welcome, ${label}.`;
+    }
 
     try {
       const demo = await ensureDemoField(user.uid);
@@ -453,6 +570,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     await Promise.all([refreshFields(), loadAlerts(), showContinueBanner(user.uid)]);
+    callProcessAlertOutbox().catch(() => {});
     startOnboardingTour();
   });
 });

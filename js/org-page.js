@@ -9,7 +9,9 @@ import {
   listPendingInvitesForOrg,
   saveAccountMeta,
   claimOrgInvites,
+  setOrgMemberRole,
 } from "./org.js";
+import { roleLabel } from "./org-roles.js";
 import "./nav-auth.js";
 
 const gate = document.getElementById("orgGate");
@@ -76,9 +78,11 @@ async function refresh() {
     <h2>${esc(currentOrg.name)}</h2>
     <dl class="org-meta">
       <dt>Your role</dt>
-      <dd>${isOwner ? "Owner" : "Member"}</dd>
+      <dd>${esc(roleLabel(isOwner ? "owner" : currentMeta?.orgRole))}</dd>
       <dt>Members</dt>
       <dd>${(currentOrg.memberIds || []).length}</dd>
+      <dt>Shared fields</dt>
+      <dd>Organization fields appear on the Fields dashboard for every member</dd>
     </dl>
   `;
 
@@ -91,7 +95,17 @@ async function refresh() {
       <div>
         <strong>${esc(m.displayName)}</strong>
         <span>${esc(m.email)}</span>
-        <span class="org-role">${esc(m.orgRole)}</span>
+        ${
+          isOwner && m.uid !== currentOrg.ownerUid
+            ? `<label class="org-role-pick">Role
+                <select data-role-uid="${esc(m.uid)}">
+                  <option value="agronomist" ${m.orgRole === "agronomist" ? "selected" : ""}>Agronomist</option>
+                  <option value="scout" ${m.orgRole === "scout" ? "selected" : ""}>Scout</option>
+                  <option value="viewer" ${m.orgRole === "viewer" ? "selected" : ""}>Viewer</option>
+                </select>
+              </label>`
+            : `<span class="org-role">${esc(roleLabel(m.orgRole))}</span>`
+        }
       </div>
       ${
         isOwner && m.uid !== currentOrg.ownerUid
@@ -110,6 +124,18 @@ async function refresh() {
         await refresh();
       } catch (err) {
         alert(err.message || "Could not remove member.");
+      }
+    });
+  });
+
+  memberList.querySelectorAll("[data-role-uid]").forEach((sel) => {
+    sel.addEventListener("change", async () => {
+      try {
+        await setOrgMemberRole(currentUser, currentOrg.id, sel.dataset.roleUid, sel.value);
+        setInviteStatus(`Role updated to ${roleLabel(sel.value)}.`, "ok");
+      } catch (err) {
+        alert(err.message || "Could not update role.");
+        await refresh();
       }
     });
   });

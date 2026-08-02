@@ -8,23 +8,28 @@ const DONE_KEY = "prithvi_onboarding_done";
 
 const STEPS = [
   {
-    title: "Welcome to your fields",
-    body: "Save field locations, then get weather-based insights and alerts. You always own your data.",
+    title: "Welcome — FPO ready",
+    body: "Create an Organization, invite scouts, and share fields. Insights stay on top of each field page.",
     target: ".app-page-head",
   },
   {
     title: "Add or import fields",
-    body: "Drop a pin on the map, or import many fields with CSV / GeoJSON for cooperatives.",
+    body: "Drop a pin (classifier checks it is cropland), or import CSV/GeoJSON for your cooperative.",
     target: "#addFieldPanel",
   },
   {
-    title: "Continue where you left off",
-    body: "We remember the last field you opened and your scroll position.",
-    target: "#continueSession, .fields-list",
+    title: "Action Center & Alerts",
+    body: "Assign irrigate/spray/scout jobs under Actions. Alerts can fan out by email/SMS/WhatsApp from Profile.",
+    target: ".app-tab-btn[data-tab='actions'], .app-tab-btn[data-tab='alerts']",
   },
   {
-    title: "Trust & safety",
-    body: "High-risk recommendations ask for confirmation. Read Data ownership anytime under Profile.",
+    title: "Field health & crop plan",
+    body: "Open a field → Field health for NDVI stress, Crop & harvest for sowing/harvest timing, Markets to sell nearby.",
+    target: ".fields-list",
+  },
+  {
+    title: "Trust & your data",
+    body: "Export or delete your account under Profile (DPDP). High-risk recommendations ask for confirmation.",
     target: "[data-auth-slot], .app-nav",
   },
 ];

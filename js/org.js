@@ -18,6 +18,9 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 import { getDb } from "./firebase-db.js";
 import { findProfileByEmail, getProfile, ensurePublicProfile } from "./collab.js";
+import { normalizeOrgRole, canManageMembers, ORG_ROLES } from "./org-roles.js";
+
+export { ORG_ROLES, normalizeOrgRole, canManageMembers };
 
 function db() {
   return getDb();
@@ -102,11 +105,35 @@ export async function listOrgMembers(org) {
         uid,
         displayName: p?.displayName || "Member",
         email: p?.email || "",
-        orgRole: uid === org.ownerUid ? "owner" : p?.orgRole || "member",
+        orgRole: normalizeOrgRole(uid === org.ownerUid ? "owner" : p?.orgRole || "scout", {
+          isOwner: uid === org.ownerUid,
+        }),
       };
     })
   );
   return members;
+}
+
+/** Owner sets a member role: agronomist | scout | viewer */
+export async function setOrgMemberRole(ownerUser, orgId, memberUid, role) {
+  const org = await getOrganization(orgId);
+  if (!org) throw new Error("Organization not found.");
+  if (org.ownerUid !== ownerUser.uid) throw new Error("Only the owner can change roles.");
+  if (memberUid === org.ownerUid) throw new Error("Owner role cannot be changed.");
+  if (!org.memberIds?.includes(memberUid)) throw new Error("Not a member of this organization.");
+
+  const next = normalizeOrgRole(role);
+  if (next === "owner") throw new Error("Cannot assign owner this way.");
+
+  await updateDoc(doc(db(), "users", memberUid), {
+    orgRole: next,
+    updatedAt: serverTimestamp(),
+  });
+  await updateDoc(doc(db(), "profiles", memberUid), {
+    orgRole: next,
+    updatedAt: serverTimestamp(),
+  });
+  return next;
 }
 
 /** Owner adds an existing PrithviScan user to the organization by email */
@@ -133,7 +160,7 @@ export async function addOrgMemberByEmail(ownerUser, orgId, email) {
     await updateDoc(doc(db(), "users", target.uid), {
       accountType: "organization",
       orgId,
-      orgRole: "member",
+      orgRole: "scout",
       updatedAt: serverTimestamp(),
     });
   } catch {
@@ -143,7 +170,7 @@ export async function addOrgMemberByEmail(ownerUser, orgId, email) {
   await updateDoc(doc(db(), "profiles", target.uid), {
     accountType: "organization",
     orgId,
-    orgRole: "member",
+    orgRole: "scout",
     orgName: org.name,
     updatedAt: serverTimestamp(),
   });
@@ -263,7 +290,7 @@ export async function claimOrgInvites(user) {
     {
       accountType: "organization",
       orgId: invite.orgId,
-      orgRole: "member",
+      orgRole: "scout",
       updatedAt: serverTimestamp(),
     },
     { merge: true }
@@ -275,7 +302,7 @@ export async function claimOrgInvites(user) {
       uid: user.uid,
       accountType: "organization",
       orgId: invite.orgId,
-      orgRole: "member",
+      orgRole: "scout",
       orgName: org.name,
       email: user.email || "",
       emailLower,

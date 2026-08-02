@@ -25,7 +25,9 @@ This document lists **practical next features** after what is already shipped. I
 | Ask AI `aiChat` API | **Live** | Set real `GEMINI_API_KEY` / `OPENROUTER_API_KEY` when ready |
 | EuroSAT classifier | Export → deploy | Run `ml\\export_model_for_functions.bat` then deploy `classifyLocation` |
 
-**Blaze enablement (done):** Functions deployed; `FUNCTIONS_ENABLED = true`. Next product work starts at H1.
+**Blaze enablement (done):** Functions deployed; `FUNCTIONS_ENABLED = true`.
+
+**Wave 0–2 pilot readiness (shipped on branch):** org-shared fields + RBAC, phone OTP, alert outbox fan-out, bootstrap RF classifier JSON, INR what-if, NDVI health map + change scrub + prescription CSV, Hindi i18n + offline SW, Action Center tasks, DPDP export/delete. Harden SMS/WhatsApp with provider keys and replace bootstrap RF with EuroSAT export when available.
 
 ---
 

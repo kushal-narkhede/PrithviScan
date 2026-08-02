@@ -5,7 +5,16 @@ import {
   isFirebaseConfigured,
 } from "./auth.js";
 import { loadA11yPrefs, saveA11yPrefs } from "./a11y.js";
-import { loadAlertPrefs, saveAlertPrefs, snoozeAlerts } from "./alert-prefs.js";
+import {
+  loadAlertPrefs,
+  saveAlertPrefs,
+  snoozeAlerts,
+  syncAlertPrefsToCloud,
+  loadAlertPrefsFromCloud,
+} from "./alert-prefs.js";
+import { getLocale, setLocale } from "./i18n.js";
+import { exportAccountBundle, downloadJson, deleteAccountData } from "./privacy-data.js";
+import { callProcessAlertOutbox } from "./api.js";
 import {
   doc,
   getDoc,
@@ -14,8 +23,10 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 import { getDb } from "./firebase-db.js";
 
+let currentUser = null;
+
 function initials(user) {
-  const label = user.displayName || user.email || "U";
+  const label = user.displayName || user.email || user.phoneNumber || "U";
   return label
     .split(/\s+|@/)
     .filter(Boolean)
@@ -27,8 +38,9 @@ function initials(user) {
 function providerLabel(user) {
   const ids = (user.providerData || []).map((p) => p.providerId);
   if (ids.includes("google.com")) return "Google";
+  if (ids.includes("phone")) return "Phone OTP";
   if (ids.includes("password")) return "Email & password";
-  return ids[0] || "Email";
+  return ids[0] || "Account";
 }
 
 function formatDate(value) {
@@ -60,25 +72,36 @@ function fillProfile(user) {
 
   if (avatar) avatar.textContent = initials(user);
   if (name) name.textContent = user.displayName || "PrithviScan farmer";
-  if (email) email.textContent = user.email || "No email on file";
+  if (email) email.textContent = user.email || user.phoneNumber || "No email on file";
   if (provider) provider.textContent = providerLabel(user);
   if (created) created.textContent = formatDate(user.metadata?.creationTime);
 }
 
+function gatherAlertForm() {
+  return {
+    ...loadAlertPrefs(),
+    showCriticalOnly: Boolean(document.getElementById("prefCriticalOnly")?.checked),
+    quietHoursEnabled: Boolean(document.getElementById("prefQuietHours")?.checked),
+    pushEnabled: Boolean(document.getElementById("prefPush")?.checked),
+    emailEnabled: Boolean(document.getElementById("prefEmailAlert")?.checked),
+    smsEnabled: Boolean(document.getElementById("prefSms")?.checked),
+    whatsappEnabled: Boolean(document.getElementById("prefWhatsapp")?.checked),
+    phoneE164: String(document.getElementById("prefAlertPhone")?.value || "").trim(),
+    email: currentUser?.email || "",
+  };
+}
+
 function bindLocalPrefs() {
   const a11y = loadA11yPrefs();
-  const alerts = loadAlertPrefs();
   const large = document.getElementById("prefLargeText");
   const contrast = document.getElementById("prefContrast");
   const simple = document.getElementById("prefSimple");
-  const critical = document.getElementById("prefCriticalOnly");
-  const quiet = document.getElementById("prefQuietHours");
+  const localeEl = document.getElementById("prefLocale");
 
   if (large) large.checked = a11y.largeText;
   if (contrast) contrast.checked = a11y.highContrast;
   if (simple) simple.checked = a11y.simplified;
-  if (critical) critical.checked = alerts.showCriticalOnly;
-  if (quiet) quiet.checked = alerts.quietHoursEnabled;
+  if (localeEl) localeEl.value = getLocale();
 
   const syncA11y = () => {
     saveA11yPrefs({
@@ -92,21 +115,87 @@ function bindLocalPrefs() {
   contrast?.addEventListener("change", syncA11y);
   simple?.addEventListener("change", syncA11y);
 
-  const syncAlerts = () => {
-    saveAlertPrefs({
-      ...loadAlertPrefs(),
-      showCriticalOnly: Boolean(critical?.checked),
-      quietHoursEnabled: Boolean(quiet?.checked),
-    });
-    setStatus("Alert preferences saved.", "ok");
-  };
-  critical?.addEventListener("change", syncAlerts);
-  quiet?.addEventListener("change", syncAlerts);
+  localeEl?.addEventListener("change", () => {
+    setLocale(localeEl.value);
+    setStatus(localeEl.value === "hi" ? "भाषा हिन्दी पर सेट।" : "Language set to English.", "ok");
+  });
 
-  document.getElementById("prefSnoozeBtn")?.addEventListener("click", () => {
+  document.getElementById("prefSnoozeBtn")?.addEventListener("click", async () => {
     snoozeAlerts(6);
+    if (currentUser) await syncAlertPrefsToCloud(currentUser.uid, gatherAlertForm());
     setStatus("Alerts snoozed for 6 hours.", "ok");
   });
+
+  document.getElementById("prefSyncAlertsBtn")?.addEventListener("click", async () => {
+    if (!currentUser) return;
+    try {
+      await syncAlertPrefsToCloud(currentUser.uid, gatherAlertForm());
+      const out = await callProcessAlertOutbox();
+      setStatus(
+        out.ok
+          ? `Alert prefs saved. Processed ${out.processed || 0} queued delivery(ies).`
+          : "Alert prefs saved to cloud.",
+        "ok"
+      );
+    } catch (err) {
+      setStatus(err?.message || "Could not sync alert prefs.", "error");
+    }
+  });
+
+  document.getElementById("exportDataBtn")?.addEventListener("click", async () => {
+    if (!currentUser) return;
+    try {
+      setStatus("Preparing your data export…");
+      const bundle = await exportAccountBundle(currentUser.uid);
+      downloadJson(`prithviscan-export-${currentUser.uid.slice(0, 6)}.json`, bundle);
+      setStatus("Data export downloaded.", "ok");
+    } catch (err) {
+      setStatus(err?.message || "Export failed.", "error");
+    }
+  });
+
+  document.getElementById("deleteAccountBtn")?.addEventListener("click", async () => {
+    if (!currentUser) return;
+    const ok = confirm(
+      "Delete your personal PrithviScan account and personal fields? Organization-owned fields stay with the org. This cannot be undone."
+    );
+    if (!ok) return;
+    const again = prompt('Type DELETE to confirm account deletion');
+    if (again !== "DELETE") {
+      setStatus("Account deletion cancelled.", "error");
+      return;
+    }
+    try {
+      setStatus("Deleting account…");
+      await deleteAccountData(currentUser);
+      window.location.href = "index.html";
+    } catch (err) {
+      setStatus(
+        err?.code === "auth/requires-recent-login"
+          ? "Please sign out, sign in again, then retry delete."
+          : err?.message || "Could not delete account.",
+        "error"
+      );
+    }
+  });
+}
+
+async function fillAlertForm(uid) {
+  const alerts = await loadAlertPrefsFromCloud(uid);
+  const critical = document.getElementById("prefCriticalOnly");
+  const quiet = document.getElementById("prefQuietHours");
+  const push = document.getElementById("prefPush");
+  const email = document.getElementById("prefEmailAlert");
+  const sms = document.getElementById("prefSms");
+  const wa = document.getElementById("prefWhatsapp");
+  const phone = document.getElementById("prefAlertPhone");
+  if (critical) critical.checked = alerts.showCriticalOnly;
+  if (quiet) quiet.checked = alerts.quietHoursEnabled;
+  if (push) push.checked = alerts.pushEnabled !== false;
+  if (email) email.checked = alerts.emailEnabled !== false;
+  if (sms) sms.checked = Boolean(alerts.smsEnabled);
+  if (wa) wa.checked = Boolean(alerts.whatsappEnabled);
+  if (phone) phone.value = alerts.phoneE164 || "";
 }
 
 async function loadOptIn(uid) {
@@ -151,12 +240,14 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  watchAuth((user) => {
+  watchAuth(async (user) => {
     if (!user) {
       window.location.href = "auth.html";
       return;
     }
+    currentUser = user;
     fillProfile(user);
+    await fillAlertForm(user.uid);
     loadOptIn(user.uid);
   });
 

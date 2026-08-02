@@ -3,7 +3,22 @@ import { getField, deleteField, updateField } from "./fields.js";
 import { getDb } from "./firebase-db.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 import { createFieldMap } from "./map.js?v=sat2";
-import { callFuseInsight, callFieldTrends, callSatelliteArchive } from "./api.js";
+import { callFuseInsight, callFieldTrends, callSatelliteArchive, callFieldHealth } from "./api.js";
+import {
+  healthFromNdvi,
+  saveHealthSnapshot,
+  listHealthSnapshots,
+  detectChange,
+} from "./field-health.js";
+import {
+  buildPrescription,
+  prescriptionToCsv,
+  prescriptionToGeoJson,
+  downloadText,
+  savePrescription,
+} from "./prescriptions.js";
+import { applyI18n, t } from "./i18n.js";
+import { cacheFieldOffline } from "./offline-cache.js";
 import { bindSessionPersistence, restoreScroll } from "./session.js";
 import { submitGroundTruth } from "./feedback.js";
 import { simulateScenario } from "./scenario.js";
@@ -100,7 +115,10 @@ let detailMapApi = null;
 let activeTool = null;
 let pendingMapField = null;
 
-const TOOL_IDS = ["satellite", "weather", "crop", "inputs", "markets", "tools", "location"];
+const TOOL_IDS = ["health", "satellite", "weather", "crop", "inputs", "markets", "tools", "location"];
+let latestHealth = null;
+let healthSnapshots = [];
+let healthMapApi = null;
 
 function ensureDetailMap() {
   if (detailMapApi || !pendingMapField) return;
@@ -148,6 +166,13 @@ function showFieldTool(toolId, { updateHash = true } = {}) {
     });
   }
 
+  if (next === "health") {
+    loadFieldHealth();
+    requestAnimationFrame(() => {
+      healthMapApi?.map?.invalidateSize?.();
+    });
+  }
+
   if (next === "weather") {
     // Charts need a layout pass after becoming visible
     requestAnimationFrame(() => {
@@ -176,10 +201,146 @@ function bindFieldTools() {
   }
 
   window.addEventListener("hashchange", () => {
-    const t = window.location.hash.replace(/^#/, "");
-    if (!t) showFieldTool(null, { updateHash: false });
-    else if (TOOL_IDS.includes(t)) showFieldTool(t, { updateHash: false });
+    const tool = window.location.hash.replace(/^#/, "");
+    if (!tool) showFieldTool(null, { updateHash: false });
+    else if (TOOL_IDS.includes(tool)) showFieldTool(tool, { updateHash: false });
   });
+
+  document.getElementById("loadHealthBtn")?.addEventListener("click", () => loadFieldHealth({ force: true }));
+  document.getElementById("exportRxCsvBtn")?.addEventListener("click", () => exportPrescription("csv"));
+  document.getElementById("exportRxGeoBtn")?.addEventListener("click", () => exportPrescription("geojson"));
+  document.getElementById("healthScrubRange")?.addEventListener("input", (e) => {
+    const i = Number(e.target.value) || 0;
+    const snap = healthSnapshots[i];
+    if (!snap) return;
+    const label = document.getElementById("healthScrubLabel");
+    if (label) {
+      label.textContent = `${snap.date}: NDVI ${snap.ndvi} — ${snap.health?.label || ""}`;
+    }
+    paintHealthMap(snap.ndvi);
+  });
+}
+
+function paintHealthMap(ndvi) {
+  if (!currentField) return;
+  const el = document.getElementById("healthMap");
+  if (!el) return;
+  const h = healthFromNdvi(ndvi);
+  if (!healthMapApi) {
+    try {
+      healthMapApi = createFieldMap("healthMap", {
+        lat: currentField.lat,
+        lon: currentField.lon,
+        pickable: false,
+        detailZoom: 15,
+      });
+    } catch {
+      return;
+    }
+  }
+  const map = healthMapApi.map;
+  if (!map || typeof L === "undefined") return;
+  if (healthMapApi._zones) {
+    healthMapApi._zones.forEach((z) => map.removeLayer(z));
+  }
+  healthMapApi._zones = [60, 120, 180].map((r, i) =>
+    L.circle([currentField.lat, currentField.lon], {
+      radius: r,
+      color: h.color,
+      fillColor: h.color,
+      fillOpacity: 0.18 - i * 0.04,
+      weight: 2,
+    }).addTo(map)
+  );
+}
+
+async function loadFieldHealth({ force = false } = {}) {
+  if (!currentField || !currentUser) return;
+  const title = document.getElementById("healthTitle");
+  const msg = document.getElementById("healthMessage");
+  const ndviEl = document.getElementById("healthNdvi");
+  const eviEl = document.getElementById("healthEvi");
+  const vegEl = document.getElementById("healthVeg");
+  const srcEl = document.getElementById("healthSource");
+  const changeEl = document.getElementById("healthChange");
+  const prov = document.getElementById("healthProvenance");
+  if (title) title.textContent = "Measuring canopy…";
+  try {
+    const data = await callFieldHealth(currentField.lat, currentField.lon);
+    if (!data.ok) {
+      if (title) title.textContent = data.error || "Could not measure health";
+      return;
+    }
+    latestHealth = data;
+    const h = data.health || healthFromNdvi(data.ndvi);
+    if (title) title.textContent = h.label || "—";
+    if (msg) {
+      msg.textContent = Number.isFinite(data.ndvi)
+        ? `NDVI proxy ${data.ndvi} (${data.source || "satellite RGB"}).`
+        : "No index returned.";
+    }
+    if (ndviEl) ndviEl.textContent = data.ndvi ?? "—";
+    if (eviEl) eviEl.textContent = data.evi ?? "—";
+    if (vegEl) vegEl.textContent = data.vegFraction != null ? `${Math.round(data.vegFraction * 100)}%` : "—";
+    if (srcEl) srcEl.textContent = "Esri RGB";
+    if (prov) {
+      prov.textContent = `Source: ${data.source} · Model: ${data.model} · ${data.fetchedAt || ""}`;
+    }
+    paintHealthMap(data.ndvi);
+
+    if (force || true) {
+      await saveHealthSnapshot(currentField, currentUser.uid, {
+        ndvi: data.ndvi,
+        evi: data.evi,
+        source: data.source,
+        cloudPct: data.cloudFraction != null ? Math.round(data.cloudFraction * 100) : null,
+      }).catch(() => null);
+      await updateField(
+        currentUser.uid,
+        currentField.id,
+        { healthNdvi: data.ndvi, healthLabel: h.label, healthCode: h.code },
+        { orgId: currentField.orgId }
+      ).catch(() => null);
+    }
+
+    healthSnapshots = await listHealthSnapshots(currentField, currentUser.uid).catch(() => []);
+    const change = detectChange(healthSnapshots);
+    if (changeEl) changeEl.textContent = change ? change.message : "Save another day to compare change.";
+    const scrub = document.getElementById("healthScrub");
+    const range = document.getElementById("healthScrubRange");
+    if (scrub && range && healthSnapshots.length > 1) {
+      scrub.hidden = false;
+      range.max = String(healthSnapshots.length - 1);
+      range.value = "0";
+      range.dispatchEvent(new Event("input"));
+    }
+
+    cacheFieldOffline(currentField, latestInsight, data);
+    setStatus(t("offline.ready"), "ok");
+  } catch (err) {
+    if (title) title.textContent = err.message || "Health unavailable";
+  }
+}
+
+function exportPrescription(kind) {
+  if (!currentField || latestHealth?.ndvi == null) {
+    setStatus("Refresh field health before exporting a prescription.", "error");
+    return;
+  }
+  const rx = buildPrescription(currentField, latestHealth.ndvi);
+  if (kind === "geojson") {
+    downloadText(
+      `${currentField.name || "field"}-prescription.json`,
+      JSON.stringify(prescriptionToGeoJson(rx), null, 2),
+      "application/geo+json"
+    );
+  } else {
+    downloadText(`${currentField.name || "field"}-prescription.csv`, prescriptionToCsv(rx));
+  }
+  if (currentUser) {
+    savePrescription(currentField, currentUser.uid, rx).catch(() => {});
+  }
+  setStatus("Prescription exported.", "ok");
 }
 let ruleSensitivity = Number(localStorage.getItem("prithvi_rule_sensitivity") || "1") || 1;
 const metricsGrid    = document.getElementById("metricsGrid");
@@ -634,8 +795,8 @@ function renderUsages(rows) {
       if (!currentUser || !currentField) return;
       if (!confirm("Remove this input log?")) return;
       try {
-        await deleteFieldUsage(currentUser.uid, currentField.id, btn.dataset.id);
-        const rowsNext = await listFieldUsages(currentUser.uid, currentField.id);
+        await deleteFieldUsage(currentUser.uid, currentField.id, btn.dataset.id, currentField.orgId || null);
+        const rowsNext = await listFieldUsages(currentUser.uid, currentField.id, 40, currentField.orgId || null);
         renderUsages(rowsNext);
         setStatus("Input removed.", "ok");
       } catch (err) {
@@ -966,6 +1127,10 @@ function fieldIdFromUrl() {
   return new URLSearchParams(window.location.search).get("id");
 }
 
+function orgIdFromUrl() {
+  return new URLSearchParams(window.location.search).get("org");
+}
+
 async function loadSavedInsight(uid, fieldId) {
   try {
     const db = getDb();
@@ -1150,11 +1315,16 @@ document.addEventListener("DOMContentLoaded", () => {
     currentUser = user;
 
     try {
-      const field = await getField(user.uid, fieldId);
+      const field = await getField(user.uid, fieldId, { orgId: orgIdFromUrl() });
       if (!field) {
         titleEl.textContent = "Field not found";
         setStatus("This field doesn't exist or belongs to another account.", "error");
         return;
+      }
+      if (field.orgId && !orgIdFromUrl()) {
+        const u = new URL(window.location.href);
+        u.searchParams.set("org", field.orgId);
+        history.replaceState(null, "", u.pathname + u.search + u.hash);
       }
       currentField = field;
       titleEl.textContent = field.name || "Untitled field";
@@ -1164,11 +1334,12 @@ document.addEventListener("DOMContentLoaded", () => {
       fillInputItemSelect();
       renderCropGuide(field);
       pendingMapField = { lat: field.lat, lon: field.lon };
+      applyI18n(document);
       bindFieldTools();
       // If hash/restored tool is Location, map is created inside showFieldTool
 
       try {
-        const usages = await listFieldUsages(user.uid, fieldId);
+        const usages = await listFieldUsages(user.uid, fieldId, 40, field.orgId || null);
         renderUsages(usages);
       } catch {
         renderUsages([]);
@@ -1198,11 +1369,14 @@ document.addEventListener("DOMContentLoaded", () => {
       scenarioForm?.addEventListener("submit", (e) => {
         e.preventDefault();
         const metrics = latestMetrics || {};
+        const guide = matchCropGuide(currentField.cropType);
         const result = simulateScenario(metrics, {
           irrigateWhen: document.getElementById("scenarioIrrigate")?.value,
           irrigateMm: document.getElementById("scenarioMm")?.value,
           fertilizerKgHa: document.getElementById("scenarioFert")?.value,
           fieldHa: document.getElementById("scenarioHa")?.value,
+          cropId: guide?.mspId || "wheat",
+          fertId: "urea",
         });
         if (!scenarioResult) return;
         scenarioResult.hidden = false;
@@ -1214,12 +1388,12 @@ document.addEventListener("DOMContentLoaded", () => {
             <div><span>Expected yield</span><strong>${result.expectedYieldKgHa} kg/ha</strong></div>
             <div><span>Yield range (±${result.uncertaintyPct}%)</span><strong>${result.yieldLowKgHa}–${result.yieldHighKgHa}</strong></div>
             <div><span>Yield vs baseline</span><strong>${result.yieldDeltaPct > 0 ? "+" : ""}${result.yieldDeltaPct}%</strong></div>
-            <div><span>Est. cost</span><strong>${result.estimatedCost}</strong></div>
-            <div><span>Est. revenue</span><strong>${result.expectedRevenue}</strong></div>
+            <div><span>Est. cost (₹)</span><strong>${esc(result.estimatedCostLabel || String(result.estimatedCost))}</strong></div>
+            <div><span>Est. revenue (₹)</span><strong>${esc(result.expectedRevenueLabel || String(result.expectedRevenue))}</strong></div>
             <div><span>ROI</span><strong>${result.roi == null ? "—" : `${(result.roi * 100).toFixed(0)}%`}</strong></div>
           </div>
           <ul>${result.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>
-          <p class="app-muted">Illustrative heuristic with uncertainty bands — not a full crop model.</p>`;
+          <p class="app-muted">INR using MSP + notified fertilizer rates — heuristic with uncertainty bands, not a full crop model. ${esc(result.priceBasis || "")}</p>`;
       });
 
       printReportBtn?.addEventListener("click", () => {
@@ -1299,15 +1473,20 @@ document.addEventListener("DOMContentLoaded", () => {
         if (btn) btn.disabled = true;
         setStatus("Logging input…");
         try {
-          await addFieldUsage(currentUser.uid, currentField.id, {
-            kind: inputKind?.value,
-            itemId: inputItem?.value,
-            itemName: inputOtherName?.value,
-            qty: inputQty?.value,
-            appliedAt: inputAppliedAt?.value,
-            notes: inputNotes?.value,
-          });
-          const rows = await listFieldUsages(currentUser.uid, currentField.id);
+          await addFieldUsage(
+            currentUser.uid,
+            currentField.id,
+            {
+              kind: inputKind?.value,
+              itemId: inputItem?.value,
+              itemName: inputOtherName?.value,
+              qty: inputQty?.value,
+              appliedAt: inputAppliedAt?.value,
+              notes: inputNotes?.value,
+            },
+            currentField.orgId || null
+          );
+          const rows = await listFieldUsages(currentUser.uid, currentField.id, 40, currentField.orgId || null);
           renderUsages(rows);
           if (inputNotes) inputNotes.value = "";
           setStatus("Input logged on this field.", "ok");
@@ -1322,9 +1501,16 @@ document.addEventListener("DOMContentLoaded", () => {
         refreshBtn.disabled = true;
         setStatus("Fetching NASA data and computing insight…");
         try {
-          const result = await callFuseInsight(fieldId, field.lat, field.lon, ruleSensitivity);
+          const result = await callFuseInsight(
+            fieldId,
+            field.lat,
+            field.lon,
+            ruleSensitivity,
+            field.orgId || null
+          );
           if (result.ok && result.insight) {
             renderInsight(result.insight);
+            cacheFieldOffline(field, result.insight, latestHealth);
             setStatus("Insight updated.", "ok");
             loadTrends();
           } else if (result.disabled) {

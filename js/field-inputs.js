@@ -34,17 +34,18 @@ export function machineOptions() {
   }));
 }
 
-function usagesCol(uid, fieldId) {
+function usagesCol(uid, fieldId, orgId = null) {
+  if (orgId) return collection(getDb(), "organizations", orgId, "fields", fieldId, "usages");
   return collection(getDb(), "users", uid, "fields", fieldId, "usages");
 }
 
-export async function listFieldUsages(uid, fieldId, max = 40) {
-  const q = query(usagesCol(uid, fieldId), orderBy("createdAt", "desc"), limit(max));
+export async function listFieldUsages(uid, fieldId, max = 40, orgId = null) {
+  const q = query(usagesCol(uid, fieldId, orgId), orderBy("createdAt", "desc"), limit(max));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-export async function addFieldUsage(uid, fieldId, payload) {
+export async function addFieldUsage(uid, fieldId, payload, orgId = null) {
   const kind = String(payload.kind || "other");
   const itemId = String(payload.itemId || "").trim();
   const qty = Number(payload.qty);
@@ -96,10 +97,13 @@ export async function addFieldUsage(uid, fieldId, payload) {
     notes,
     createdAt: serverTimestamp(),
   };
-  const ref = await addDoc(usagesCol(uid, fieldId), docBody);
+  const ref = await addDoc(usagesCol(uid, fieldId, orgId), docBody);
   return { id: ref.id, ...docBody };
 }
 
-export async function deleteFieldUsage(uid, fieldId, usageId) {
-  await deleteDoc(doc(getDb(), "users", uid, "fields", fieldId, "usages", usageId));
+export async function deleteFieldUsage(uid, fieldId, usageId, orgId = null) {
+  const path = orgId
+    ? doc(getDb(), "organizations", orgId, "fields", fieldId, "usages", usageId)
+    : doc(getDb(), "users", uid, "fields", fieldId, "usages", usageId);
+  await deleteDoc(path);
 }

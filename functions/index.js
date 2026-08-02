@@ -618,26 +618,47 @@ exports.fuseFieldInsight = onRequest(
         generatedAt,
       };
 
-      // Persist to Firestore
+      // Persist to Firestore (personal or org field)
       const db = getFirestore();
-      const fieldRef = db.collection("users").doc(decoded.uid).collection("fields").doc(String(fieldId));
+      const orgId = req.query.orgId ? String(req.query.orgId) : null;
+      const fieldRef = orgId
+        ? db.collection("organizations").doc(orgId).collection("fields").doc(String(fieldId))
+        : db.collection("users").doc(decoded.uid).collection("fields").doc(String(fieldId));
 
       await fieldRef.collection("insights").doc("latest").set({
         ...insight,
         savedAt: FieldValue.serverTimestamp(),
       });
 
-      // Write alert if action/watch
+      const alertDoc = {
+        fieldId: String(fieldId),
+        orgId: orgId || null,
+        level,
+        title: insight.title,
+        message: insight.message,
+        factors: insight.factors,
+        read: false,
+        createdAt: FieldValue.serverTimestamp(),
+      };
+
+      // Write alert if action/watch — fan out to org members when org field
       if (level === "action" || level === "watch") {
-        await db.collection("users").doc(decoded.uid).collection("alerts").add({
-          fieldId: String(fieldId),
-          level,
-          title: insight.title,
-          message: insight.message,
-          factors: insight.factors,
-          read: false,
-          createdAt: FieldValue.serverTimestamp(),
-        });
+        const recipientUids = new Set([decoded.uid]);
+        if (orgId) {
+          const orgSnap = await db.collection("organizations").doc(orgId).get();
+          (orgSnap.data()?.memberIds || []).forEach((u) => recipientUids.add(u));
+        }
+        for (const uid of recipientUids) {
+          const alertRef = await db.collection("users").doc(uid).collection("alerts").add(alertDoc);
+          // Queue outbound delivery (email / SMS / WhatsApp / push)
+          await db.collection("users").doc(uid).collection("alertOutbox").add({
+            alertId: alertRef.id,
+            ...alertDoc,
+            channelsPending: ["email", "push", "sms", "whatsapp"],
+            status: "queued",
+            queuedAt: FieldValue.serverTimestamp(),
+          });
+        }
       }
 
       // Update field's last insight summary
@@ -1048,6 +1069,158 @@ exports.aiChat = onRequest(
     } catch (err) {
       if (err.status === 401) return jsonRes(res, 401, { error: "Unauthenticated" });
       jsonRes(res, err.status || 500, { ok: false, error: err.message || "AI chat failed" });
+    }
+  }
+);
+
+// ---------- Function: fieldHealthIndex (NDVI/EVI proxy from Esri RGB) ----------
+exports.fieldHealthIndex = onRequest(
+  { cors: true, timeoutSeconds: 60, invoker: "public" },
+  async (req, res) => {
+    try {
+      await verifyIdToken(req);
+      const lat = Number(req.query.lat);
+      const lon = Number(req.query.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        return jsonRes(res, 400, { error: "lat and lon required" });
+      }
+      const result = await classifyLatLon(lat, lon);
+      const features = result.features || {};
+      const ndvi = Number(features.ndvi_proxy);
+      const veg = Number(features.veg_fraction);
+      const evi = Number.isFinite(ndvi) ? Number((ndvi * 1.15 * (1 - (features.cloud_fraction || 0))).toFixed(3)) : null;
+      let code = "unknown";
+      let label = "No index";
+      if (Number.isFinite(ndvi)) {
+        if (ndvi >= 0.35) {
+          code = "good";
+          label = "Healthy canopy";
+        } else if (ndvi >= 0.18) {
+          code = "watch";
+          label = "Watch — stress rising";
+        } else {
+          code = "action";
+          label = "Action — vegetation stress";
+        }
+      }
+      jsonRes(res, 200, {
+        ok: true,
+        ndvi: Number.isFinite(ndvi) ? Number(ndvi.toFixed(3)) : null,
+        evi,
+        vegFraction: Number.isFinite(veg) ? Number(veg.toFixed(3)) : null,
+        cloudFraction: features.cloud_fraction ?? null,
+        health: { code, label },
+        source: "esri_world_imagery_rgb_proxy",
+        model: "ndvi_proxy_v1",
+        fetchedAt: new Date().toISOString(),
+        classify: {
+          is_field: result.is_field,
+          confidence: result.confidence,
+          reason: result.reason || null,
+        },
+      });
+    } catch (err) {
+      if (err.status === 401) return jsonRes(res, 401, { error: "Unauthenticated" });
+      console.error("fieldHealthIndex error", err);
+      jsonRes(res, 500, { ok: false, error: err.message || "Health index failed" });
+    }
+  }
+);
+
+// ---------- Function: processAlertOutbox (email/push/SMS/WhatsApp fan-out) ----------
+exports.processAlertOutbox = onRequest(
+  { cors: true, timeoutSeconds: 120, invoker: "public" },
+  async (req, res) => {
+    try {
+      const decoded = await verifyIdToken(req);
+      const db = getFirestore();
+      const uid = decoded.uid;
+      const userSnap = await db.collection("users").doc(uid).get();
+      const prefs = userSnap.data()?.alertPrefs || {};
+      const outbox = await db
+        .collection("users")
+        .doc(uid)
+        .collection("alertOutbox")
+        .where("status", "==", "queued")
+        .limit(20)
+        .get();
+
+      const deliveries = [];
+      for (const docSnap of outbox.docs) {
+        const item = docSnap.data();
+        const channels = [];
+        // Quiet hours: only critical
+        const hour = new Date().getHours();
+        const quiet =
+          prefs.quietHoursEnabled &&
+          (() => {
+            const start = Number(prefs.quietStart ?? 21);
+            const end = Number(prefs.quietEnd ?? 7);
+            if (start === end) return false;
+            if (start < end) return hour >= start && hour < end;
+            return hour >= start || hour < end;
+          })();
+        if (quiet && item.level !== "action") {
+          await docSnap.ref.update({ status: "skipped_quiet", processedAt: FieldValue.serverTimestamp() });
+          continue;
+        }
+        if (prefs.snoozedUntil && Date.now() < Number(prefs.snoozedUntil)) {
+          await docSnap.ref.update({ status: "skipped_snooze", processedAt: FieldValue.serverTimestamp() });
+          continue;
+        }
+
+        if (prefs.pushEnabled !== false) {
+          channels.push({
+            channel: "push",
+            status: prefs.fcmToken ? "queued_fcm" : "stub_no_token",
+            detail: prefs.fcmToken
+              ? "FCM token on file — send via Admin SDK when messaging enabled"
+              : "Enable notifications in the app to receive push",
+          });
+        }
+        if (prefs.emailEnabled !== false) {
+          const email = prefs.email || decoded.email || "";
+          channels.push({
+            channel: "email",
+            status: email ? "stub_logged" : "skipped_no_email",
+            detail: email
+              ? `Would email ${email}: ${item.title}`
+              : "Add email in alert preferences",
+          });
+        }
+        if (prefs.smsEnabled && prefs.phoneE164) {
+          channels.push({
+            channel: "sms",
+            status: "stub_twilio",
+            detail: `Would SMS ${prefs.phoneE164}: ${item.title}`,
+          });
+        }
+        if (prefs.whatsappEnabled && prefs.phoneE164) {
+          channels.push({
+            channel: "whatsapp",
+            status: "stub_meta",
+            detail: `Would WhatsApp ${prefs.phoneE164}: ${item.title}`,
+          });
+        }
+
+        await docSnap.ref.update({
+          status: "processed",
+          channels,
+          processedAt: FieldValue.serverTimestamp(),
+        });
+        deliveries.push({ id: docSnap.id, title: item.title, channels });
+      }
+
+      jsonRes(res, 200, {
+        ok: true,
+        processed: deliveries.length,
+        deliveries,
+        note: "Push/email/SMS/WhatsApp use prefs; SMS/WhatsApp require provider keys in a later harden pass.",
+      });
+    } catch (err) {
+      if (err.status === 401) return jsonRes(res, 401, { error: "Unauthenticated" });
+      console.error("processAlertOutbox error", err);
+      jsonRes(res, 500, { ok: false, error: err.message });
     }
   }
 );

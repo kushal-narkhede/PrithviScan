@@ -67,10 +67,33 @@
           </label>
           <p class="profile-prefs-note"><a href="privacy.html">Read data ownership policy</a> · <a href="partners.html">Local partners</a></p>
 
+          <h3 class="profile-prefs-title">Language</h3>
+          <label class="check-row">
+            Language
+            <select id="prefLocale">
+              <option value="en">English</option>
+              <option value="hi">हिन्दी (Hindi)</option>
+            </select>
+          </label>
+
           <h3 class="profile-prefs-title">Alerts</h3>
           <label class="check-row"><input type="checkbox" id="prefCriticalOnly" /> Critical alerts only</label>
           <label class="check-row"><input type="checkbox" id="prefQuietHours" /> Quiet hours (21:00–07:00, critical still shown)</label>
+          <label class="check-row"><input type="checkbox" id="prefPush" checked /> Push notifications (when enabled)</label>
+          <label class="check-row"><input type="checkbox" id="prefEmailAlert" checked /> Email alert delivery</label>
+          <label class="check-row"><input type="checkbox" id="prefSms" /> SMS alerts (needs phone)</label>
+          <label class="check-row"><input type="checkbox" id="prefWhatsapp" /> WhatsApp alerts (needs phone)</label>
+          <label>
+            Alert phone (+91…)
+            <input id="prefAlertPhone" type="tel" placeholder="+9198XXXXXXXX" />
+          </label>
           <button type="button" class="auth-google" id="prefSnoozeBtn">Snooze alerts 6 hours</button>
+          <button type="button" class="auth-google" id="prefSyncAlertsBtn">Save alert delivery prefs</button>
+
+          <h3 class="profile-prefs-title">Your data (DPDP)</h3>
+          <p class="profile-prefs-note">Export a copy of your fields and alerts, or delete your personal account data.</p>
+          <button type="button" class="auth-google" id="exportDataBtn">Download my data (JSON)</button>
+          <button type="button" class="profile-signout" id="deleteAccountBtn">Delete my account</button>
         </div>
 
         <div class="profile-actions">

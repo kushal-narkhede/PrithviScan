@@ -39,8 +39,8 @@ export async function callPowerSummary(fieldId, lat, lon, days = 7) {
   return apiFetch("powerSummary", { fieldId, lat, lon, days });
 }
 
-export async function callFuseInsight(fieldId, lat, lon, sensitivity = 1) {
-  return apiFetch("fuseFieldInsight", { fieldId, lat, lon, sensitivity });
+export async function callFuseInsight(fieldId, lat, lon, sensitivity = 1, orgId = null) {
+  return apiFetch("fuseFieldInsight", { fieldId, lat, lon, sensitivity, orgId });
 }
 
 export async function callEarthSummary(fieldId, lat, lon) {
@@ -66,6 +66,14 @@ export async function callSatelliteArchive(lat, lon, { product = "modis_terra", 
 
 export async function callClassifyLocation(lat, lon) {
   return apiFetch("classifyLocation", { lat, lon });
+}
+
+export async function callFieldHealth(lat, lon) {
+  return apiFetch("fieldHealthIndex", { lat, lon });
+}
+
+export async function callProcessAlertOutbox() {
+  return apiFetch("processAlertOutbox");
 }
 
 /** POST helper for chat / larger bodies */

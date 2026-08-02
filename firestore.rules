@@ -33,6 +33,28 @@ service cloud.firestore {
           == request.auth.uid;
     }
 
+    function isOrgMember(orgId) {
+      return signedIn()
+        && orgId is string
+        && request.auth.uid in get(/databases/$(database)/documents/organizations/$(orgId)).data.memberIds;
+    }
+
+    function orgRoleOf(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.get("orgRole", "viewer");
+    }
+
+    function canWriteOrgFields(orgId) {
+      return isOrgOwner(orgId)
+        || (isOrgMember(orgId)
+          && orgRoleOf(request.auth.uid) in ["owner", "agronomist", "scout", "member"]);
+    }
+
+    function canDeleteOrgFields(orgId) {
+      return isOrgOwner(orgId)
+        || (isOrgMember(orgId)
+          && orgRoleOf(request.auth.uid) in ["owner", "agronomist"]);
+    }
+
     function orgMembershipKeysOnly() {
       return request.resource.data.diff(resource.data).affectedKeys()
         .hasOnly(["orgId", "orgRole", "accountType", "orgName", "updatedAt"]);
@@ -92,7 +114,12 @@ service cloud.firestore {
 
         match /snapshots/{dateId} {
           allow read: if isSelf(userId);
-          allow write: if false;
+          allow create, update: if isSelf(userId);
+          allow delete: if isSelf(userId);
+        }
+
+        match /prescriptions/{rxId} {
+          allow read, create, update, delete: if isSelf(userId);
         }
 
         match /insights/{insightId} {
@@ -112,6 +139,11 @@ service cloud.firestore {
       }
 
       match /alerts/{alertId} {
+        allow read: if isSelf(userId);
+        allow write: if false;
+      }
+
+      match /alertOutbox/{outboxId} {
         allow read: if isSelf(userId);
         allow write: if false;
       }
@@ -192,6 +224,55 @@ service cloud.firestore {
         )
       );
       allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+
+      match /fields/{fieldId} {
+        allow read: if isOrgMember(orgId);
+        allow create: if canWriteOrgFields(orgId)
+          && request.resource.data.lat is number
+          && request.resource.data.lon is number;
+        allow update: if canWriteOrgFields(orgId);
+        allow delete: if canDeleteOrgFields(orgId);
+
+        match /snapshots/{dateId} {
+          allow read: if isOrgMember(orgId);
+          allow create, update: if canWriteOrgFields(orgId);
+          allow delete: if canDeleteOrgFields(orgId);
+        }
+
+        match /insights/{insightId} {
+          allow read: if isOrgMember(orgId);
+          allow write: if false;
+        }
+
+        match /feedback/{feedbackId} {
+          allow read, create: if isOrgMember(orgId);
+          allow update, delete: if false;
+        }
+
+        match /usages/{usageId} {
+          allow read, create, delete: if canWriteOrgFields(orgId);
+          allow update: if false;
+        }
+
+        match /prescriptions/{rxId} {
+          allow read: if isOrgMember(orgId);
+          allow create, update: if canWriteOrgFields(orgId);
+          allow delete: if canDeleteOrgFields(orgId);
+        }
+      }
+
+      match /tasks/{taskId} {
+        allow read: if isOrgMember(orgId);
+        allow create: if canWriteOrgFields(orgId);
+        allow update: if isOrgMember(orgId);
+        allow delete: if canDeleteOrgFields(orgId);
+      }
+
+      match /audit/{entryId} {
+        allow read: if isOrgMember(orgId);
+        allow create: if isOrgMember(orgId);
+        allow update, delete: if false;
+      }
     }
 
     match /orgInvites/{inviteId} {

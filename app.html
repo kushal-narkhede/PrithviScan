@@ -20,7 +20,7 @@
       crossorigin=""
     />
     <link rel="stylesheet" href="styles.css?v=nav4" />
-    <link rel="stylesheet" href="app.css?v=sat2" />
+    <link rel="stylesheet" href="app.css?v=realworld1" />
   </head>
   <body class="app-body">
     <header class="app-top">
@@ -34,6 +34,7 @@
         <nav class="app-nav" aria-label="App">
           <a href="index.html">Home</a>
           <button type="button" class="app-tab-btn is-active" data-tab="fields">Fields</button>
+          <button type="button" class="app-tab-btn" data-tab="actions">Actions</button>
           <button type="button" class="app-tab-btn" data-tab="alerts">
             Alerts
             <span class="alert-badge" id="alertBadge" hidden>0</span>
@@ -75,6 +76,46 @@
           </div>
         </section>
 
+        <!-- ACTIONS TAB -->
+        <section id="actionsTab" class="app-tab-panel" hidden>
+          <div class="app-panel">
+            <div class="app-panel-head">
+              <h2>Action Center</h2>
+            </div>
+            <p class="app-muted">Assign irrigate, spray, scout, or harvest jobs to org members. Open tasks for your crew.</p>
+            <form id="taskForm" class="field-input-form">
+              <label>
+                Type
+                <select id="taskType">
+                  <option value="irrigate">Irrigate</option>
+                  <option value="spray">Spray</option>
+                  <option value="scout">Scout</option>
+                  <option value="harvest">Harvest</option>
+                </select>
+              </label>
+              <label>
+                Field
+                <select id="taskField"></select>
+              </label>
+              <label>
+                Assign to (uid or self)
+                <input id="taskAssignee" type="text" placeholder="Leave blank for me" />
+              </label>
+              <label>
+                Due date
+                <input id="taskDue" type="date" />
+              </label>
+              <label class="span-2">
+                Note
+                <input id="taskNote" type="text" maxlength="200" placeholder="Optional" />
+              </label>
+              <button type="submit" class="app-btn-primary">Create task</button>
+            </form>
+            <ul class="usage-list" id="taskList"></ul>
+            <p class="app-muted" id="taskEmpty">No open tasks. Join or create an organization to coordinate crew work.</p>
+          </div>
+        </section>
+
         <!-- FIELDS TAB -->
         <section id="fieldsTab" class="app-tab-panel">
           <div class="app-grid">
@@ -84,6 +125,7 @@
                 <h2>Your fields</h2>
                 <span class="app-count" id="fieldCount">0</span>
               </div>
+              <p class="app-muted" id="orgFieldsNote" hidden>Organization fields are shared with your team. New fields you add go to the org when you have write access.</p>
               <div class="bulk-toolbar">
                 <button type="button" class="app-btn-ghost" id="exportCsvBtn">Export CSV</button>
                 <button type="button" class="app-btn-ghost" id="exportGeoBtn">Export GeoJSON</button>
@@ -149,6 +191,6 @@
     <script type="module" src="js/a11y.js"></script>
     <script type="module" src="js/tenant.js"></script>
     <script type="module" src="js/nav-auth.js?v=ai1"></script>
-    <script type="module" src="js/app.js?v=sat2"></script>
+    <script type="module" src="js/app.js?v=realworld1"></script>
   </body>
 </html>

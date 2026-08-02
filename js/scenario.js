@@ -1,15 +1,17 @@
 /**
- * Lightweight what-if scenario simulation (feature 3.5).
- * Heuristic crop/water tradeoffs — not a full agronomic model.
+ * What-if scenario simulation with India INR market rates.
  */
+
+import {
+  CROP_MSP,
+  FERTILIZER_PRICES,
+  fertilizerPerKg,
+  formatINR,
+} from "./market-prices.js";
 
 /**
  * @param {object} metrics - insight.metrics (rain, ET, temps)
  * @param {object} opts
- * @param {"now"|"later"|"none"} opts.irrigateWhen
- * @param {number} opts.irrigateMm - irrigation depth if irrigating
- * @param {number} opts.fertilizerKgHa - optional N fertilizer proxy
- * @param {number} [opts.fieldHa=1]
  */
 export function simulateScenario(metrics = {}, opts = {}) {
   const rain = Number(metrics.totalRain_mm) || 0;
@@ -19,21 +21,19 @@ export function simulateScenario(metrics = {}, opts = {}) {
   const irrigateMm = Math.max(0, Number(opts.irrigateMm) || 0);
   const fertilizerKgHa = Math.max(0, Number(opts.fertilizerKgHa) || 0);
   const fieldHa = Math.max(0.1, Number(opts.fieldHa) || 1);
+  const cropId = opts.cropId || "wheat";
+  const fertId = opts.fertId || "urea";
 
   const appliedMm = irrigateWhen === "none" ? 0 : irrigateMm;
-  // Later irrigation is less efficient under heat (evaporative loss proxy)
   const efficiency = irrigateWhen === "now" ? 0.9 : irrigateWhen === "later" ? 0.7 : 1;
   const effectiveWater = rain + appliedMm * efficiency;
   const deficit = Math.max(0, et - effectiveWater);
 
-  // Stress index 0 (good) → 1 (severe)
   let stress = Math.min(1, deficit / Math.max(et, 1));
   if (maxTemp > 36) stress = Math.min(1, stress + 0.1);
   if (irrigateWhen === "later" && maxTemp > 34) stress = Math.min(1, stress + 0.05);
 
-  // Relative yield index (1.0 = unstressed baseline)
   let yieldIndex = 1 - stress * 0.55;
-  // Mild fertilizer bump with diminishing returns / over-application penalty
   if (fertilizerKgHa > 0) {
     const bump = Math.min(0.12, fertilizerKgHa / 1200);
     const over = fertilizerKgHa > 180 ? (fertilizerKgHa - 180) / 800 : 0;
@@ -41,22 +41,25 @@ export function simulateScenario(metrics = {}, opts = {}) {
   }
   yieldIndex = Math.max(0.35, yieldIndex);
 
-  const waterCostPerMmHa = 0.35; // illustrative currency units
-  const fertCostPerKg = 0.8;
+  // INR costs — CHC-style irrigation proxy + notified fertilizer ₹/kg
+  const waterCostPerMmHa = 45; // ₹/mm/ha indicative pump/electricity + labour
+  const fert = FERTILIZER_PRICES.find((f) => f.id === fertId) || FERTILIZER_PRICES[0];
+  const fertCostPerKg = fertilizerPerKg(fert) || 6;
   const waterCost = appliedMm * fieldHa * waterCostPerMmHa;
   const fertCost = fertilizerKgHa * fieldHa * fertCostPerKg;
   const totalCost = waterCost + fertCost;
 
-  const baselineYieldKgHa = 3500; // illustrative cereal proxy
+  const crop = CROP_MSP.find((c) => c.id === cropId) || CROP_MSP[0];
+  // MSP is ₹/quintal (100 kg). Convert to ₹/kg.
+  const pricePerKg = (crop?.mspPerQuintal || 2500) / 100;
+  const baselineYieldKgHa = cropId.includes("paddy") || cropId === "rice" ? 4000 : 3500;
   const expectedYieldKgHa = baselineYieldKgHa * yieldIndex;
   const yieldDeltaPct = (yieldIndex - 1) * 100;
 
-  // Uncertainty band widens with stress / missing weather (feature 6.2)
   const uncertainty = Math.min(0.35, 0.08 + stress * 0.2 + (et === 0 ? 0.1 : 0));
   const yieldLow = Math.round(expectedYieldKgHa * (1 - uncertainty));
   const yieldHigh = Math.round(expectedYieldKgHa * (1 + uncertainty * 0.6));
 
-  const pricePerKg = 0.25; // illustrative
   const expectedRevenue = expectedYieldKgHa * fieldHa * pricePerKg;
   const baselineRevenue = baselineYieldKgHa * fieldHa * pricePerKg;
   const roi = totalCost > 0 ? (expectedRevenue - baselineRevenue - totalCost) / totalCost : null;
@@ -71,25 +74,31 @@ export function simulateScenario(metrics = {}, opts = {}) {
     uncertaintyPct: Number((uncertainty * 100).toFixed(0)),
     yieldDeltaPct: Number(yieldDeltaPct.toFixed(1)),
     waterUse_mm: Number(appliedMm.toFixed(1)),
-    estimatedCost: Number(totalCost.toFixed(2)),
-    expectedRevenue: Number(expectedRevenue.toFixed(2)),
+    estimatedCost: Math.round(totalCost),
+    estimatedCostLabel: formatINR(totalCost),
+    expectedRevenue: Math.round(expectedRevenue),
+    expectedRevenueLabel: formatINR(expectedRevenue),
     roi: roi == null ? null : Number(roi.toFixed(2)),
-    notes: buildNotes({ irrigateWhen, appliedMm, deficit, stress, fertilizerKgHa }),
+    currency: "INR",
+    priceBasis: `${crop.name} MSP ₹${crop.mspPerQuintal}/qtl`,
+    fertBasis: `${fert.name} ~₹${fertCostPerKg.toFixed(1)}/kg`,
+    notes: buildNotes({ irrigateWhen, appliedMm, deficit, stress, fertilizerKgHa, crop, fert }),
   };
 }
 
-function buildNotes({ irrigateWhen, appliedMm, deficit, stress, fertilizerKgHa }) {
+function buildNotes({ irrigateWhen, appliedMm, deficit, stress, fertilizerKgHa, crop, fert }) {
   const parts = [];
   if (irrigateWhen === "now" && appliedMm > 0) {
     parts.push(`Irrigating now applies ~${appliedMm} mm at high efficiency.`);
   } else if (irrigateWhen === "later" && appliedMm > 0) {
-    parts.push(`Waiting to irrigate reduces efficiency under heat — more loss to evaporation.`);
+    parts.push("Waiting to irrigate reduces efficiency under heat — more loss to evaporation.");
   } else {
     parts.push("No irrigation in this scenario — relying on rainfall only.");
   }
   if (deficit > 8) parts.push(`Water deficit remains about ${deficit.toFixed(0)} mm vs ET demand.`);
   if (stress > 0.45) parts.push("Crop stress looks elevated — yield risk rises.");
   if (fertilizerKgHa > 180) parts.push("High fertilizer rate may waste money and add stress.");
-  else if (fertilizerKgHa > 0) parts.push("Modest fertilizer can help if water is available.");
+  else if (fertilizerKgHa > 0) parts.push(`Fertilizer cost uses notified ${fert.name} rates.`);
+  parts.push(`Revenue priced at ${crop.name} MSP (₹${crop.mspPerQuintal}/quintal).`);
   return parts;
 }

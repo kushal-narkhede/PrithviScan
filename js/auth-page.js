@@ -6,6 +6,9 @@ import {
   watchAuth,
   authErrorMessage,
   isFirebaseConfigured,
+  setupPhoneRecaptcha,
+  sendPhoneOtp,
+  confirmPhoneOtp,
 } from "./auth.js";
 import { saveAccountMeta, claimOrgInvites } from "./org.js";
 
@@ -145,11 +148,58 @@ googleBtn?.addEventListener("click", async () => {
   }
 });
 
+const phoneInput = document.getElementById("phoneInput");
+const otpInput = document.getElementById("otpInput");
+const otpRow = document.getElementById("otpRow");
+const phoneSendBtn = document.getElementById("phoneSendBtn");
+const phoneConfirmBtn = document.getElementById("phoneConfirmBtn");
+
+phoneSendBtn?.addEventListener("click", async () => {
+  if (!isFirebaseConfigured()) {
+    setStatus("Firebase web config is missing.", "error");
+    return;
+  }
+  let phone = String(phoneInput?.value || "").trim().replace(/\s+/g, "");
+  if (/^[6-9]\d{9}$/.test(phone)) phone = `+91${phone}`;
+  if (!/^\+\d{8,15}$/.test(phone)) {
+    setStatus("Enter phone as +91… or 10-digit Indian mobile.", "error");
+    return;
+  }
+  phoneSendBtn.disabled = true;
+  setStatus("Sending OTP…");
+  try {
+    setupPhoneRecaptcha("phoneRecaptcha");
+    await sendPhoneOtp(phone);
+    if (otpRow) otpRow.hidden = false;
+    if (phoneConfirmBtn) phoneConfirmBtn.hidden = false;
+    setStatus("OTP sent. Enter the code from SMS.", "ok");
+  } catch (err) {
+    setStatus(authErrorMessage(err), "error");
+  } finally {
+    phoneSendBtn.disabled = false;
+  }
+});
+
+phoneConfirmBtn?.addEventListener("click", async () => {
+  phoneConfirmBtn.disabled = true;
+  setStatus("Verifying OTP…");
+  try {
+    const user = await confirmPhoneOtp(otpInput?.value);
+    await afterAuth(user, { isNewSignup: false });
+  } catch (err) {
+    setStatus(authErrorMessage(err), "error");
+    phoneConfirmBtn.disabled = false;
+  }
+});
+
 document.addEventListener("DOMContentLoaded", async () => {
   setMode("signin");
 
   if (!isFirebaseConfigured()) {
-    if (setupNote) setupNote.hidden = false;
+    if (setupNote) {
+      setupNote.hidden = false;
+      setupNote.innerHTML = `<strong>Setup needed.</strong> Enable Email/Password, Google, and <strong>Phone</strong> in Firebase Authentication, then confirm <code>js/firebase-config.js</code>.`;
+    }
     return;
   }
 

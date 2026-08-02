@@ -130,6 +130,13 @@
 | Feature | Detail | Status |
 |---------|--------|--------|
 | Field header + analysis first | Insight/metrics always on top; tool buttons open one job at a time | Live |
+| Org-shared fields + RBAC | owner / agronomist / scout / viewer; org field inventory | Live |
+| Phone OTP auth | Firebase Phone + email/Google | Live |
+| Alert fan-out | Firestore prefs + outbox → push/email/SMS/WhatsApp stubs | Live |
+| Field health NDVI map | RGB NDVI proxy, snapshots, change scrub, VRA CSV export | Live |
+| Hindi + offline shell | i18n toggle; service worker + last-field cache | Live |
+| Action Center | Org irrigate/spray/scout/harvest tasks | Live |
+| DPDP export/delete | Profile download JSON + delete personal account | Live |
 | Field header + map pin | Name, crop, coords + Esri satellite basemap | Live |
 | Cached insight display | Last saved insight if any | Live |
 | Confidence / provenance UI | Shows when data exists | Live |
