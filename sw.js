@@ -1,5 +1,5 @@
-/* PrithviScan offline shell — caches app pages + last-used static assets */
-const CACHE = "prithviscan-shell-v2";
+/* PrithviScan offline shell — network-first for JS/HTML so map fixes ship immediately */
+const CACHE = "prithviscan-shell-v3";
 const SHELL = [
   "/",
   "/index.html",
@@ -38,14 +38,37 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  // Don't cache API / cloud functions
   if (url.hostname.includes("cloudfunctions.net")) return;
+
+  const isCode =
+    url.pathname.endsWith(".html") ||
+    url.pathname.endsWith(".js") ||
+    url.pathname.endsWith(".css") ||
+    url.pathname === "/" ||
+    url.pathname === "/app" ||
+    url.pathname === "/field";
+
+  // Code: network-first so broken cached modules (e.g. duplicate export) cannot stick
+  if (isCode) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res && res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE).then((c) => c.put(req, clone)).catch(() => {});
+          }
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(req).then((cached) => {
       const network = fetch(req)
         .then((res) => {
-          if (res && res.ok && (url.pathname.endsWith(".html") || url.pathname.endsWith(".css") || url.pathname.endsWith(".js") || url.pathname.startsWith("/assets/"))) {
+          if (res && res.ok && url.pathname.startsWith("/assets/")) {
             const clone = res.clone();
             caches.open(CACHE).then((c) => c.put(req, clone)).catch(() => {});
           }

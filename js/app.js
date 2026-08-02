@@ -1,6 +1,6 @@
 import { watchAuth, isFirebaseConfigured } from "./auth.js";
-import { listFields, createField, createFieldsBulk, getField } from "./fields.js";
-import { createFieldMap, useBrowserLocation } from "./map.js?v=sat3";
+import { listFields, createField, createFieldsBulk, getField } from "./fields.js?v=mapfix2";
+import { createFieldMap, useBrowserLocation } from "./map.js?v=mapfix2";
 import { callGetAlerts, callMarkAlertRead, callClassifyLocation, callProcessAlertOutbox } from "./api.js";
 import { loadLastSession, saveLastSession } from "./session.js";
 import {
@@ -544,8 +544,13 @@ if (window.location.hash === "#alerts") {
   switchTab("alerts");
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  if (!isFirebaseConfigured()) { setStatus("Firebase not configured.", "error"); return; }
+function bootApp() {
+  if (!isFirebaseConfigured()) {
+    setStatus("Firebase not configured.", "error");
+    // Still try to show the map for placement UX
+    initMap();
+    return;
+  }
   initMap();
 
   applyI18n(document);
@@ -607,4 +612,10 @@ document.addEventListener("DOMContentLoaded", () => {
     callProcessAlertOutbox().catch(() => {});
     startOnboardingTour();
   });
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootApp);
+} else {
+  bootApp();
+}

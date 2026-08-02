@@ -181,4 +181,4 @@ export async function createFieldsBulk(uid, rows, onProgress) {
   return { created, failed };
 }
 
-export { fieldRef, parseFieldScope };
+export { fieldRef };
