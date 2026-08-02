@@ -286,6 +286,60 @@ function formatChartDate(iso) {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
+function formatAxisDate(iso) {
+  if (!iso) return "";
+  const d = new Date(`${iso}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+/** Nice round tick values between min/max (inclusive-ish). */
+function niceTicks(minVal, maxVal, targetCount = 4) {
+  let lo = Number(minVal);
+  let hi = Number(maxVal);
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) return [0, 1];
+  if (lo === hi) {
+    const pad = Math.abs(lo) * 0.1 || 1;
+    lo -= pad;
+    hi += pad;
+  }
+  // Prefer including 0 for rainfall-like series that dip near zero
+  if (lo > 0 && lo / (hi - lo) < 0.35) lo = 0;
+
+  const span = hi - lo;
+  const rough = span / Math.max(targetCount - 1, 1);
+  const pow = 10 ** Math.floor(Math.log10(rough || 1));
+  const candidates = [1, 2, 2.5, 5, 10].map((m) => m * pow);
+  let step = candidates[0];
+  for (const c of candidates) {
+    if (span / c <= targetCount + 0.5) {
+      step = c;
+      break;
+    }
+    step = c;
+  }
+
+  const niceMin = Math.floor(lo / step) * step;
+  const niceMax = Math.ceil(hi / step) * step;
+  const ticks = [];
+  // Guard against floating drift
+  for (let v = niceMin; v <= niceMax + step * 0.5; v += step) {
+    const rounded = Math.round(v / step) * step;
+    ticks.push(Number(rounded.toPrecision(12)));
+    if (ticks.length > 12) break;
+  }
+  return ticks.length ? ticks : [lo, hi];
+}
+
+function pickXLabelIndexes(n) {
+  if (n <= 1) return [0];
+  if (n <= 4) return [...Array(n).keys()];
+  if (n <= 10) return [0, Math.floor((n - 1) / 2), n - 1];
+  const mid1 = Math.floor((n - 1) / 3);
+  const mid2 = Math.floor((2 * (n - 1)) / 3);
+  return [...new Set([0, mid1, mid2, n - 1])].sort((a, b) => a - b);
+}
+
 function drawSeriesChart(svgId, pastPts, forecastVals, opts = {}) {
   const svg = document.getElementById(svgId);
   if (!svg) return;
@@ -311,21 +365,28 @@ function drawSeriesChart(svgId, pastPts, forecastVals, opts = {}) {
 
   const points = [...pastItems, ...futureItems];
   if (!points.length) {
-    svg.innerHTML = `<text x="12" y="60" fill="#718096" font-size="12">No data yet — tap Refresh insights or Load trends</text>`;
+    svg.innerHTML = `<text x="12" y="72" fill="#718096" font-size="12">No data yet — tap Refresh insights or Load trends</text>`;
     if (tip) tip.hidden = true;
     return;
   }
 
   const w = 360;
-  const h = 120;
-  const pad = 16;
+  const h = 150;
+  const padL = 38;
+  const padR = 14;
+  const padT = 14;
+  const padB = 28;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+
   const values = points.map((p) => p.value);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const span = max - min || 1;
+  const yTicks = niceTicks(Math.min(...values), Math.max(...values), 5);
+  const yMin = yTicks[0];
+  const yMax = yTicks[yTicks.length - 1];
+  const span = yMax - yMin || 1;
   const totalN = Math.max(points.length - 1, 1);
-  const xAt = (i) => pad + (i / totalN) * (w - pad * 2);
-  const yAt = (v) => h - pad - ((v - min) / span) * (h - pad * 2);
+  const xAt = (i) => padL + (i / totalN) * plotW;
+  const yAt = (v) => padT + (1 - (v - yMin) / span) * plotH;
 
   const pastPath = pastItems
     .map((p, i) => `${i === 0 ? "M" : "L"} ${xAt(i).toFixed(1)} ${yAt(p.value).toFixed(1)}`)
@@ -335,6 +396,50 @@ function drawSeriesChart(svgId, pastPts, forecastVals, opts = {}) {
     .filter(Boolean)
     .map((p, i) => `${i === 0 ? "M" : "L"} ${xAt(futureStart + i).toFixed(1)} ${yAt(p.value).toFixed(1)}`)
     .join(" ");
+
+  const hGrid = yTicks
+    .map((tick) => {
+      const y = yAt(tick).toFixed(1);
+      const isZero = Math.abs(tick) < 1e-9;
+      return `
+        <line class="chart-grid-h${isZero ? " is-zero" : ""}" x1="${padL}" y1="${y}" x2="${w - padR}" y2="${y}" />
+        <text class="chart-axis-y" x="${padL - 6}" y="${y}" dy="0.35em" text-anchor="end">${tick.toFixed(decimals)}</text>
+      `;
+    })
+    .join("");
+
+  // Vertical grid at a subset of points (not every day when dense)
+  const vStep = points.length > 24 ? 4 : points.length > 14 ? 2 : 1;
+  const vGrid = points
+    .map((_, i) => {
+      if (i % vStep !== 0 && i !== points.length - 1) return "";
+      const x = xAt(i).toFixed(1);
+      return `<line class="chart-grid-v" x1="${x}" y1="${padT}" x2="${x}" y2="${h - padB}" />`;
+    })
+    .join("");
+
+  const xLabelIdx = pickXLabelIndexes(points.length);
+  const xLabels = xLabelIdx
+    .map((i) => {
+      const x = xAt(i).toFixed(1);
+      const anchor = i === 0 ? "start" : i === points.length - 1 ? "end" : "middle";
+      return `<text class="chart-axis-x" x="${x}" y="${h - 8}" text-anchor="${anchor}">${esc(formatAxisDate(points[i].date))}</text>`;
+    })
+    .join("");
+
+  // Divider between past and forecast
+  let forecastDivider = "";
+  if (pastItems.length && futureItems.length) {
+    const x = xAt(pastItems.length - 1).toFixed(1);
+    forecastDivider = `
+      <line class="chart-forecast-divider" x1="${x}" y1="${padT}" x2="${x}" y2="${h - padB}" />
+      <text class="chart-forecast-label" x="${Math.min(Number(x) + 4, w - padR - 2)}" y="${padT + 10}">Forecast</text>
+    `;
+  }
+
+  const unitLabel = unit
+    ? `<text class="chart-unit-label" x="${padL}" y="${padT - 3}">${esc(unit)}</text>`
+    : "";
 
   const dots = points
     .map((p, i) => {
@@ -350,8 +455,17 @@ function drawSeriesChart(svgId, pastPts, forecastVals, opts = {}) {
 
   // Clone-replace to drop previous listeners when trends re-render
   const fresh = svg.cloneNode(false);
+  fresh.setAttribute("viewBox", `0 0 ${w} ${h}`);
   fresh.innerHTML = `
-    <line class="chart-crosshair" x1="0" y1="${pad}" x2="0" y2="${h - pad}" stroke="#2f855a" stroke-width="1" stroke-dasharray="3 3" opacity="0" />
+    <rect class="chart-plot-bg" x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" />
+    ${hGrid}
+    ${vGrid}
+    ${forecastDivider}
+    <line class="chart-axis-line" x1="${padL}" y1="${padT}" x2="${padL}" y2="${h - padB}" />
+    <line class="chart-axis-line" x1="${padL}" y1="${h - padB}" x2="${w - padR}" y2="${h - padB}" />
+    ${unitLabel}
+    ${xLabels}
+    <line class="chart-crosshair" x1="0" y1="${padT}" x2="0" y2="${h - padB}" stroke="#2f855a" stroke-width="1" stroke-dasharray="3 3" opacity="0" />
     <path d="${pastPath}" fill="none" stroke="#0b2417" stroke-width="2.5" class="chart-line past-line"/>
     <path d="${futurePath}" fill="none" stroke="#3f9a63" stroke-width="2.5" stroke-dasharray="6 4" class="chart-line future-line"/>
     ${dots}
