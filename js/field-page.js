@@ -89,11 +89,98 @@ const usageEmpty = document.getElementById("usageEmpty");
 const usageTotal = document.getElementById("usageTotal");
 const marketList = document.getElementById("marketList");
 const marketMspNote = document.getElementById("marketMspNote");
+const fieldTools = document.getElementById("fieldTools");
+const fieldToolHint = document.getElementById("fieldToolHint");
 
 let latestMetrics = null;
 let latestInsight = null;
 let activeGuide = null;
 let fieldUsages = [];
+let detailMapApi = null;
+let activeTool = null;
+let pendingMapField = null;
+
+const TOOL_IDS = ["satellite", "weather", "crop", "inputs", "markets", "tools", "location"];
+
+function ensureDetailMap() {
+  if (detailMapApi || !pendingMapField) return;
+  try {
+    detailMapApi = createFieldMap("detailMap", {
+      lat: pendingMapField.lat,
+      lon: pendingMapField.lon,
+      pickable: false,
+      detailZoom: 14,
+    });
+  } catch {
+    detailMapApi = null;
+  }
+}
+
+function showFieldTool(toolId, { updateHash = true } = {}) {
+  const next = TOOL_IDS.includes(toolId) ? toolId : null;
+  activeTool = next;
+
+  document.querySelectorAll(".field-tool-panel").forEach((panel) => {
+    const match = next && panel.dataset.toolPanel === next;
+    panel.hidden = !match;
+  });
+
+  fieldTools?.querySelectorAll(".field-tool-btn").forEach((btn) => {
+    const on = btn.dataset.tool === next;
+    btn.classList.toggle("is-active", on);
+    btn.setAttribute("aria-selected", on ? "true" : "false");
+  });
+
+  if (fieldToolHint) fieldToolHint.hidden = Boolean(next);
+
+  if (updateHash) {
+    const url = new URL(window.location.href);
+    if (next) url.hash = next;
+    else url.hash = "";
+    history.replaceState(null, "", url.pathname + url.search + url.hash);
+  }
+
+  if (next === "location") {
+    ensureDetailMap();
+    requestAnimationFrame(() => {
+      detailMapApi?.map?.invalidateSize?.();
+      setTimeout(() => detailMapApi?.map?.invalidateSize?.(), 120);
+    });
+  }
+
+  if (next === "weather") {
+    // Charts need a layout pass after becoming visible
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+  }
+
+  if (next) {
+    const panel = document.querySelector(`[data-tool-panel="${next}"]`);
+    panel?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+function bindFieldTools() {
+  fieldTools?.querySelectorAll(".field-tool-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tool = btn.dataset.tool;
+      // Toggle off if clicking the active tool again
+      showFieldTool(activeTool === tool ? null : tool);
+    });
+  });
+
+  const hashTool = window.location.hash.replace(/^#/, "");
+  if (TOOL_IDS.includes(hashTool)) {
+    showFieldTool(hashTool, { updateHash: false });
+  }
+
+  window.addEventListener("hashchange", () => {
+    const t = window.location.hash.replace(/^#/, "");
+    if (!t) showFieldTool(null, { updateHash: false });
+    else if (TOOL_IDS.includes(t)) showFieldTool(t, { updateHash: false });
+  });
+}
 let ruleSensitivity = Number(localStorage.getItem("prithvi_rule_sensitivity") || "1") || 1;
 const metricsGrid    = document.getElementById("metricsGrid");
 const satelliteRow   = document.getElementById("satelliteRow");
@@ -1076,7 +1163,9 @@ document.addEventListener("DOMContentLoaded", () => {
       populateCropDatalist();
       fillInputItemSelect();
       renderCropGuide(field);
-      createFieldMap("detailMap", { lat: field.lat, lon: field.lon, pickable: false, detailZoom: 14 });
+      pendingMapField = { lat: field.lat, lon: field.lon };
+      bindFieldTools();
+      // If hash/restored tool is Location, map is created inside showFieldTool
 
       try {
         const usages = await listFieldUsages(user.uid, fieldId);
@@ -1087,9 +1176,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
       await loadSavedInsight(user.uid, fieldId);
 
-      // 2.1 — restore last scroll/section, then keep saving as user browses
+      // 2.1 — restore last tool/section if saved (and no hash already chose one)
       const lv = field.lastView || {};
-      restoreScroll(lv.scrollY, lv.section);
+      if (!window.location.hash && lv.section && TOOL_IDS.includes(lv.section)) {
+        showFieldTool(lv.section, { updateHash: true });
+      } else if (!window.location.hash) {
+        restoreScroll(lv.scrollY, lv.section);
+      }
       bindSessionPersistence(user.uid, fieldId);
 
       if (sensitivitySlider) {

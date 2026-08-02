@@ -53,8 +53,11 @@ export async function saveFieldLastView(uid, fieldId, payload) {
   );
 }
 
-/** Infer which section is nearest the current scroll position. */
+/** Infer which field tool / section is active. */
 export function detectSection() {
+  const activePanel = document.querySelector(".field-tool-panel:not([hidden])");
+  if (activePanel?.dataset?.toolPanel) return activePanel.dataset.toolPanel;
+
   const ids = ["insightWrap", "metricsGrid", "trendsPanel", "detailMap"];
   let best = "insight";
   let bestDist = Infinity;
@@ -66,7 +69,7 @@ export function detectSection() {
     const dist = Math.abs(top - y);
     if (dist < bestDist) {
       bestDist = dist;
-      best = id === "insightWrap" ? "insight" : id === "metricsGrid" ? "metrics" : id === "trendsPanel" ? "trends" : "map";
+      best = id === "insightWrap" ? "insight" : id === "metricsGrid" ? "metrics" : id === "trendsPanel" ? "weather" : "location";
     }
   }
   return best;
@@ -79,12 +82,30 @@ export function restoreScroll(scrollY, section) {
         insight: "insightWrap",
         metrics: "metricsGrid",
         trends: "trendsPanel",
-        map: "detailMap",
+        weather: "trendsPanel",
+        satellite: "satArchivePanel",
+        crop: "cropGuidePanel",
+        inputs: "fieldInputsPanel",
+        markets: "nearbyMarketsPanel",
+        tools: "toolsPanel",
+        location: "locationPanel",
+        map: "locationPanel",
       };
       const el = document.getElementById(map[section] || section);
-      if (el && !el.hidden) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-        return;
+      if (el) {
+        // Reveal tool panels that start hidden
+        if (el.classList.contains("field-tool-panel") || el.closest(".field-tool-panel")) {
+          const panel = el.classList.contains("field-tool-panel") ? el : el.closest(".field-tool-panel");
+          const tool = panel?.dataset?.toolPanel;
+          if (tool) {
+            document.querySelector(`.field-tool-btn[data-tool="${tool}"]`)?.click();
+            return;
+          }
+        }
+        if (!el.hidden) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+          return;
+        }
       }
     }
     if (Number.isFinite(scrollY) && scrollY > 0) {

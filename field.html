@@ -19,7 +19,7 @@
       crossorigin=""
     />
     <link rel="stylesheet" href="styles.css?v=nav3" />
-    <link rel="stylesheet" href="app.css?v=cropguide1" />
+    <link rel="stylesheet" href="app.css?v=fieldtools1" />
   </head>
   <body class="app-body">
     <header class="app-top">
@@ -128,7 +128,7 @@
           </div>
         </div>
 
-        <!-- Satellite status -->
+        <!-- Satellite status (summary stays with analysis) -->
         <div class="satellite-row" id="satelliteRow" hidden>
           <span class="sat-label">Satellite data</span>
           <span class="sat-chip" id="satSMAP">SMAP —</span>
@@ -136,8 +136,45 @@
           <span class="sat-note" id="satNote"></span>
         </div>
 
+        <!-- Tool buttons: one job per panel -->
+        <nav class="field-tools" id="fieldTools" aria-label="Field tools">
+          <p class="field-tools-label">Explore this field</p>
+          <div class="field-tools-grid" role="tablist">
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="satellite" aria-controls="satArchivePanel">
+              <span class="field-tool-title">Satellite imagery</span>
+              <span class="field-tool-desc">MODIS, SMAP &amp; HLS scenes</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="weather" aria-controls="trendsPanel">
+              <span class="field-tool-title">Weather</span>
+              <span class="field-tool-desc">Rain, temp &amp; outlook</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="crop" aria-controls="cropGuidePanel">
+              <span class="field-tool-title">Crop &amp; harvest</span>
+              <span class="field-tool-desc">Season, ferts &amp; timing</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="inputs" aria-controls="fieldInputsPanel">
+              <span class="field-tool-title">Inputs log</span>
+              <span class="field-tool-desc">Fertilizers &amp; machines</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="markets" aria-controls="nearbyMarketsPanel">
+              <span class="field-tool-title">Markets</span>
+              <span class="field-tool-desc">Nearby places to sell</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="tools" aria-controls="toolsPanel">
+              <span class="field-tool-title">What-if &amp; feedback</span>
+              <span class="field-tool-desc">Scenarios &amp; ground truth</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="location" aria-controls="locationPanel">
+              <span class="field-tool-title">Location</span>
+              <span class="field-tool-desc">Map &amp; field facts</span>
+            </button>
+          </div>
+        </nav>
+
+        <p class="field-tool-hint" id="fieldToolHint">Pick a button above to open satellite imagery, weather, crop plan, and more. Your analysis stays here at the top.</p>
+
         <!-- Satellite archive: MODIS / SMAP / HLS browse + history -->
-        <section class="app-panel sat-archive-panel" id="satArchivePanel">
+        <section class="app-panel sat-archive-panel field-tool-panel" id="satArchivePanel" data-tool-panel="satellite" hidden>
           <div class="app-panel-head">
             <h2>Satellite imagery &amp; past scenes</h2>
             <button type="button" class="app-btn-ghost" id="loadSatArchiveBtn">Load archive</button>
@@ -184,7 +221,7 @@
         </section>
 
         <!-- Trends + forecast -->
-        <section class="app-panel trends-panel" id="trendsPanel">
+        <section class="app-panel trends-panel field-tool-panel" id="trendsPanel" data-tool-panel="weather" hidden>
           <div class="app-panel-head">
             <h2>Weather past → trend → next week</h2>
             <button type="button" class="app-btn-ghost" id="loadTrendsBtn">Load weather trends</button>
@@ -230,8 +267,8 @@
           </div>
         </section>
 
-        <!-- Crop guide + harvest + inputs + nearby markets -->
-        <section class="app-panel crop-guide-panel" id="cropGuidePanel">
+        <!-- Crop guide + harvest -->
+        <section class="app-panel crop-guide-panel field-tool-panel" id="cropGuidePanel" data-tool-panel="crop" hidden>
           <div class="app-panel-head">
             <h2>Crop guide &amp; harvest plan</h2>
             <a class="app-btn-ghost" id="cropInfoLink" href="info.html" hidden>Full crop info</a>
@@ -275,7 +312,7 @@
           </div>
         </section>
 
-        <section class="app-panel" id="fieldInputsPanel">
+        <section class="app-panel field-tool-panel" id="fieldInputsPanel" data-tool-panel="inputs" hidden>
           <div class="app-panel-head">
             <h2>Fertilizers &amp; machines used</h2>
             <a class="app-btn-ghost" href="prices.html">Price calculator</a>
@@ -317,7 +354,7 @@
           <p class="usage-total" id="usageTotal" hidden></p>
         </section>
 
-        <section class="app-panel" id="nearbyMarketsPanel">
+        <section class="app-panel field-tool-panel" id="nearbyMarketsPanel" data-tool-panel="markets" hidden>
           <div class="app-panel-head">
             <h2>Nearby markets to sell</h2>
           </div>
@@ -326,71 +363,73 @@
           <p class="app-muted" id="marketMspNote"></p>
         </section>
 
-        <!-- What-if scenarios (3.5) -->
-        <section class="app-panel" id="scenarioPanel">
-          <div class="app-panel-head">
-            <h2>What-if scenarios</h2>
-          </div>
-          <p class="app-muted">Compare irrigate now vs later, and optional fertilizer — illustrative water, cost, and yield tradeoffs.</p>
-          <form id="scenarioForm" class="scenario-form">
-            <label>
-              Irrigation
-              <select id="scenarioIrrigate">
-                <option value="none">No irrigation</option>
-                <option value="now" selected>Irrigate now</option>
-                <option value="later">Irrigate later</option>
-              </select>
-            </label>
-            <label>
-              Irrigation depth (mm)
-              <input id="scenarioMm" type="number" min="0" max="80" step="1" value="20" />
-            </label>
-            <label>
-              Fertilizer (kg/ha)
-              <input id="scenarioFert" type="number" min="0" max="300" step="5" value="0" />
-            </label>
-            <label>
-              Field size (ha)
-              <input id="scenarioHa" type="number" min="0.1" max="500" step="0.1" value="1" />
-            </label>
-            <button type="submit" class="app-btn-primary">Run scenario</button>
-          </form>
-          <div class="scenario-result" id="scenarioResult" hidden></div>
-        </section>
+        <div class="field-tool-panel" id="toolsPanel" data-tool-panel="tools" hidden>
+          <!-- What-if scenarios (3.5) -->
+          <section class="app-panel" id="scenarioPanel">
+            <div class="app-panel-head">
+              <h2>What-if scenarios</h2>
+            </div>
+            <p class="app-muted">Compare irrigate now vs later, and optional fertilizer — illustrative water, cost, and yield tradeoffs.</p>
+            <form id="scenarioForm" class="scenario-form">
+              <label>
+                Irrigation
+                <select id="scenarioIrrigate">
+                  <option value="none">No irrigation</option>
+                  <option value="now" selected>Irrigate now</option>
+                  <option value="later">Irrigate later</option>
+                </select>
+              </label>
+              <label>
+                Irrigation depth (mm)
+                <input id="scenarioMm" type="number" min="0" max="80" step="1" value="20" />
+              </label>
+              <label>
+                Fertilizer (kg/ha)
+                <input id="scenarioFert" type="number" min="0" max="300" step="5" value="0" />
+              </label>
+              <label>
+                Field size (ha)
+                <input id="scenarioHa" type="number" min="0.1" max="500" step="0.1" value="1" />
+              </label>
+              <button type="submit" class="app-btn-primary">Run scenario</button>
+            </form>
+            <div class="scenario-result" id="scenarioResult" hidden></div>
+          </section>
 
-        <!-- Ground-truth feedback (3.3) -->
-        <section class="app-panel" id="feedbackPanel">
-          <div class="app-panel-head">
-            <h2>Help improve recommendations</h2>
-          </div>
-          <p class="app-muted">Share soil moisture or yield observations. Used only to calibrate models for your region (with your consent).</p>
-          <form id="feedbackForm" class="feedback-form">
-            <label>
-              Soil moisture (%)
-              <input id="fbMoisture" type="number" min="0" max="100" step="1" placeholder="e.g. 28" />
-            </label>
-            <label>
-              Yield (kg/ha)
-              <input id="fbYield" type="number" min="0" step="10" placeholder="optional" />
-            </label>
-            <label class="check-row">
-              <input id="fbIrrigated" type="checkbox" />
-              I irrigated recently
-            </label>
-            <label>
-              Notes
-              <textarea id="fbNotes" rows="2" maxlength="1000" placeholder="Optional ground observations"></textarea>
-            </label>
-            <label class="check-row">
-              <input id="fbConsent" type="checkbox" required />
-              I consent to use this for local model calibration
-            </label>
-            <button type="submit" class="app-btn-primary">Submit feedback</button>
-          </form>
-        </section>
+          <!-- Ground-truth feedback (3.3) -->
+          <section class="app-panel" id="feedbackPanel">
+            <div class="app-panel-head">
+              <h2>Help improve recommendations</h2>
+            </div>
+            <p class="app-muted">Share soil moisture or yield observations. Used only to calibrate models for your region (with your consent).</p>
+            <form id="feedbackForm" class="feedback-form">
+              <label>
+                Soil moisture (%)
+                <input id="fbMoisture" type="number" min="0" max="100" step="1" placeholder="e.g. 28" />
+              </label>
+              <label>
+                Yield (kg/ha)
+                <input id="fbYield" type="number" min="0" step="10" placeholder="optional" />
+              </label>
+              <label class="check-row">
+                <input id="fbIrrigated" type="checkbox" />
+                I irrigated recently
+              </label>
+              <label>
+                Notes
+                <textarea id="fbNotes" rows="2" maxlength="1000" placeholder="Optional ground observations"></textarea>
+              </label>
+              <label class="check-row">
+                <input id="fbConsent" type="checkbox" required />
+                I consent to use this for local model calibration
+              </label>
+              <button type="submit" class="app-btn-primary">Submit feedback</button>
+            </form>
+          </section>
+        </div>
 
         <!-- Map -->
-        <div class="app-panel field-map-panel">
+        <div class="app-panel field-map-panel field-tool-panel" id="locationPanel" data-tool-panel="location" hidden>
           <h2>Location</h2>
           <div id="detailMap" class="field-map field-map-detail" role="application" aria-label="Field location map"></div>
           <dl class="field-facts" id="fieldFacts"></dl>
@@ -405,6 +444,6 @@
     ></script>
     <script type="module" src="js/tenant.js"></script>
     <script type="module" src="js/nav-auth.js?v=ai1"></script>
-    <script type="module" src="js/field-page.js?v=cropguide1"></script>
+    <script type="module" src="js/field-page.js?v=fieldtools1"></script>
   </body>
 </html>
