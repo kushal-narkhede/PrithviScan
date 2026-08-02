@@ -561,6 +561,12 @@ ol {
   border-radius: var(--radius);
   background: var(--mist);
   border: 1px solid var(--line-dark);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pipe-node:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(6, 22, 14, 0.06);
 }
 
 .pipe-node strong {
