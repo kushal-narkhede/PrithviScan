@@ -16,19 +16,25 @@ function initials(user) {
 function renderAuthControls(user) {
   const slots = document.querySelectorAll("[data-auth-slot]");
   slots.forEach((slot) => {
+    slot.classList.add("auth-slot");
+
     if (!user) {
       slot.innerHTML = `<a class="nav-cta" href="auth.html">Get started</a>`;
       return;
     }
 
-    const onApp = window.location.pathname.endsWith("app.html")
-      || window.location.pathname.endsWith("field.html");
+    const onApp =
+      window.location.pathname.endsWith("app.html") ||
+      window.location.pathname.endsWith("field.html") ||
+      window.location.pathname.endsWith("/app") ||
+      window.location.pathname.endsWith("/field");
+
+    const name = user.displayName || user.email || "Profile";
 
     slot.innerHTML = `
       ${onApp ? "" : `<a class="nav-app" href="app.html">Open app</a>`}
-      <a class="nav-profile" href="profile.html" aria-label="My Profile">
+      <a class="nav-profile" href="profile.html" aria-label="My profile — ${name}" title="My profile">
         <span class="nav-profile-avatar" aria-hidden="true">${initials(user)}</span>
-        <span class="nav-profile-label">My Profile</span>
       </a>
     `;
   });
