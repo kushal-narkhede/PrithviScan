@@ -84,7 +84,11 @@ function mount() {
       </form>
       <div class="ps-ai-settings" id="psAiSettings" hidden>
         <h3>AI settings</h3>
-        <p>Default is Ollama. Gemini and OpenRouter are ready when you add keys.</p>
+        <p>
+          Live site → local Ollama needs CORS. Easiest fix: run
+          <code>node scripts/ollama-cors-proxy.mjs</code> and set URL to
+          <code>http://127.0.0.1:11435</code>.
+        </p>
         <label>
           Provider
           <select id="psCfgProvider">
@@ -95,7 +99,7 @@ function mount() {
         </label>
         <label>
           Ollama URL
-          <input id="psCfgOllamaUrl" type="url" placeholder="http://localhost:11434" />
+          <input id="psCfgOllamaUrl" type="url" placeholder="http://127.0.0.1:11434" />
         </label>
         <label>
           Ollama model
@@ -117,8 +121,10 @@ function mount() {
           OpenRouter model
           <input id="psCfgOpenrouterModel" type="text" />
         </label>
+        <p class="ps-ai-diag" id="psAiDiag" hidden></p>
         <div class="ps-ai-settings-actions">
           <button type="button" class="primary" id="psAiSaveSettings">Save</button>
+          <button type="button" id="psAiTestOllama">Test Ollama</button>
           <button type="button" id="psAiCloseSettings">Back to chat</button>
         </div>
       </div>
@@ -212,6 +218,18 @@ function mount() {
 
   root.querySelector("#psAiCloseSettings").addEventListener("click", () => {
     settingsEl.hidden = true;
+  });
+
+  root.querySelector("#psAiTestOllama").addEventListener("click", async () => {
+    const diagEl = root.querySelector("#psAiDiag");
+    const url =
+      root.querySelector("#psCfgOllamaUrl").value.trim() || config.ollama.baseUrl;
+    diagEl.hidden = false;
+    diagEl.textContent = "Testing…";
+    diagEl.classList.remove("is-ok", "is-bad");
+    const result = await diagnoseOllama(url);
+    diagEl.textContent = result.message;
+    diagEl.classList.add(result.ok ? "is-ok" : "is-bad");
   });
 
   root.querySelector("#psAiSaveSettings").addEventListener("click", () => {
