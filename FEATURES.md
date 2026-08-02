@@ -129,6 +129,7 @@
 
 | Feature | Detail | Status |
 |---------|--------|--------|
+| Field header + analysis first | Insight/metrics always on top; tool buttons open one job at a time | Live |
 | Field header + map pin | Name, crop, coords + Esri satellite basemap | Live |
 | Cached insight display | Last saved insight if any | Live |
 | Confidence / provenance UI | Shows when data exists | Live |
