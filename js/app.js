@@ -1,6 +1,7 @@
 import { watchAuth, isFirebaseConfigured } from "./auth.js";
-import { listFields, createField, createFieldsBulk, getField } from "./fields.js?v=mapfix2";
-import { createFieldMap, useBrowserLocation } from "./map.js?v=mapfix2";
+import { listFields, createField, createFieldsBulk, getField } from "./fields.js?v=region1";
+import { createFieldMap, useBrowserLocation } from "./map.js?v=region1";
+import { detectRegion, regionBadgeLabel } from "./region.js";
 import { callGetAlerts, callMarkAlertRead, callClassifyLocation, callProcessAlertOutbox } from "./api.js";
 import { loadLastSession, saveLastSession } from "./session.js";
 import {
@@ -99,10 +100,13 @@ function renderFields(fields) {
       const insight = f.lastInsight;
       const lvl = insight?.level || "info";
       const crop = f.cropType ? ` · ${esc(f.cropType)}` : "";
+      const region = f.region || detectRegion(Number(f.lat), Number(f.lon));
+      const regionTag = region === "US" ? "USA · $" : "India · ₹";
       return `
         <a class="field-card ${levelClass(lvl)}" href="field.html?id=${encodeURIComponent(f.id)}${f.orgId ? `&org=${encodeURIComponent(f.orgId)}` : ""}" data-field-id="${esc(f.id)}">
           <div class="field-card-head">
             <strong>${esc(f.name || "Untitled field")}</strong>
+            <span class="field-card-badge">${esc(regionTag)}</span>
             ${f.orgId ? `<span class="field-card-badge">Org</span>` : ""}
             ${insight ? `<span class="field-card-badge ${levelClass(lvl)}">${esc(insight.title)}</span>` : ""}
           </div>
@@ -497,13 +501,18 @@ form?.addEventListener("submit", async (event) => {
 
   setStatus("Saving field…");
   try {
+    const region = detectRegion(lat, lon);
     const field = await createField(currentUser.uid, {
       name: nameInput.value,
       cropType: cropInput.value,
       lat,
       lon,
+      region,
     });
-    setStatus(`"${field.name}" saved. Open it to see trends and insights.`, "ok");
+    setStatus(
+      `"${field.name}" saved (${regionBadgeLabel(field.region || region)}). Open it for local markets & prices.`,
+      "ok"
+    );
     form.reset();
     await refreshFields();
   } catch (err) {

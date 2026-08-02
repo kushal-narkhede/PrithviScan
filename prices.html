@@ -6,7 +6,7 @@
     <title>Price calculator · PrithviScan</title>
     <meta
       name="description"
-      content="Estimate crop returns, fertilizer cost, and machine hire using Government of India MSP, notified fertilizer rates, and CHC hire rates."
+      content="Estimate crop returns, fertilizer cost, and machine hire for India (MSP / CHC) or the United States (cash prices / custom hire)."
     />
     <link rel="icon" type="image/png" href="assets/favicon.png" />
     <link rel="apple-touch-icon" href="assets/logo-mark.png" />
@@ -18,7 +18,7 @@
     />
     <link rel="stylesheet" href="styles.css?v=nav3" />
     <link rel="stylesheet" href="app.css?v=nav3" />
-    <link rel="stylesheet" href="prices.css?v=tabs2" />
+    <link rel="stylesheet" href="prices.css?v=region1" />
   </head>
   <body class="app-body prices-body">
     <header class="app-top">
@@ -43,13 +43,16 @@
 
     <main class="prices-main">
       <header class="prices-hero">
-        <p class="eyebrow">Market rates · not random estimates</p>
+        <p class="eyebrow" id="pricesEyebrow">Market rates · India &amp; USA</p>
         <h1>Price calculator</h1>
-        <p>
-          Uses <strong>Government of India MSP</strong> (Kharif / Rabi seasons),
-          <strong>notified fertilizer bag prices</strong>, and
-          <strong>Custom Hiring Centre (CHC)</strong> machine hire rates used across Indian states.
+        <p id="pricesHeroCopy">
+          Pick <strong>India</strong> (MSP / CHC, ₹) or the <strong>United States</strong> (cash / custom-hire, $).
+          Field pages auto-select currency from the pin location.
         </p>
+        <div class="region-toggle" role="group" aria-label="Price region">
+          <button type="button" class="region-btn is-active" data-region-btn="IN">India · ₹ INR</button>
+          <button type="button" class="region-btn" data-region-btn="US">USA · $ USD</button>
+        </div>
       </header>
 
       <div class="prices-tabs" role="tablist">
@@ -67,8 +70,8 @@
             Crop
             <select id="crop-select" required></select>
           </label>
-          <label>
-            Expected yield (quintal / acre)
+          <label id="crop-yield-label">
+            <span id="crop-yield-caption">Expected yield (quintal / acre)</span>
             <input id="crop-yield" type="number" min="0.1" step="0.1" value="20" required />
           </label>
           <label>
@@ -125,6 +128,6 @@
       </section>
     </main>
 
-    <script type="module" src="js/prices-page.js"></script>
+    <script type="module" src="js/prices-page.js?v=region1"></script>
   </body>
 </html>

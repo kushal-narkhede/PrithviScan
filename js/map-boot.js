@@ -6,7 +6,12 @@
 (function () {
   "use strict";
 
-  var DEFAULT_CENTER = [20.5937, 78.9629];
+  var DEFAULT_CENTER = [28, -20];
+  var DEFAULT_ZOOM = 3;
+  var DUAL_BOUNDS = [
+    [8, -125],
+    [49, 97],
+  ];
   var LAYERS = [
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
     "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -55,7 +60,24 @@
       });
     } catch (e) {}
 
-    var map = L.map(el, { scrollWheelZoom: true, maxZoom: 19 }).setView(DEFAULT_CENTER, 5);
+    var map = L.map(el, { scrollWheelZoom: true, maxZoom: 19, worldCopyJump: true }).setView(
+      DEFAULT_CENTER,
+      DEFAULT_ZOOM
+    );
+    try {
+      map.fitBounds(DUAL_BOUNDS, { padding: [24, 24], maxZoom: 4 });
+    } catch (e) {}
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          try {
+            map.setView([pos.coords.latitude, pos.coords.longitude], 6);
+          } catch (e) {}
+        },
+        function () {},
+        { enableHighAccuracy: false, timeout: 6000, maximumAge: 600000 }
+      );
+    }
     var layerIndex = 0;
     var errors = 0;
     var sat = null;

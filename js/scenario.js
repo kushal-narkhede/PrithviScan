@@ -1,19 +1,23 @@
 /**
- * What-if scenario simulation with India INR market rates.
+ * What-if scenario simulation — INR (India MSP) or USD (US cash) by field region.
  */
 
 import {
-  CROP_MSP,
-  FERTILIZER_PRICES,
+  getCropPrices,
+  getFertilizerPrices,
   fertilizerPerKg,
-  formatINR,
+  cropPricePerKg,
+  formatCurrency,
 } from "./market-prices.js";
+import { getRegionMeta } from "./region.js";
 
 /**
  * @param {object} metrics - insight.metrics (rain, ET, temps)
- * @param {object} opts
+ * @param {object} opts - includes region: "IN" | "US"
  */
 export function simulateScenario(metrics = {}, opts = {}) {
+  const region = opts.region === "US" ? "US" : "IN";
+  const meta = getRegionMeta(region);
   const rain = Number(metrics.totalRain_mm) || 0;
   const et = Number(metrics.totalET_mm) || 0;
   const maxTemp = Number(metrics.maxTemp_c) || 28;
@@ -41,17 +45,18 @@ export function simulateScenario(metrics = {}, opts = {}) {
   }
   yieldIndex = Math.max(0.35, yieldIndex);
 
-  // INR costs — CHC-style irrigation proxy + notified fertilizer ₹/kg
-  const waterCostPerMmHa = 45; // ₹/mm/ha indicative pump/electricity + labour
-  const fert = FERTILIZER_PRICES.find((f) => f.id === fertId) || FERTILIZER_PRICES[0];
-  const fertCostPerKg = fertilizerPerKg(fert) || 6;
+  // Water cost proxy — INR ₹/mm/ha vs USD $/mm/ha
+  const waterCostPerMmHa = region === "US" ? 0.55 : 45;
+  const crops = getCropPrices(region);
+  const ferts = getFertilizerPrices(region);
+  const fert = ferts.find((f) => f.id === fertId) || ferts[0];
+  const fertCostPerKg = fertilizerPerKg(fert) || (region === "US" ? 0.6 : 6);
   const waterCost = appliedMm * fieldHa * waterCostPerMmHa;
   const fertCost = fertilizerKgHa * fieldHa * fertCostPerKg;
   const totalCost = waterCost + fertCost;
 
-  const crop = CROP_MSP.find((c) => c.id === cropId) || CROP_MSP[0];
-  // MSP is ₹/quintal (100 kg). Convert to ₹/kg.
-  const pricePerKg = (crop?.mspPerQuintal || 2500) / 100;
+  const crop = crops.find((c) => c.id === cropId) || crops[0];
+  const pricePerKg = cropPricePerKg(crop, region) || (region === "US" ? 0.2 : 25);
   const baselineYieldKgHa = cropId.includes("paddy") || cropId === "rice" ? 4000 : 3500;
   const expectedYieldKgHa = baselineYieldKgHa * yieldIndex;
   const yieldDeltaPct = (yieldIndex - 1) * 100;
@@ -64,6 +69,15 @@ export function simulateScenario(metrics = {}, opts = {}) {
   const baselineRevenue = baselineYieldKgHa * fieldHa * pricePerKg;
   const roi = totalCost > 0 ? (expectedRevenue - baselineRevenue - totalCost) / totalCost : null;
 
+  const priceBasis =
+    region === "US"
+      ? `${crop.name} cash ~$${crop.price}/${crop.unit}`
+      : `${crop.name} MSP ₹${crop.mspPerQuintal}/qtl`;
+  const fertBasis =
+    region === "US"
+      ? `${fert.name} ~$${fertCostPerKg.toFixed(2)}/kg`
+      : `${fert.name} ~₹${fertCostPerKg.toFixed(1)}/kg`;
+
   return {
     effectiveWater_mm: Number(effectiveWater.toFixed(1)),
     deficit_mm: Number(deficit.toFixed(1)),
@@ -75,18 +89,19 @@ export function simulateScenario(metrics = {}, opts = {}) {
     yieldDeltaPct: Number(yieldDeltaPct.toFixed(1)),
     waterUse_mm: Number(appliedMm.toFixed(1)),
     estimatedCost: Math.round(totalCost),
-    estimatedCostLabel: formatINR(totalCost),
+    estimatedCostLabel: formatCurrency(totalCost, region),
     expectedRevenue: Math.round(expectedRevenue),
-    expectedRevenueLabel: formatINR(expectedRevenue),
+    expectedRevenueLabel: formatCurrency(expectedRevenue, region),
     roi: roi == null ? null : Number(roi.toFixed(2)),
-    currency: "INR",
-    priceBasis: `${crop.name} MSP ₹${crop.mspPerQuintal}/qtl`,
-    fertBasis: `${fert.name} ~₹${fertCostPerKg.toFixed(1)}/kg`,
-    notes: buildNotes({ irrigateWhen, appliedMm, deficit, stress, fertilizerKgHa, crop, fert }),
+    currency: meta.currency,
+    region,
+    priceBasis,
+    fertBasis,
+    notes: buildNotes({ irrigateWhen, appliedMm, deficit, stress, fertilizerKgHa, crop, fert, region }),
   };
 }
 
-function buildNotes({ irrigateWhen, appliedMm, deficit, stress, fertilizerKgHa, crop, fert }) {
+function buildNotes({ irrigateWhen, appliedMm, deficit, stress, fertilizerKgHa, crop, fert, region }) {
   const parts = [];
   if (irrigateWhen === "now" && appliedMm > 0) {
     parts.push(`Irrigating now applies ~${appliedMm} mm at high efficiency.`);
@@ -98,7 +113,11 @@ function buildNotes({ irrigateWhen, appliedMm, deficit, stress, fertilizerKgHa, 
   if (deficit > 8) parts.push(`Water deficit remains about ${deficit.toFixed(0)} mm vs ET demand.`);
   if (stress > 0.45) parts.push("Crop stress looks elevated — yield risk rises.");
   if (fertilizerKgHa > 180) parts.push("High fertilizer rate may waste money and add stress.");
-  else if (fertilizerKgHa > 0) parts.push(`Fertilizer cost uses notified ${fert.name} rates.`);
-  parts.push(`Revenue priced at ${crop.name} MSP (₹${crop.mspPerQuintal}/quintal).`);
+  else if (fertilizerKgHa > 0) parts.push(`Fertilizer cost uses ${fert.name} reference rates.`);
+  if (region === "US") {
+    parts.push(`Revenue priced at ${crop.name} cash reference ($${crop.price}/${crop.unit}).`);
+  } else {
+    parts.push(`Revenue priced at ${crop.name} MSP (₹${crop.mspPerQuintal}/quintal).`);
+  }
   return parts;
 }

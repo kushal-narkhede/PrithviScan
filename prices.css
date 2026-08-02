@@ -29,6 +29,35 @@
   line-height: 1.55;
 }
 
+.region-toggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 1rem;
+}
+
+.region-btn {
+  border: 1px solid rgba(28, 42, 28, 0.18);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.region-btn.is-active {
+  background: #1f6b45;
+  border-color: #1f6b45;
+  color: #fff;
+}
+
+.region-btn:hover:not(.is-active) {
+  border-color: #1f6b45;
+}
+
 .prices-tabs {
   display: flex;
   flex-wrap: wrap;

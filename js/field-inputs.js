@@ -14,7 +14,13 @@ import {
   limit,
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 import { getDb } from "./firebase-db.js";
-import { FERTILIZER_PRICES, MACHINE_HIRE, estimateFertilizerCost, estimateMachineCost } from "./market-prices.js";
+import {
+  getFertilizerPrices,
+  getMachineHire,
+  estimateFertilizerCost,
+  estimateMachineCost,
+  formatCurrency,
+} from "./market-prices.js";
 
 export const INPUT_KINDS = [
   { id: "fertilizer", label: "Fertilizer" },
@@ -22,15 +28,19 @@ export const INPUT_KINDS = [
   { id: "other", label: "Other input" },
 ];
 
-export function fertilizerOptions() {
-  return FERTILIZER_PRICES.map((f) => ({ id: f.id, name: f.name, meta: `₹${f.bagPrice}/${f.bagKg} kg` }));
+export function fertilizerOptions(region = "IN") {
+  return getFertilizerPrices(region).map((f) => ({
+    id: f.id,
+    name: f.name,
+    meta: `${formatCurrency(f.bagPrice, region)} / ${f.bagKg} kg`,
+  }));
 }
 
-export function machineOptions() {
-  return MACHINE_HIRE.map((m) => ({
+export function machineOptions(region = "IN") {
+  return getMachineHire(region).map((m) => ({
     id: m.id,
     name: m.name,
-    meta: `₹${m.rate}/${m.unit}`,
+    meta: `${formatCurrency(m.rate, region)} / ${m.unit}`,
   }));
 }
 
@@ -51,6 +61,7 @@ export async function addFieldUsage(uid, fieldId, payload, orgId = null) {
   const qty = Number(payload.qty);
   const notes = String(payload.notes || "").trim().slice(0, 500);
   const appliedAt = String(payload.appliedAt || "").slice(0, 10) || null;
+  const region = payload.region === "US" ? "US" : "IN";
 
   if (!["fertilizer", "machine", "other"].includes(kind)) {
     throw new Error("Choose fertilizer, machine, or other.");
@@ -64,18 +75,18 @@ export async function addFieldUsage(uid, fieldId, payload, orgId = null) {
   let estCost = null;
 
   if (kind === "fertilizer") {
-    const fert = FERTILIZER_PRICES.find((f) => f.id === itemId);
+    const fert = getFertilizerPrices(region).find((f) => f.id === itemId);
     if (!fert) throw new Error("Unknown fertilizer.");
     itemName = fert.name;
     unit = "bags";
-    const est = estimateFertilizerCost({ fertId: itemId, bags: qty });
+    const est = estimateFertilizerCost({ fertId: itemId, bags: qty, region });
     estCost = est?.cost ?? null;
   } else if (kind === "machine") {
-    const mach = MACHINE_HIRE.find((m) => m.id === itemId);
+    const mach = getMachineHire(region).find((m) => m.id === itemId);
     if (!mach) throw new Error("Unknown machine.");
     itemName = mach.name;
     unit = mach.unit;
-    const est = estimateMachineCost({ machineId: itemId, quantity: qty });
+    const est = estimateMachineCost({ machineId: itemId, quantity: qty, region });
     estCost = est?.cost ?? null;
   } else {
     if (!itemName) throw new Error("Name the input.");
@@ -92,7 +103,9 @@ export async function addFieldUsage(uid, fieldId, payload, orgId = null) {
     itemName,
     qty,
     unit,
-    estCost: estCost == null ? null : Math.round(estCost),
+    estCost: estCost == null ? null : Math.round(estCost * 100) / 100,
+    currency: region === "US" ? "USD" : "INR",
+    region,
     appliedAt,
     notes,
     createdAt: serverTimestamp(),

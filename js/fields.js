@@ -13,6 +13,7 @@ import {
 import { getDb } from "./firebase-db.js";
 import { getUserMeta, getOrganization } from "./org.js";
 import { canWriteFields, canDeleteFields, normalizeOrgRole } from "./org-roles.js";
+import { detectRegion } from "./region.js";
 
 function personalFieldsCol(uid) {
   return collection(getDb(), "users", uid, "fields");
@@ -101,12 +102,15 @@ export async function getField(uid, fieldId, hint = {}) {
 }
 
 function buildPayload(uid, data, { orgId = null } = {}) {
+  const lat = Number(data.lat);
+  const lon = Number(data.lon);
   const payload = {
     name: String(data.name || "Untitled field").trim(),
-    lat: Number(data.lat),
-    lon: Number(data.lon),
+    lat,
+    lon,
     cropType: String(data.cropType || "").trim() || null,
     bbox: data.bbox || null,
+    region: data.region || detectRegion(lat, lon),
     createdBy: uid,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -120,6 +124,9 @@ function buildPayload(uid, data, { orgId = null } = {}) {
   }
   if (payload.lat < -90 || payload.lat > 90 || payload.lon < -180 || payload.lon > 180) {
     throw new Error("Coordinates out of range.");
+  }
+  if (payload.region !== "US" && payload.region !== "IN") {
+    payload.region = detectRegion(payload.lat, payload.lon);
   }
   return payload;
 }

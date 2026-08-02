@@ -1,8 +1,8 @@
 import { watchAuth, isFirebaseConfigured } from "./auth.js";
-import { getField, deleteField, updateField } from "./fields.js?v=mapfix2";
+import { getField, deleteField, updateField } from "./fields.js?v=region1";
 import { getDb } from "./firebase-db.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
-import { createFieldMap } from "./map.js?v=mapfix2";
+import { createFieldMap } from "./map.js?v=region1";
 import { callFuseInsight, callFieldTrends, callSatelliteArchive, callFieldHealth } from "./api.js";
 import {
   healthFromNdvi,
@@ -31,8 +31,9 @@ import {
   listFieldUsages,
   deleteFieldUsage,
 } from "./field-inputs.js";
-import { nearestMarkets, mapsLink } from "./nearby-markets.js";
-import { CROP_MSP, formatINR } from "./market-prices.js";
+import { nearestMarkets, mapsLink, formatDistance } from "./nearby-markets.js";
+import { getCropPrices, formatCurrency } from "./market-prices.js";
+import { detectRegion, getRegionMeta, regionBadgeLabel } from "./region.js";
 import "./a11y.js";
 
 const titleEl  = document.getElementById("fieldTitle");
@@ -114,6 +115,12 @@ let fieldUsages = [];
 let detailMapApi = null;
 let activeTool = null;
 let pendingMapField = null;
+
+function fieldRegion(field = currentField) {
+  if (!field) return "IN";
+  if (field.region === "US" || field.region === "IN") return field.region;
+  return detectRegion(Number(field.lat), Number(field.lon));
+}
 
 const TOOL_IDS = ["health", "satellite", "weather", "crop", "inputs", "markets", "tools", "location"];
 let latestHealth = null;
@@ -563,11 +570,14 @@ function esc(v) {
 
 function renderFacts(field) {
   if (!factsEl) return;
+  const region = fieldRegion(field);
+  const meta = getRegionMeta(region);
   const rows = [
-    ["Latitude",  Number(field.lat).toFixed(6)],
+    ["Latitude", Number(field.lat).toFixed(6)],
     ["Longitude", Number(field.lon).toFixed(6)],
-    ["Crop",      field.cropType || "—"],
-    ["Sown",      field.sownAt || "—"],
+    ["Region", `${meta.name} (${meta.currency})`],
+    ["Crop", field.cropType || "—"],
+    ["Sown", field.sownAt || "—"],
   ];
   factsEl.innerHTML = rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("");
 }
@@ -704,10 +714,13 @@ function renderHarvest(prediction) {
 
 function renderNearbyMarkets(field, guide) {
   if (!marketList) return;
+  const region = fieldRegion(field);
+  const meta = getRegionMeta(region);
   const hint = guide?.name?.split(/\s+/)[0] || field?.cropType || "";
   const markets = nearestMarkets(Number(field.lat), Number(field.lon), {
     limit: 6,
     cropHint: hint.toLowerCase(),
+    region,
   });
   if (!markets.length) {
     marketList.innerHTML = `<p class="app-muted">Could not rank markets for this location.</p>`;
@@ -715,7 +728,7 @@ function renderNearbyMarkets(field, guide) {
   }
   marketList.innerHTML = markets
     .map((m, i) => {
-      const km = m.km < 10 ? m.km.toFixed(1) : Math.round(m.km);
+      const dist = formatDistance(m.km, region);
       return `
         <article class="market-card reveal-up" style="animation-delay:${i * 50}ms">
           <div>
@@ -724,7 +737,7 @@ function renderNearbyMarkets(field, guide) {
             <p class="market-goods">${esc(m.goods)}</p>
           </div>
           <div class="market-side">
-            <strong>~${km} km</strong>
+            <strong>~${esc(dist)}</strong>
             <a href="${esc(mapsLink(m.lat, m.lon, m.name))}" target="_blank" rel="noopener noreferrer">Directions</a>
           </div>
         </article>`;
@@ -732,11 +745,14 @@ function renderNearbyMarkets(field, guide) {
     .join("");
 
   if (marketMspNote) {
-    if (guide?.mspId) {
-      const msp = CROP_MSP.find((c) => c.id === guide.mspId);
-      marketMspNote.innerHTML = msp
-        ? `Reference MSP for <strong>${esc(msp.name)}</strong>: ${formatINR(msp.mspPerQuintal)} / quintal (${esc(msp.season)}). Compare with local mandi offers before selling. <a href="prices.html">Open price calculator</a>`
-        : "";
+    const crops = getCropPrices(region);
+    const crop = guide?.mspId ? crops.find((c) => c.id === guide.mspId) : null;
+    if (region === "US") {
+      marketMspNote.innerHTML = crop
+        ? `US cash reference for <strong>${esc(crop.name)}</strong>: $${crop.price}/${esc(crop.unit)} (${esc(crop.season)}). Compare with your local elevator bid / basis. <a href="prices.html?region=US">Open price calculator</a>`
+        : `US field — showing nearby elevators and wholesale hubs. Confirm today’s cash bid and basis. <a href="prices.html?region=US">Open price calculator</a>`;
+    } else if (crop?.mspPerQuintal != null) {
+      marketMspNote.innerHTML = `Reference MSP for <strong>${esc(crop.name)}</strong>: ${formatCurrency(crop.mspPerQuintal, "IN")} / quintal (${esc(crop.season)}). Compare with local ${esc(meta.marketLabel)} offers. <a href="prices.html?region=IN">Open price calculator</a>`;
     } else {
       marketMspNote.textContent =
         "No national MSP row for this crop — use local vegetable/trader rates and the price calculator for input costs.";
@@ -751,7 +767,8 @@ function fillInputItemSelect() {
   if (inputItemLabel) inputItemLabel.hidden = isOther;
   if (inputOtherNameLabel) inputOtherNameLabel.hidden = !isOther;
   if (isOther) return;
-  const opts = kind === "machine" ? machineOptions() : fertilizerOptions();
+  const region = fieldRegion();
+  const opts = kind === "machine" ? machineOptions(region) : fertilizerOptions(region);
   inputItem.innerHTML = opts
     .map((o) => `<option value="${esc(o.id)}">${esc(o.name)} — ${esc(o.meta)}</option>`)
     .join("");
@@ -767,10 +784,12 @@ function renderUsages(rows) {
     return;
   }
   if (usageEmpty) usageEmpty.hidden = true;
+  const region = fieldRegion();
   usageList.innerHTML = fieldUsages
     .map((u) => {
       const when = u.appliedAt || (u.createdAt?.toDate ? u.createdAt.toDate().toISOString().slice(0, 10) : "");
-      const cost = u.estCost != null ? formatINR(u.estCost) : "—";
+      const uRegion = u.region === "US" || u.currency === "USD" ? "US" : region;
+      const cost = u.estCost != null ? formatCurrency(u.estCost, uRegion) : "—";
       return `
         <li class="usage-row">
           <div>
@@ -788,7 +807,7 @@ function renderUsages(rows) {
   const sum = fieldUsages.reduce((a, u) => a + (Number(u.estCost) || 0), 0);
   if (usageTotal) {
     usageTotal.hidden = false;
-    usageTotal.textContent = `Logged input cost (reference): ${formatINR(sum)}`;
+    usageTotal.textContent = `Logged input cost (reference): ${formatCurrency(sum, region)}`;
   }
   usageList.querySelectorAll(".usage-del").forEach((btn) => {
     btn.addEventListener("click", async () => {
@@ -1327,13 +1346,16 @@ document.addEventListener("DOMContentLoaded", () => {
         history.replaceState(null, "", u.pathname + u.search + u.hash);
       }
       currentField = field;
+      if (!field.region) {
+        currentField = { ...field, region: detectRegion(Number(field.lat), Number(field.lon)) };
+      }
       titleEl.textContent = field.name || "Untitled field";
-      metaEl.textContent  = `${Number(field.lat).toFixed(4)}, ${Number(field.lon).toFixed(4)}`;
-      renderFacts(field);
+      metaEl.textContent = `${Number(field.lat).toFixed(4)}, ${Number(field.lon).toFixed(4)} · ${regionBadgeLabel(fieldRegion(currentField))}`;
+      renderFacts(currentField);
       populateCropDatalist();
       fillInputItemSelect();
-      renderCropGuide(field);
-      pendingMapField = { lat: field.lat, lon: field.lon };
+      renderCropGuide(currentField);
+      pendingMapField = { lat: currentField.lat, lon: currentField.lon };
       applyI18n(document);
       bindFieldTools();
       // If hash/restored tool is Location, map is created inside showFieldTool
@@ -1370,6 +1392,7 @@ document.addEventListener("DOMContentLoaded", () => {
         e.preventDefault();
         const metrics = latestMetrics || {};
         const guide = matchCropGuide(currentField.cropType);
+        const region = fieldRegion(currentField);
         const result = simulateScenario(metrics, {
           irrigateWhen: document.getElementById("scenarioIrrigate")?.value,
           irrigateMm: document.getElementById("scenarioMm")?.value,
@@ -1377,9 +1400,11 @@ document.addEventListener("DOMContentLoaded", () => {
           fieldHa: document.getElementById("scenarioHa")?.value,
           cropId: guide?.mspId || "wheat",
           fertId: "urea",
+          region,
         });
         if (!scenarioResult) return;
         scenarioResult.hidden = false;
+        const cur = result.currency || getRegionMeta(region).currency;
         scenarioResult.innerHTML = `
           <div class="scenario-grid">
             <div><span>Effective water</span><strong>${result.effectiveWater_mm} mm</strong></div>
@@ -1388,12 +1413,12 @@ document.addEventListener("DOMContentLoaded", () => {
             <div><span>Expected yield</span><strong>${result.expectedYieldKgHa} kg/ha</strong></div>
             <div><span>Yield range (±${result.uncertaintyPct}%)</span><strong>${result.yieldLowKgHa}–${result.yieldHighKgHa}</strong></div>
             <div><span>Yield vs baseline</span><strong>${result.yieldDeltaPct > 0 ? "+" : ""}${result.yieldDeltaPct}%</strong></div>
-            <div><span>Est. cost (₹)</span><strong>${esc(result.estimatedCostLabel || String(result.estimatedCost))}</strong></div>
-            <div><span>Est. revenue (₹)</span><strong>${esc(result.expectedRevenueLabel || String(result.expectedRevenue))}</strong></div>
+            <div><span>Est. cost (${esc(cur)})</span><strong>${esc(result.estimatedCostLabel || String(result.estimatedCost))}</strong></div>
+            <div><span>Est. revenue (${esc(cur)})</span><strong>${esc(result.expectedRevenueLabel || String(result.expectedRevenue))}</strong></div>
             <div><span>ROI</span><strong>${result.roi == null ? "—" : `${(result.roi * 100).toFixed(0)}%`}</strong></div>
           </div>
           <ul>${result.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>
-          <p class="app-muted">INR using MSP + notified fertilizer rates — heuristic with uncertainty bands, not a full crop model. ${esc(result.priceBasis || "")}</p>`;
+          <p class="app-muted">${esc(cur)} rates for ${region === "US" ? "US cash + custom-hire" : "India MSP + notified fertilizer"} — heuristic with uncertainty bands, not a full crop model. ${esc(result.priceBasis || "")}</p>`;
       });
 
       printReportBtn?.addEventListener("click", () => {
@@ -1483,6 +1508,7 @@ document.addEventListener("DOMContentLoaded", () => {
               qty: inputQty?.value,
               appliedAt: inputAppliedAt?.value,
               notes: inputNotes?.value,
+              region: fieldRegion(currentField),
             },
             currentField.orgId || null
           );

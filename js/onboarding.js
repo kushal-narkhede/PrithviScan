@@ -14,7 +14,7 @@ const STEPS = [
   },
   {
     title: "Add or import fields",
-    body: "Drop a pin (classifier checks it is cropland), or import CSV/GeoJSON for your cooperative.",
+    body: "Drop a pin in India or the USA — currency, MSP/cash prices, and nearby markets follow that field.",
     target: "#addFieldPanel",
   },
   {
@@ -52,6 +52,7 @@ export async function ensureDemoField(uid) {
     cropType: "Wheat",
     lat: 20.5937,
     lon: 78.9629,
+    region: "IN",
   });
   // Tag as demo via update is nicer — createField doesn't accept isDemo; patch through updateField
   try {

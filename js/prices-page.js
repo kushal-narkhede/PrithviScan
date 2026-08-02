@@ -1,14 +1,30 @@
 import {
-  MARKET_META,
-  CROP_MSP,
-  FERTILIZER_PRICES,
-  MACHINE_HIRE,
+  getMarketMeta,
+  getCropPrices,
+  getFertilizerPrices,
+  getMachineHire,
   estimateCropRevenue,
   estimateFertilizerCost,
   estimateMachineCost,
-  formatINR,
+  formatCurrency,
+  cropSelectLabel,
 } from "./market-prices.js";
+import { getRegionMeta } from "./region.js";
 import "./nav-auth.js";
+
+let activeRegion = "IN";
+
+function detectInitialRegion() {
+  const q = new URLSearchParams(window.location.search).get("region");
+  if (q === "US" || q === "IN") return q;
+  try {
+    const saved = localStorage.getItem("prithvi_price_region");
+    if (saved === "US" || saved === "IN") return saved;
+  } catch {
+    /* ignore */
+  }
+  return "IN";
+}
 
 function fillSelect(el, items, labelFn) {
   if (!el) return;
@@ -17,22 +33,79 @@ function fillSelect(el, items, labelFn) {
     .join("");
 }
 
-fillSelect(
-  document.getElementById("crop-select"),
-  CROP_MSP,
-  (c) => `${c.name} — MSP ₹${c.mspPerQuintal}/qtl (${c.season})`
-);
-fillSelect(
-  document.getElementById("fert-select"),
-  FERTILIZER_PRICES,
-  (f) =>
-    `${f.name} — ₹${f.bagPrice}/${f.unitLabel ? "bottle" : `${f.bagKg} kg bag`}`
-);
-fillSelect(
-  document.getElementById("machine-select"),
-  MACHINE_HIRE,
-  (m) => `${m.name} — ₹${m.rate}/${m.unit}`
-);
+function setRegion(region) {
+  activeRegion = region === "US" ? "US" : "IN";
+  try {
+    localStorage.setItem("prithvi_price_region", activeRegion);
+  } catch {
+    /* ignore */
+  }
+  const url = new URL(window.location.href);
+  url.searchParams.set("region", activeRegion);
+  history.replaceState(null, "", url.pathname + url.search + url.hash);
+
+  document.querySelectorAll("[data-region-btn]").forEach((btn) => {
+    btn.classList.toggle("is-active", btn.dataset.regionBtn === activeRegion);
+  });
+
+  const meta = getMarketMeta(activeRegion);
+  const rmeta = getRegionMeta(activeRegion);
+  const hero = document.getElementById("pricesHeroCopy");
+  if (hero) {
+    hero.innerHTML =
+      activeRegion === "US"
+        ? `Uses <strong>US cash crop reference prices</strong> (USD), <strong>retail fertilizer</strong>, and <strong>custom-hire</strong> machine rates common across US farm country. Local elevator bids and basis still apply.`
+        : `Uses <strong>Government of India MSP</strong> (Kharif / Rabi seasons), <strong>notified fertilizer bag prices</strong>, and <strong>Custom Hiring Centre (CHC)</strong> machine hire rates used across Indian states.`;
+  }
+  const eyebrow = document.getElementById("pricesEyebrow");
+  if (eyebrow) eyebrow.textContent = `${rmeta.name} · ${rmeta.currency} market rates`;
+
+  const cropTitle = document.querySelector("#panel-crop h2");
+  const cropMuted = document.querySelector("#panel-crop .muted");
+  const yieldCaption = document.getElementById("crop-yield-caption");
+  if (cropTitle) {
+    cropTitle.textContent =
+      activeRegion === "US" ? "Estimate crop sale value (cash price)" : "Estimate crop sale value (MSP)";
+  }
+  if (cropMuted) {
+    cropMuted.textContent =
+      activeRegion === "US"
+        ? "Cash prices are indicative elevator / terminal references. Your local bid and basis may differ."
+        : "MSP is the floor price at which government agencies procure. Local mandi prices may differ.";
+  }
+  if (yieldCaption) {
+    yieldCaption.textContent =
+      activeRegion === "US" ? "Expected yield (bu or unit / acre)" : "Expected yield (quintal / acre)";
+  }
+
+  fillSelect(document.getElementById("crop-select"), getCropPrices(activeRegion), (c) =>
+    cropSelectLabel(c, activeRegion)
+  );
+  fillSelect(document.getElementById("fert-select"), getFertilizerPrices(activeRegion), (f) =>
+    activeRegion === "US"
+      ? `${f.name} — $${f.bagPrice}/${f.unitLabel ? "bag" : `${f.bagKg} kg`}`
+      : `${f.name} — ₹${f.bagPrice}/${f.unitLabel ? "bottle" : `${f.bagKg} kg bag`}`
+  );
+  fillSelect(document.getElementById("machine-select"), getMachineHire(activeRegion), (m) =>
+    activeRegion === "US"
+      ? `${m.name} — $${m.rate}/${m.unit}`
+      : `${m.name} — ₹${m.rate}/${m.unit}`
+  );
+
+  document.getElementById("crop-result").hidden = true;
+  document.getElementById("fert-result").hidden = true;
+  document.getElementById("machine-result").hidden = true;
+  renderRateSheet();
+
+  const source = document.getElementById("rates-source");
+  if (source) source.textContent = `${meta.updatedLabel}. ${meta.disclaimer}`;
+}
+
+activeRegion = detectInitialRegion();
+
+document.querySelectorAll("[data-region-btn]").forEach((btn) => {
+  btn.addEventListener("click", () => setRegion(btn.dataset.regionBtn));
+});
 
 document.querySelectorAll(".prices-tab").forEach((tab) => {
   tab.addEventListener("click", () => {
@@ -53,16 +126,19 @@ document.getElementById("form-crop")?.addEventListener("submit", (e) => {
   const cropId = document.getElementById("crop-select").value;
   const yieldQtlPerAcre = Number(document.getElementById("crop-yield").value);
   const acres = Number(document.getElementById("crop-acres").value);
-  const r = estimateCropRevenue({ cropId, acres, yieldQtlPerAcre });
+  const r = estimateCropRevenue({ cropId, acres, yieldQtlPerAcre, region: activeRegion });
   const box = document.getElementById("crop-result");
   box.hidden = false;
+  const unit = r.unit || (activeRegion === "US" ? r.crop.unit : "qtl");
+  const unitPrice = activeRegion === "US" ? r.crop.price : r.crop.mspPerQuintal;
+  const priceLabel = activeRegion === "US" ? `$${unitPrice}/${unit}` : `₹${unitPrice}/qtl`;
   box.innerHTML = `
-    <p class="result-label">Estimated sale value at MSP</p>
-    <p class="result-value">${formatINR(r.revenue)}</p>
+    <p class="result-label">Estimated sale value (${activeRegion === "US" ? "cash" : "MSP"})</p>
+    <p class="result-value">${formatCurrency(r.revenue, activeRegion)}</p>
     <p class="result-detail">
-      ${r.totalQtl.toFixed(1)} quintal × ₹${r.crop.mspPerQuintal}/qtl
+      ${r.totalQtl.toFixed(1)} ${unit} × ${priceLabel}
       · ${r.crop.name} · ${r.crop.season}<br />
-      ${formatINR(r.revenue / Math.max(r.acres, 0.0001))} per acre
+      ${formatCurrency(r.revenue / Math.max(r.acres, 0.0001), activeRegion)} per acre
       · Source: ${r.crop.source}
     </p>
   `;
@@ -73,18 +149,18 @@ document.getElementById("form-fert")?.addEventListener("submit", (e) => {
   const fertId = document.getElementById("fert-select").value;
   const bags = Number(document.getElementById("fert-bags").value);
   const acres = Number(document.getElementById("fert-acres").value) || 1;
-  const r = estimateFertilizerCost({ fertId, bags });
+  const r = estimateFertilizerCost({ fertId, bags, region: activeRegion });
   const box = document.getElementById("fert-result");
   box.hidden = false;
-  const unit = r.fert.unitLabel || `₹ / ${r.fert.bagKg} kg bag`;
+  const unit = r.fert.unitLabel || `${formatCurrency(r.fert.bagPrice, activeRegion)} / ${r.fert.bagKg} kg bag`;
   box.innerHTML = `
     <p class="result-label">Fertilizer cost</p>
-    <p class="result-value">${formatINR(r.cost)}</p>
+    <p class="result-value">${formatCurrency(r.cost, activeRegion)}</p>
     <p class="result-detail">
-      ${r.bags} × ₹${r.fert.bagPrice} (${unit})
+      ${r.bags} × ${formatCurrency(r.fert.bagPrice, activeRegion)} (${unit})
       · ${r.fert.name} · ${r.fert.season}<br />
-      ${formatINR(r.cost / acres)} per acre (at ${acres} acre${acres === 1 ? "" : "s"})
-      ${r.perKg != null ? ` · ≈ ₹${r.perKg.toFixed(2)}/kg` : ""}
+      ${formatCurrency(r.cost / acres, activeRegion)} per acre (at ${acres} acre${acres === 1 ? "" : "s"})
+      ${r.perKg != null ? ` · ≈ ${formatCurrency(r.perKg, activeRegion)}/kg` : ""}
       · Source: ${r.fert.source}
     </p>
   `;
@@ -94,14 +170,14 @@ document.getElementById("form-machine")?.addEventListener("submit", (e) => {
   e.preventDefault();
   const machineId = document.getElementById("machine-select").value;
   const quantity = Number(document.getElementById("machine-qty").value);
-  const r = estimateMachineCost({ machineId, quantity });
+  const r = estimateMachineCost({ machineId, quantity, region: activeRegion });
   const box = document.getElementById("machine-result");
   box.hidden = false;
   box.innerHTML = `
     <p class="result-label">Estimated hire cost</p>
-    <p class="result-value">${formatINR(r.cost)}</p>
+    <p class="result-value">${formatCurrency(r.cost, activeRegion)}</p>
     <p class="result-detail">
-      ${r.quantity} ${r.machine.unit}${r.quantity === 1 ? "" : "s"} × ₹${r.machine.rate}/${r.machine.unit}
+      ${r.quantity} ${r.machine.unit}${r.quantity === 1 ? "" : "s"} × ${formatCurrency(r.machine.rate, activeRegion)}/${r.machine.unit}
       · ${r.machine.name}<br />
       Typical use: ${r.machine.typical} · ${r.machine.source}
     </p>
@@ -112,48 +188,62 @@ function renderRateSheet() {
   const host = document.getElementById("rates-tables");
   const source = document.getElementById("rates-source");
   if (!host) return;
+  const crops = getCropPrices(activeRegion);
+  const ferts = getFertilizerPrices(activeRegion);
+  const machines = getMachineHire(activeRegion);
+  const meta = getMarketMeta(activeRegion);
 
-  const cropRows = CROP_MSP.map(
-    (c) => `
+  const cropRows = crops
+    .map((c) => {
+      const price =
+        activeRegion === "US"
+          ? `$${c.price}/${c.unit}`
+          : `₹${c.mspPerQuintal.toLocaleString("en-IN")}/qtl`;
+      return `
     <tr>
       <td>${c.name}<br /><small>${c.season}</small></td>
-      <td>₹${c.mspPerQuintal.toLocaleString("en-IN")}/qtl</td>
-    </tr>`
-  ).join("");
+      <td>${price}</td>
+    </tr>`;
+    })
+    .join("");
 
-  const fertRows = FERTILIZER_PRICES.map(
-    (f) => `
+  const fertRows = ferts
+    .map(
+      (f) => `
     <tr>
       <td>${f.name}<br /><small>${f.season}</small></td>
-      <td>₹${f.bagPrice.toLocaleString("en-IN")}${f.unitLabel ? "" : ` / ${f.bagKg} kg`}</td>
+      <td>${formatCurrency(f.bagPrice, activeRegion)}${f.unitLabel ? "" : ` / ${f.bagKg} kg`}</td>
     </tr>`
-  ).join("");
+    )
+    .join("");
 
-  const machRows = MACHINE_HIRE.map(
-    (m) => `
+  const machRows = machines
+    .map(
+      (m) => `
     <tr>
       <td>${m.name}<br /><small>${m.typical}</small></td>
-      <td>₹${m.rate.toLocaleString("en-IN")}/${m.unit}</td>
+      <td>${formatCurrency(m.rate, activeRegion)}/${m.unit}</td>
     </tr>`
-  ).join("");
+    )
+    .join("");
 
   host.innerHTML = `
     <div class="rate-block">
-      <h3>Crop MSP (₹/quintal)</h3>
+      <h3>${activeRegion === "US" ? "Crop cash prices" : "Crop MSP (₹/quintal)"}</h3>
       <table class="rate-table">
-        <thead><tr><th>Crop</th><th>MSP</th></tr></thead>
+        <thead><tr><th>Crop</th><th>Price</th></tr></thead>
         <tbody>${cropRows}</tbody>
       </table>
     </div>
     <div class="rate-block">
-      <h3>Fertilizer notified bag prices</h3>
+      <h3>${activeRegion === "US" ? "Fertilizer retail (indicative)" : "Fertilizer notified bag prices"}</h3>
       <table class="rate-table">
         <thead><tr><th>Product</th><th>Retail</th></tr></thead>
         <tbody>${fertRows}</tbody>
       </table>
     </div>
     <div class="rate-block">
-      <h3>Machine hire (indicative CHC)</h3>
+      <h3>${activeRegion === "US" ? "Machine hire (custom)" : "Machine hire (indicative CHC)"}</h3>
       <table class="rate-table">
         <thead><tr><th>Machine / operation</th><th>Rate</th></tr></thead>
         <tbody>${machRows}</tbody>
@@ -162,8 +252,8 @@ function renderRateSheet() {
   `;
 
   if (source) {
-    source.textContent = `${MARKET_META.updatedLabel}. ${MARKET_META.disclaimer}`;
+    source.textContent = `${meta.updatedLabel}. ${meta.disclaimer}`;
   }
 }
 
-renderRateSheet();
+setRegion(activeRegion);

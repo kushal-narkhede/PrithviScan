@@ -3,8 +3,13 @@
  * Esri World Imagery — same provider family as classifyLocation imagery.
  */
 
-const DEFAULT_CENTER = [20.5937, 78.9629]; // India
-const DEFAULT_ZOOM = 5;
+/** Dual-country default: India + USA both in view until user zooms/picks */
+const DEFAULT_CENTER = [28, -20];
+const DEFAULT_ZOOM = 3;
+const DUAL_BOUNDS = [
+  [8, -125],
+  [49, 97],
+];
 
 /** Primary + fallback tile endpoints (satellite first, OSM last) */
 const SAT_LAYERS = [
@@ -87,7 +92,16 @@ export function createFieldMap(elementId, options = {}) {
     scrollWheelZoom: true,
     maxZoom: 19,
     fadeAnimation: true,
+    worldCopyJump: true,
   }).setView(center, zoom);
+
+  if (options.fitDual !== false && options.lat == null && options.lon == null && !options.center) {
+    try {
+      map.fitBounds(DUAL_BOUNDS, { padding: [24, 24], maxZoom: 4 });
+    } catch {
+      /* keep setView */
+    }
+  }
 
   el._psMap = map;
 
@@ -191,6 +205,17 @@ export function createFieldMap(elementId, options = {}) {
   if (options.lat != null && options.lon != null) {
     setMarker(options.lat, options.lon, { notify: false });
     map.setView([options.lat, options.lon], options.detailZoom ?? 16);
+  } else if (options.pickable !== false && options.geolocate !== false && navigator.geolocation) {
+    // Prefer the user's country (US or India) when placing a new field
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (marker) return;
+        const { latitude, longitude } = pos.coords;
+        map.setView([latitude, longitude], 6);
+      },
+      () => {},
+      { enableHighAccuracy: false, timeout: 6000, maximumAge: 600000 }
+    );
   }
 
   if (options.pickable !== false) {
