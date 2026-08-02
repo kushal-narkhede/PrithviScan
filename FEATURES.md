@@ -1,703 +1,346 @@
-# PrithviScan — Full Feature List
+# PrithviScan — Feature sheet (what’s built today)
 
 **Live site:** https://prithviscan.web.app  
 **Firebase project:** `prithviscan`  
-**Branch:** `cursor/homepage-hero-ffb2`
+**Repo branch:** `cursor/homepage-hero-ffb2`  
+**Updated:** 2026-08-02
 
 **Status key**
-- **Live** — available on the deployed site today (Spark plan)
-- **Paused** — fully coded; waiting for Firebase **Blaze** + Cloud Functions deploy
-- **Local-only** — runs on your PC (Python); not part of the website deploy
-- **Not built yet** — planned / roadmap only
+| Status | Meaning |
+|--------|---------|
+| **Live** | On the deployed site now (Spark plan) |
+| **Paused** | Coded; needs Firebase **Blaze** + Cloud Functions deploy |
+| **Local** | Runs on your PC (Ollama / Python ML); not hosted by Firebase |
+| **Planned** | Roadmap only — not built |
 
 ---
 
-## 1. Marketing homepage
+## A. Quick matrix — currently built
 
-**Status:** Live  
-**Pages / files:** `index.html`, `styles.css`, `script.js`, `assets/`
+| Area | Status | Where |
+|------|--------|--------|
+| Marketing homepage (canopy hero) | Live | `/` |
+| Auth (email + Google) | Live | `/auth` |
+| Org / individual signup | Live | `/auth` (create account) |
+| My profile + prefs | Live | `/profile` |
+| Farmer dashboard (fields + map) | Live | `/app` |
+| Field detail + tools | Live | `/field?id=…` |
+| Price calculator (MSP / fertilizer / CHC) | Live | `/prices` |
+| Info hub (fertilizers, soils, crops, machines, maintenance) | Live | `/info` |
+| Organizations (owner adds members) | Live | `/org` |
+| Collaborate (friends, chat, field share) | Live | `/collab` |
+| Ask AI floating chatbot | Live (client) | Bottom-right on **all pages** |
+| Ask AI → Ollama | Local | Needs CORS / proxy on your PC |
+| Ask AI → Gemini / OpenRouter | Live (ready) | Settings → paste API key |
+| Partners + privacy pages | Live | `/partners`, `/privacy` |
+| Onboarding + demo field | Live | First visit on `/app` |
+| CSV / GeoJSON import-export | Live | `/app` |
+| What-if ROI / yield calculator | Live | Field page |
+| Printable field report | Live | Field page |
+| Accessibility + alert quiet hours | Live | Profile settings |
+| NASA fusion / alerts / trends APIs | Paused | Need Blaze |
+| Cloud Function `aiChat` (server keys) | Paused | Need Blaze |
+| Trained EuroSAT classifier in prod | Local / Paused | Trained on PC; Functions not live |
+
+---
+
+## 1. Marketing homepage — Live
+
+**URL:** https://prithviscan.web.app  
+**Files:** `index.html`, `styles.css`, `script.js`, `assets/`
 
 | Feature | Detail |
 |---------|--------|
-| Brand-first hero | Full-bleed canopy video background; **Prithvi** / **Scan** wordmark as the main signal |
-| Hero content | One headline, one short supporting line, CTA group (Get started / See the data stack) |
-| Sticky navigation | Links: Data, Intelligence, How it works, Insights; mobile menu toggle |
-| Auth-aware nav | Shows **Get started** when signed out; **Open app** + **My Profile** when signed in (`js/nav-auth.js`) |
-| NASA data rail | Marketing cards for NASA POWER, MODIS/VIIRS, HLS, SMAP, GPM, Earthdata |
-| Intelligence section | Explains fusion → pattern recognition → field decisions |
-| How it works | Pipeline: Ingest → Harmonize → Fuse → Interpret → Advise |
-| Insights section | Example farmer-style recommendations |
-| Motion | Scroll-shrink header, reveal-on-scroll animations, hero video autoplay retry |
-| Design system | Forest/leaf palette, Fraunces + Figtree fonts, responsive layout |
-| Assets | Logo, logo mark, favicon, `hero-canopy.mp4` |
+| Brand-first hero | Full-bleed canopy video; **PrithviScan** as hero-level brand |
+| Hero content | One headline, one support line, CTA group |
+| Top nav | Data, Intelligence, How it works, Organization (+ auth slot). **No** Info / Prices / Collaborate on homepage |
+| Auth-aware nav | Signed out → Get started; signed in → Open app + person menu |
+| Sections | NASA data rail, intelligence, how-it-works pipeline, insights |
+| Motion | Scroll header, reveal-on-scroll, hero video |
+| Design | Forest palette, Fraunces + Figtree, responsive |
 
 ---
 
-## 2. Authentication
+## 2. Authentication — Live
 
-**Status:** Live (must be enabled in Firebase Console: Email/Password + Google)  
-**Pages / files:** `auth.html`, `auth.css`, `js/auth.js`, `js/auth-page.js`, `js/firebase-config.js`
+**URL:** `/auth`  
+**Files:** `auth.html`, `auth.css`, `js/auth.js`, `js/auth-page.js`
 
 | Feature | Detail |
 |---------|--------|
-| Email / password sign-up | Create account with email, password, optional display name |
-| Email / password sign-in | Standard login |
-| Google sign-in | Popup; falls back to redirect if popup is blocked |
-| Mode tabs | Switch between Sign in and Create account |
-| Friendly errors | Maps Firebase error codes to readable messages |
-| Auto-redirect | Already signed-in users go straight to `app.html` |
-| Post-login destination | Farmer dashboard (`app.html`) |
-| Setup banner | Warns if Firebase web config is incomplete |
-| Analytics | Optional Firebase Analytics when supported |
+| Email / password | Sign in + create account |
+| Google sign-in | Popup; redirect fallback |
+| Display name | On signup |
+| **Account type** | **Organization / farm group** (default) or **Individual farmer** |
+| **Organization name** | Required when creating an org account; owner is created automatically |
+| Invite claim | Pending org invites applied after signup |
+| Friendly errors | Readable Firebase error messages |
+| Post-signup | Org accounts → `/org`; others → `/app` |
 
 ---
 
-## 3. My Profile
+## 3. My profile — Live
 
-**Status:** Live  
-**Pages / files:** `profile.html`, `js/profile-page.js`
+**URL:** `/profile`  
+**Files:** `profile.html`, `js/profile-page.js`, prefs helpers
 
 | Feature | Detail |
 |---------|--------|
-| Auth gate | Unsigned users redirected to `auth.html` |
-| Account card | Avatar initials, display name, email |
-| Provider label | Shows Google or Email & password |
-| Member since | Account creation date |
-| Open my fields | Shortcut to farmer dashboard |
-| Sign out | Signs out and returns to homepage |
+| Account card | Name, email, provider, member since |
+| Accessibility prefs | Larger text / simpler modes (client) |
+| Data ownership opt-in | Consent flags |
+| Alert quiet hours / snooze | Client prefs for when alerts are quiet |
+| Sign out | Returns to homepage |
 
 ---
 
-## 4. Farmer dashboard (fields + alerts)
+## 4. Farmer dashboard — Live (alerts API paused)
 
-**Status:** Fields / map / CRUD **Live**; Alerts API **Paused**  
-**Pages / files:** `app.html`, `app.css`, `js/app.js`, `js/fields.js`, `js/map.js`, `js/firebase-db.js`, `js/api.js`
+**URL:** `/app`  
+**Files:** `app.html`, `app.css`, `js/app.js`, `js/fields.js`, `js/map.js`
 
-### 4.1 Fields tab (Live)
-
+### Fields (Live)
 | Feature | Detail |
 |---------|--------|
 | Auth-gated dashboard | Must be signed in |
-| Welcome line | Greets user by name/email |
-| Field list | Cards with name, coordinates, crop type, last insight badge (if any) |
-| Open field | Card links to `field.html?id=…` |
-| Add field form | Name, optional crop type, lat/lon inputs |
-| Leaflet / OSM map | Click map or drag marker to set location (default center: India) |
-| Use my location | Browser geolocation fills lat/lon and moves marker |
-| Field-vs-not-field check | Calls `classifyLocation` on pick/save — **soft-allows save** while Functions are paused |
-| Save to Firestore | Writes under `users/{uid}/fields/{fieldId}` |
-| Empty state | Clear prompt when no fields exist yet |
+| Field cards | Name, coords, crop, last insight badge |
+| Add field | Name, crop, lat/lon |
+| Leaflet map | Click / drag marker (India default) |
+| My location | Browser geolocation |
+| Save to Firestore | `users/{uid}/fields/{fieldId}` |
+| Continue session | Jump back to last field |
+| Import / export | CSV + GeoJSON bulk tools |
+| Onboarding tour | Demo field on first visit |
 
-### 4.2 Alerts tab (Paused until Blaze)
+### Alerts tab (Paused until Blaze)
+| Feature | Detail |
+|---------|--------|
+| UI shell | List, unread badge, mark read |
+| Spark behavior | Clear “needs Cloud Functions” message |
+
+**App top nav (non-home):** Home · Fields · Alerts · **Prices** · Organization · Info · Collaborate · account
+
+---
+
+## 5. Field detail — Live shell; NASA refresh paused
+
+**URL:** `/field?id=…`  
+**Files:** `field.html`, `js/field-page.js`, `js/scenario.js`, `js/feedback.js`, `js/safety.js`
+
+| Feature | Detail | Status |
+|---------|--------|--------|
+| Field header + map pin | Name, crop, coords | Live |
+| Cached insight display | Last saved insight if any | Live |
+| Confidence / provenance UI | Shows when data exists | Live |
+| Rule traces + sensitivity | UI ready | Live UI / data needs Blaze |
+| What-if ROI / yield calculator | Heuristic scenario tools | Live |
+| Ground-truth feedback | Farmer feedback capture | Live |
+| Safety confirmations | High-risk action checks | Live |
+| Print / save report | Browser print report | Live |
+| Refresh NASA fusion | `fuseFieldInsight` | Paused |
+| Trends / forecast charts | POWER trends | Paused |
+| Delete field | Removes field | Live |
+
+---
+
+## 6. Price calculator — Live
+
+**URL:** `/prices`  
+**Files:** `prices.html`, `prices.css`, `js/prices-page.js`, `js/market-prices.js`
+
+| Tab | What it uses |
+|-----|----------------|
+| Crop returns | **Government of India MSP** (₹/quintal) × yield × acres |
+| Fertilizer cost | **Notified bag retail prices** (urea, DAP, NPK, nano urea, …) |
+| Machine hire | **Indicative CHC rates** (tractor, rotavator, combine, laser leveler, …) |
+| Rate sheet | Full reference tables + source notes |
+
+Selected category tabs use a **solid green** active state. Rates are market/notified references — **not random**.
+
+---
+
+## 7. Farm knowledge hub (Info) — Live
+
+**URL:** `/info`  
+**Files:** `info.html`, `info.css`, `js/info-data.js`, `js/info-page.js`
+
+| Category | Examples |
+|----------|----------|
+| Fertilizers | Urea, DAP, MOP, NPK blends, … |
+| Soil amendments | Gypsum, lime, neem cake, … |
+| Soil types | Clay, sandy, loam, black cotton, … |
+| Crops | Wheat, paddy, maize, pulses, … |
+| **Machines & tractors** | 35–50 HP tractor, rotavator, seed drill, combine, laser leveler, thresher, sprayer, pumpset |
+| **Maintenance** | Seasonal tractor service, blades/tines, sprayer care, pump/irrigation, post-harvest hygiene |
+| Farm inputs | Biofertilizer, mulch, … |
+
+Also: search, category chips, detail panels (pros/cons/tips), **“What grows on my soil?”** matcher.
+
+---
+
+## 8. Organizations — Live
+
+**URL:** `/org`  
+**Files:** `org.html`, `org.css`, `js/org.js`, `js/org-page.js`  
+**Rules:** `firestore.rules` → `organizations`, `orgInvites`
 
 | Feature | Detail |
 |---------|--------|
-| Alerts list | Last alerts for the user (title, message, level, date) |
-| Unread badge | Count on Alerts tab |
-| Mark read | Marks an alert as read via Cloud Function |
-| View field | Jump to the related field detail page |
-| Hash route | `#alerts` opens the Alerts tab |
-| Spark behavior | Shows message that alerts need Cloud Functions (Blaze) |
+| Create org | On signup or from Organization page |
+| Owner role | Creator is owner |
+| Add by email | Existing users join immediately |
+| Pending invite | Unknown emails invited; claim on signup |
+| Member list | Names, emails, roles |
+| Remove member | Owner can remove (not themselves) |
+| Why | Individual farmers are rare — FPOs / family / teams |
 
 ---
 
-## 5. Field detail page
+## 9. Collaborate — Live
 
-**Status:** Shell + delete + cached insight **Live**; NASA refresh / trends **Paused**  
-**Pages / files:** `field.html`, `js/field-page.js`
+**URL:** `/collab`  
+**Files:** `collab.html`, `collab.css`, `js/collab.js`, `js/collab-page.js`
 
 | Feature | Detail |
 |---------|--------|
-| Field header | Name, coordinates, crop facts |
-| Location map | Static Leaflet map centered on the field |
-| Latest insight card | Level, title, message, factors, age — loaded from Firestore if previously computed |
-| Metrics grid | 7-day rain, avg/max temp, humidity, ET, solar (from saved insight/snapshot data) |
-| Satellite chips | SMAP / MODIS availability notes (from Earthdata when Functions are live) |
-| Refresh insights | Calls fusion engine (`fuseFieldInsight`) — **Paused** on Spark |
-| Trends panel | Outlook card, plain-language trend pills, SVG rain/temp charts, forecast strip — **Paused** |
-| Snapshot history | Past daily snapshots strip when data exists |
-| Delete field | Confirm + delete from Firestore; return to dashboard |
-| Rate-limit messaging | Fusion limited to once per 15 minutes per field (when Functions live) |
+| Friend requests | By email lookup on public profiles |
+| Accept / decline | Request inbox |
+| 1:1 + group chat | Firestore conversations + messages |
+| Share fields | Share field location/notes with friends |
 
 ---
 
-## 6. Cloud Functions (backend APIs)
+## 10. Ask AI chatbot — Live (floating widget)
 
-**Status:** All **Paused** until Blaze  
-**Code:** `functions/index.js`, `functions/lib/trends.js`, `functions/lib/vision.js`  
-**Client gate:** `FUNCTIONS_ENABLED = false` in `js/api.js`  
-**Deploy config:** stored in `firebase.functions.disabled.json` (not active in `firebase.json`)
+**UI:** Green bubble, **bottom-right on every page** (`js/ai-widget.js`, `ai-widget.css`)  
+**Loaded via:** `js/nav-auth.js` (and auth/privacy/partners)
 
-| Function | Auth | What it does |
-|----------|------|--------------|
-| `earthdataStatus` | No | Health check for `EARTHDATA_TOKEN` secret |
-| `powerSummary` | Yes | NASA POWER daily weather for a lat/lon (temp, rain, humidity, wind, solar, ET); can save snapshot |
-| `fieldEarthSummary` | Yes | Earthdata CMR search for SMAP + MODIS granules near the field |
-| `fuseFieldInsight` | Yes | Combines POWER (+ optional satellite flags) into a farmer recommendation; writes insight + alerts; **15 min rate limit** |
-| `getAlerts` | Yes | Lists the user’s latest alerts |
-| `markAlertRead` | Yes | Marks one alert as read |
-| `fieldTrends` | Yes | Past POWER series → trend analysis + **7-day forecast** + outlook text |
-| `classifyLocation` | Yes | Fetches satellite imagery tile; RGB vegetation heuristic → field vs not-field |
-| `cmrSearch` | Yes | Auth-gated proxy to NASA CMR granule search |
+| Feature | Detail |
+|---------|--------|
+| Always visible | FAB on homepage, app, prices, info, org, collab, auth, … |
+| Chat panel | Messages, send, clear, settings |
+| History | Saved in `localStorage` |
+| System persona | India farm advisor (crops, MSP, machines, soils) |
+| **Ollama (default)** | `http://127.0.0.1:11434` — **Local**; needs CORS |
+| Ollama CORS help | `scripts/start-ollama-for-web.ps1` / `.sh` |
+| Ollama CORS proxy | `node scripts/ollama-cors-proxy.mjs` → use `http://127.0.0.1:11435` |
+| Test Ollama | Settings → Test Ollama diagnostics |
+| **Gemini** | Ready in Settings (API key in browser for testing) |
+| **OpenRouter** | Ready in Settings (API key in browser for testing) |
+| Server proxy | `functions/lib/ai-chat.js` + `exports.aiChat` — **Paused** until Blaze |
 
-### Fusion recommendation rules (in `fuseFieldInsight`)
-
-1. **Irrigate soon** — low rain + high ET → action  
-2. **Low moisture** — moderate dry stress → watch  
-3. **Heat stress** — max temp above threshold  
-4. **Excess rain** — heavy rainfall  
-5. **Disease risk** — high humidity + warm temps  
-6. **Conditions OK** — otherwise → info  
+**Ollama note:** The live HTTPS site cannot talk to local Ollama until you set `OLLAMA_ORIGINS` or run the CORS proxy on your PC.
 
 ---
 
-## 7. Python ML toolkit
+## 11. Account menu (all signed-in pages) — Live
 
-**Status:** Local-only  
-**Folder:** `ml/`  
-**Windows helper:** `ml/train_eurosat.bat`  
-**Your dataset path:** `D:\Kushal\EuroSAT_RGB\EuroSAT_RGB`
-
-| Tool | Detail |
-|------|--------|
-| `preprocess.py` | Load/resize images; greenness (ExG); veg fraction; NDVI proxy; cloud mask; texture; HSV veg ratio |
-| `train_field_classifier.py` | Train RandomForest field vs not-field; auto-uses your EuroSAT path; optional `--cnn` (MobileNetV2) |
-| `prepare_eurosat.py` | Optional copy of EuroSAT classes into `ml/data/field` and `ml/data/not_field` |
-| `infer_field.py` | Classify an image with trained model (or heuristic fallback) |
-| `trends.py` | Trend slope + hybrid 7-day forecast + plain-language outlook from POWER-like series |
-| `analyze_satellite.py` | True NDVI/EVI helpers, stress mask, RGB patch analysis |
-| `DATASETS.md` | Guide to EuroSAT, BigEarthNet, CDL, Agriculture-Vision, etc. |
-| `requirements.txt` | numpy, Pillow, OpenCV, scikit-learn, scikit-image, matplotlib, joblib (+ optional TensorFlow) |
-
-### EuroSAT class mapping used for training
-
-| Label | EuroSAT folders |
-|-------|-----------------|
-| **field** | AnnualCrop, PermanentCrop, Pasture |
-| **not_field** | Residential, Industrial, Highway, River, SeaLake, Forest, HerbaceousVegetation |
-
-**Output model:** `ml/models/field_classifier.joblib` (gitignored; train on your PC)
+Person icon → dropdown: Home · My profile · Organization · Price calculator · Collaborate · Settings · Sign out  
+**Open app** button when not already on an app page.
 
 ---
 
-## 8. Data model (Firestore)
+## 12. Cloud Functions (backend) — Paused (Blaze)
 
-**Status:** Live (rules deployed)  
-**Files:** `firestore.rules`, `firestore.indexes.json`, `js/fields.js`, `js/firebase-db.js`
+**Files:** `functions/index.js`, `functions/lib/*`  
+**Gate:** `FUNCTIONS_ENABLED = false` in `js/api.js`
 
-| Path | Client access | Contents |
-|------|---------------|----------|
-| `users/{uid}/fields/{fieldId}` | Read / write own | name, lat, lon, cropType, bbox, timestamps, lastInsight |
-| `users/{uid}/fields/{fieldId}/snapshots/{date}` | Read only | Daily POWER / Earth summaries (written by Functions) |
-| `users/{uid}/fields/{fieldId}/insights/{id}` | Read only | Latest fusion insight (written by Functions) |
-| `users/{uid}/alerts/{alertId}` | Read only | Action/watch alerts (written by Functions; mark-read via Function) |
+| Function | Purpose |
+|----------|---------|
+| `powerSummary` | NASA POWER weather summary |
+| `fuseFieldInsight` | Fusion rules → field recommendation |
+| `fieldEarthSummary` | Earthdata / related summary |
+| `fieldTrends` | Rain/temp trends |
+| `getAlerts` / `markAlertRead` | Alert feed |
+| `classifyLocation` | Field-vs-not-field heuristic / vision hook |
+| `aiChat` | Server-side Gemini / OpenRouter / Ollama proxy |
+| `earthdataStatus` / `cmrSearch` | Earthdata token / granule search |
 
-**Security:** Each user can only access `users/{uid}/**`. Clients cannot forge insights or alerts.
-
----
-
-## 9. Firebase / infra
-
-| Piece | Status | Detail |
-|-------|--------|--------|
-| Hosting | Live | https://prithviscan.web.app — static HTML/CSS/JS |
-| Firestore rules | Live | Per-user isolation |
-| Authentication | Live | Email/Password + Google (must be enabled in Console) |
-| Cloud Functions | Paused | Need Blaze; config parked in `firebase.functions.disabled.json` |
-| Secret: `EARTHDATA_TOKEN` | Paused | Firebase Secret Manager; never in client JS |
-| Deploy (current) | — | `npx firebase deploy --only hosting,firestore:rules` |
-
-### Re-enable Functions after Blaze
-
-1. Merge `functions` block from `firebase.functions.disabled.json` into `firebase.json`  
-2. Set `FUNCTIONS_ENABLED = true` in `js/api.js`  
-3. `firebase functions:secrets:set EARTHDATA_TOKEN`  
-4. `firebase deploy --only hosting,firestore:rules,functions`
+Config to re-enable after Blaze: `firebase.functions.disabled.json`.
 
 ---
 
-## 10. Farmer-facing features (high impact)
+## 13. Python ML toolkit — Local
 
-Features that directly increase farmer value and adoption.
+**Folder:** `ml/`
 
-### 2.1 Persistent last-view and session restore
-| | |
-|---|---|
-| **Status** | Live (client + Firestore) |
-| **Priority** | Medium |
-| **What** | Open a field to the last viewed insight/page and scroll position. |
-| **Why** | Improves usability for frequent users. |
-| **Implementation** | `js/session.js` saves `users/{uid}.lastSession` and `fields/{id}.lastView` (scrollY, section). Field page restores on load; dashboard shows **Continue where you left off**. |
+| Piece | Detail |
+|-------|--------|
+| EuroSAT classifier training | `ml/train_field_classifier.py`, `ml/train_eurosat.bat` |
+| Local model artifact | `ml/models/field_classifier.joblib` (trained on your PC; ~87% reported) |
+| Not in production yet | App still uses Node heuristic when Functions exist; Functions not deployed |
+| Datasets / ops docs | `ml/DATASETS.md`, `ml/MODEL_OPS.md` |
 
-### 2.2 Actionable recommendations with confidence and provenance
-| | |
-|---|---|
-| **Status** | Code ready — UI Live; generation Paused until Blaze Functions |
-| **Priority** | Critical |
-| **What** | Each insight includes clear action, confidence score, data sources, timestamp, and why (factors). |
-| **Why** | Farmers need to trust and understand recommendations. |
-| **Implementation** | `fuseFieldInsight` now emits `action`, `confidence`, `evidence[]`, `why`, `provenance{sources,model,windowDays,generatedAt}`. Field page renders action line, confidence bar, evidence list, and source line. Stored on `insights/latest`. |
-
-### 2.3 Localized language and units
-| | |
-|---|---|
-| **Status** | Planned |
-| **Priority** | Critical |
-| **What** | Multi-language UI, local units (mm/inches, °C/°F), and region-specific crop names. |
-| **Why** | Global adoption requires localization. |
-| **Implementation notes** | Use i18n framework; community translations; detect locale from browser or profile preferences. |
-
-### 2.4 SMS / IVR and low-bandwidth channels
-| | |
-|---|---|
-| **Status** | Planned (needs Blaze + Twilio/MessageBird) |
-| **Priority** | Critical |
-| **What** | Deliver alerts and recommendations via SMS, WhatsApp, or IVR for non-smartphone users. |
-| **Why** | Many farmers lack smartphones or reliable data. |
-| **Implementation notes** | Integrate Twilio/MessageBird; concise SMS templates; IVR flows for voice delivery in local languages. Opt-in consent required. |
-
-### 2.5 Offline data capture and sync
-| | |
-|---|---|
-| **Status** | Planned |
-| **Priority** | High |
-| **What** | Allow field notes, photos, and manual measurements to be captured offline and synced later. |
-| **Why** | Fieldwork often offline; photos and notes are valuable ground truth. |
-| **Implementation notes** | IndexedDB/local storage; conflict resolution UI; attach metadata (timestamp, GPS). |
-
-### 2.6 Photo-based diagnostics and farmer uploads
-| | |
-|---|---|
-| **Status** | Planned (local ML pieces exist under `ml/`) |
-| **Priority** | High |
-| **What** | Allow farmers to upload photos of crops/pests/disease for automated classification or expert review. |
-| **Why** | Visual evidence improves diagnosis and trust. |
-| **Implementation notes** | Integrate classifyLocation-style heuristics; queue images for ML inference; human-in-the-loop escalation. |
-
-### 2.7 Action tracking and task lists
-| | |
-|---|---|
-| **Status** | Planned |
-| **Priority** | High |
-| **What** | Convert insights into tasks (irrigate, spray, sample) and track completion. |
-| **Why** | Turns recommendations into measurable actions and outcomes. |
-| **Implementation notes** | Task CRUD, reminders, share tasks with workers, attach photos and notes. |
-
-### 2.8 Multi-field and portfolio views
-| | |
-|---|---|
-| **Status** | Planned (basic field list exists) |
-| **Priority** | High |
-| **What** | Aggregate metrics across all fields (water use, alerts, risk) with filtering and grouping. |
-| **Why** | Useful for larger farms and advisors. |
-| **Implementation notes** | Dashboard with KPIs, exportable CSV summaries. |
-
-### 2.9 Role-based access and advisor workflows
-| | |
-|---|---|
-| **Status** | Planned |
-| **Priority** | High |
-| **What** | Farm owners, managers, agronomists, and extension agents with different permissions. |
-| **Why** | Enables advisors to manage multiple farms and collaborate. |
-| **Implementation notes** | Invite/accept flows, shareable read/write links, audit logs. |
-
-### 2.10 Market & input price signals
-| | |
-|---|---|
-| **Status** | Planned |
-| **Priority** | Medium |
-| **What** | Local market prices, input (seed/fertilizer) prices, and supplier contacts. |
-| **Why** | Helps farmers make economic decisions tied to agronomic recommendations. |
-| **Implementation notes** | Integrate regional price feeds or crowdsourced price reporting; show price trends. |
+Do **not** upload the EuroSAT dataset into the repo.
 
 ---
 
-## 11. Data, models, and intelligence (differentiate & scale)
+## 14. Data model (Firestore) — Live rules
 
-Invest in data quality, model performance, and explainability.
-
-### 3.1 Improve field classifier and model ops
-| | |
-|---|---|
-| **Status** | Partial — local versioning Live; CI / Artifact Registry Planned |
-| **Priority** | Critical |
-| **What** | Productionize EuroSAT model: retraining pipeline, model versioning, A/B testing, and fallback heuristics. |
-| **Why** | Accurate field detection is foundational. |
-| **Implementation** | Trainer writes `version`, accuracy/F1, `ml/models/versions/*`, and `registry.json`. Fallback `heuristic_v1` documented. Ops guide: [`ml/MODEL_OPS.md`](ml/MODEL_OPS.md). Next: CI + Artifact Registry + A/B routing in `classifyLocation`. |
-
-### 3.2 Ensemble weather and satellite inputs
-| | |
-|---|---|
-| **Status** | Partial — abstraction Live; extra providers Planned |
-| **Priority** | High |
-| **What** | Combine NASA POWER, GPM, ECMWF/other forecasts, and multiple satellite sources (SMAP, MODIS, Sentinel, Landsat). |
-| **Why** | Redundancy and better accuracy across regions. |
-| **Implementation** | `functions/lib/data-layer.js` normalizes POWER and stubs GPM/ECMWF/Sentinel/Landsat. Fusion provenance lists provider availability. Full wiring needs Blaze + API access/licensing. |
-
-### 3.3 Local calibration and farmer feedback loop
-| | |
-|---|---|
-| **Status** | Live (capture); training use Planned |
-| **Priority** | High |
-| **What** | Allow farmers to submit ground truth (yields, soil moisture) to calibrate models per region. |
-| **Why** | Improves model relevance and trust. |
-| **Implementation** | Field page feedback form → `users/{uid}/fields/{fieldId}/feedback/*` with consent flag. Firestore rules allow create/read by owner. Later: aggregate for regional calibration + incentives. |
-
-### 3.4 Explainable AI and rule transparency
-| | |
-|---|---|
-| **Status** | Live (UI + ruleTraces); full refresh needs Blaze |
-| **Priority** | High |
-| **What** | Show which rules/factors triggered a recommendation and allow toggling rule sensitivity. |
-| **Why** | Farmers and advisors need to understand and trust automated advice. |
-| **Implementation** | `fuseFieldInsight` emits `ruleTraces[]` (id, fired, condition, inputs, reason). Field UI lists triggered/quiet rules. Sensitivity slider (0.7–1.3×) saved locally and passed on refresh. |
-
-### 3.5 Scenario simulation and what-if analysis
-| | |
-|---|---|
-| **Status** | Live (heuristic simulator) |
-| **Priority** | Medium |
-| **What** | Simulate outcomes of actions (irrigate now vs later; apply X kg fertilizer) using simple crop models. |
-| **Why** | Helps farmers weigh tradeoffs and costs. |
-| **Implementation** | `js/scenario.js` + field **What-if** panel: effective water, deficit, stress, expected yield, cost. Uses latest insight metrics when available. |
-
-### 3.6 Edge inference and mobile model deployment
-| | |
-|---|---|
-| **Status** | Planned |
-| **Priority** | Medium |
-| **What** | Run lightweight models on device for instant classification (photos, field detection). |
-| **Why** | Faster responses and offline capability. |
-| **Implementation notes** | Convert models to TensorFlow Lite or ONNX; manage model updates. Documented under [`ml/MODEL_OPS.md`](ml/MODEL_OPS.md). |
+| Collection | Purpose |
+|------------|---------|
+| `profiles/{uid}` | Public discoverable profile (email lookup) |
+| `users/{uid}` | Private user meta (accountType, orgId, orgRole) |
+| `users/{uid}/fields/{id}` | Fields + nested snapshots / insights / feedback |
+| `users/{uid}/friends/{id}` | Friend links |
+| `friendRequests` | Pending friend requests |
+| `conversations` + `messages` | Collab chat |
+| `fieldShares` | Shared fields |
+| `organizations` | Org name, owner, memberIds, pendingEmails |
+| `orgInvites` | Pending org email invites |
 
 ---
 
-## 12. Operations, scale, and integrations
+## 15. Infra
 
-Make the platform enterprise-grade and easy to integrate.
-
-### 4.1 API and webhooks for partners
-| | |
-|---|---|
-| **Status** | Contract defined — live endpoints need Blaze |
-| **Priority** | High |
-| **What** | REST API and webhook endpoints for alerts, insights, and field updates. |
-| **Why** | Enables integration with farm management systems, cooperatives, and input suppliers. |
-| **Implementation** | Spec in [`docs/PARTNER_API.md`](docs/PARTNER_API.md): API keys, rate limits, `/v1` versioning, webhook events + HMAC signatures. Sample SDKs planned. |
-
-### 4.2 Bulk import/export and migration tools
-| | |
-|---|---|
-| **Status** | Live |
-| **Priority** | High |
-| **What** | CSV/GeoJSON import for fields, bulk snapshot export, and migration scripts. |
-| **Why** | Onboarding at scale (cooperatives, NGOs). |
-| **Implementation** | Dashboard **Import CSV / GeoJSON**, **Export CSV**, **Export GeoJSON**. Validates coords, maps crop aliases, dedupes against existing fields. Offline validator: `scripts/migrate_fields_csv.py`. |
-
-### 4.3 Multi-tenant and white-label options
-| | |
-|---|---|
-| **Status** | Partial — theming hook Live |
-| **Priority** | Medium |
-| **What** | Offer white-label apps for NGOs, governments, or agribusinesses. |
-| **Why** | Revenue and distribution channels. |
-| **Implementation** | `js/tenant.js` + `assets/tenant.json` apply brand name, primary/accent CSS variables, logo. Custom domains + hard tenant isolation Planned. |
-
-### 4.4 Payment, credits, and subsidy flows
-| | |
-|---|---|
-| **Status** | Planned |
-| **Priority** | Medium |
-| **What** | In-app payments, credits for premium features, and integration with subsidy programs. |
-| **Why** | Monetization and farmer incentives. |
-| **Implementation notes** | PCI compliance, local payment gateways, voucher codes. |
-
-### 4.5 Offline field agent app
-| | |
-|---|---|
-| **Status** | Planned |
-| **Priority** | High |
-| **What** | Lightweight app for extension agents to collect data, push recommendations, and manage farmer lists. |
-| **Why** | Scales human support and adoption. |
-| **Implementation notes** | Sync, role permissions, bulk operations. Builds on 2.5 offline + 2.9 roles. |
+| Piece | Status |
+|-------|--------|
+| Firebase Hosting | Live — https://prithviscan.web.app |
+| Firestore rules + indexes | Live (incl. orgs / invites) |
+| Auth Email + Google | Live (must be enabled in Console) |
+| HTML cache | `must-revalidate` (faster nav updates) |
+| Cloud Functions | Paused — Spark / Blaze |
+| Secrets (`EARTHDATA_TOKEN`, future AI keys) | Pattern in `.env.example` |
 
 ---
 
-## 13. Trust, safety, and adoption
+## 16. Partner & trust pages — Live
 
-Critical for farmer uptake and ethical deployment.
-
-### 5.1 Transparent data ownership and revenue sharing
-| | |
-|---|---|
-| **Status** | Live (policy + opt-in); revenue share Planned |
-| **Priority** | Critical |
-| **What** | Clear policies: farmers own their data; optional revenue share for aggregated insights. |
-| **Implementation** | [`privacy.html`](privacy.html); Profile opt-in → `users/{uid}.preferences.aggregateOptIn`. |
-
-### 5.2 Local partnerships and extension integration
-| | |
-|---|---|
-| **Status** | Live (partner page); full portal Planned |
-| **Priority** | Critical |
-| **What** | Partner with extension services, cooperatives, and NGOs. |
-| **Implementation** | [`partners.html`](partners.html) + training pack notes; white-label + bulk import already support distribution. |
-
-### 5.3 Safety checks and human escalation
-| | |
-|---|---|
-| **Status** | Live (client flags + confirmation) |
-| **Priority** | Critical |
-| **What** | Flag high-risk recommendations; require confirmation for risky actions. |
-| **Implementation** | `js/safety.js` + field **safety banner**; confirm dialog + disclaimer. Server-side human-in-loop queue Planned. |
-
-### 5.4 Accessibility and inclusive design
-| | |
-|---|---|
-| **Status** | Live (prefs) |
-| **Priority** | High |
-| **What** | Large fonts, high contrast, simplified / low-literacy mode. |
-| **Implementation** | Profile toggles → `js/a11y.js` CSS classes. Voice UI Planned. |
-
----
-
-## 14. Differentiators and advanced features
-
-### 6.1 Marketplace for inputs and services
-| | |
-|---|---|
-| **Status** | Planned |
-| **Priority** | Medium |
-| **What** | Connect farmers to vetted suppliers, equipment rental, local services. |
-
-### 6.2 Yield forecasting and ROI calculators
-| | |
-|---|---|
-| **Status** | Live (heuristic + uncertainty bands) |
-| **Priority** | High |
-| **What** | Field-level yield forecasts and ROI estimates for recommended actions. |
-| **Implementation** | What-if panel shows yield range, revenue, ROI (`js/scenario.js`). |
-
-### 6.3 Pest/disease early-warning network
-| | |
-|---|---|
-| **Status** | Planned (disease rule exists in fusion) |
-| **Priority** | High |
-| **What** | Aggregate reports and model alerts for outbreaks across regions. |
-
-### 6.4 Insurance & credit integrations
-| | |
-|---|---|
-| **Status** | Planned |
-| **Priority** | Medium |
-| **What** | Link insights to parametric insurance triggers and microcredit offers. |
-
-### 6.5 Visual reports and compliance exports
-| | |
-|---|---|
-| **Status** | Live (print / save report) |
-| **Priority** | Medium |
-| **What** | Printable, shareable reports for certification, loans, or compliance. |
-| **Implementation** | Field page **Print / save report** + print CSS. Server PDF Planned. |
-
-### 6.6 Community & knowledge base
-| | |
-|---|---|
-| **Status** | Planned |
-| **Priority** | Medium |
-| **What** | Farmer forums, Q&A, best practices, region-specific guides. |
-
-### 6.7 Satellite imagery time-lapse and overlays
-| | |
-|---|---|
-| **Status** | Planned |
-| **Priority** | Medium |
-| **What** | Time-series imagery and NDVI/EVI overlays for fields. |
-
-### 6.8 Smart alerts and prioritization
-| | |
-|---|---|
-| **Status** | Live (client prefs) |
-| **Priority** | High |
-| **What** | Alert triage: critical vs informational, escalation and snooze. |
-| **Implementation** | Profile: critical-only, quiet hours, snooze 6h (`js/alert-prefs.js`). |
-
----
-
-## 15. UX, onboarding, and farmer success
-
-### 7.1 Guided onboarding and demo fields
-| | |
-|---|---|
-| **Status** | Live |
-| **Priority** | Critical |
-| **What** | Walkthroughs, demo fields, and sample insights to show value quickly. |
-| **Implementation** | `js/onboarding.js` tour + auto-created **Demo field (sample)** with sample insight badge. |
-
-### 7.2 In-app training and micro-learning
-| | |
-|---|---|
-| **Status** | Planned (starter tips on partners page) |
-| **Priority** | Medium |
-| **What** | Short lessons on irrigation, pest ID, and interpreting insights. |
-
-### 7.3 Incentives and referral programs
-| | |
-|---|---|
-| **Status** | Planned |
-| **Priority** | Medium |
-| **What** | Credits for referrals, data contributions, or verified yields. |
-
----
-
-## 16. Implementation roadmap (suggested milestones)
-
-### Phase 0
-- Enable Functions, secrets, and staging deploy
-- Harden Firestore rules and add indexes
-- Observability / error tracking
-- Persistent last-view and restore — **done (2.1)**
-
-### Phase 1
-- PWA / offline support and local sync
-- Actionable recommendations with confidence/provenance — **UI done (2.2); Functions need Blaze**
-- Role-based access and advisor workflows
-- SMS / IVR alerts MVP
-
-### Phase 2
-- Photo uploads + edge inference
-- Ensemble data sources and model ops — **partial (3.1, 3.2)**
-- Task lists and action tracking
-- API / webhooks and bulk import — **bulk import done (4.2); API contract (4.1)**
-
-### Phase 3
-- Marketplace, insurance/credit, yield forecasting — **yield/ROI heuristic done (6.2)**
-- White-label and multi-tenant — **theming hook done (4.3)**
-- Advanced analytics, scenario simulation, parametric triggers — **scenarios done (3.5)**
-
----
-
-## 17. Metrics to track (KPIs)
-
-| Area | Metrics |
+| Page | Content |
 |------|---------|
-| **Adoption** | DAU / MAU, fields saved per user |
-| **Engagement** | Tasks created/completed, photos uploaded, messages sent |
-| **Impact** | % recommendations acted upon, yield improvements (where available) |
-| **Reliability** | API latency, function error rate, sync success rate |
-| **Trust** | Opt-in rate for data sharing, churn, NPS |
-| **Monetization** | ARPU, conversion to paid features, marketplace GMV |
+| `/partners` | Extension / co-op partnership overview |
+| `/privacy` | Data ownership notes |
+| `/docs/PARTNER_API.md` | Partner API contract (endpoints need Blaze) |
 
 ---
 
-## 18. Final notes and priorities
+## 17. What you can try right now
 
-1. Start with **reliability**, **offline support**, and **clear, explainable recommendations** — they drive trust and retention.  
-2. **Localize aggressively** (language, units, channels) and partner with local extension for distribution.  
-3. Design for **low bandwidth and low literacy**: SMS/IVR, voice prompts, simple visuals.  
-4. Make **data ownership explicit** and reward ground-truth sharing (better models, credits).  
-5. Differentiate with **economics**: yield forecasts, ROI calculators, marketplace/finance integrations.
-
----
-
-## 19. Quick status matrix
-
-| Feature | Status |
-|---------|--------|
-| Homepage + branding + hero video | Live |
-| Auth + profile | Live |
-| Fields CRUD + map | Live |
-| **2.1 Session restore** | Live |
-| **2.2 Confidence / provenance UI** | Live (data needs Blaze) |
-| **3.3 Ground-truth feedback** | Live |
-| **3.4 Rule traces + sensitivity** | Live (data needs Blaze) |
-| **3.5 What-if scenarios** | Live |
-| **4.2 Bulk import/export** | Live |
-| **5.1 Data ownership + opt-in** | Live |
-| **5.2 Partners page** | Live |
-| **5.3 Safety confirmations** | Live |
-| **5.4 Accessibility modes** | Live |
-| **6.2 Yield / ROI calculator** | Live |
-| **6.5 Printable field report** | Live |
-| **6.8 Smart alert prefs** | Live |
-| **7.1 Onboarding + demo field** | Live |
-| 4.1 Partner API | Contract only |
-| 4.3 White-label theming | Partial |
-| Cloud Functions / NASA fusion | Paused (Blaze) |
-| 2.3–2.10 remaining farmer features | Planned |
-| 6.1 / 6.3 / 6.4 / 6.6 / 6.7 | Planned |
-| 7.2 Training · 7.3 Referrals | Planned |
+1. https://prithviscan.web.app — homepage  
+2. Create account as **Organization** → add teammates on `/org`  
+3. `/app` — add fields on the map; import/export CSV  
+4. `/prices` — MSP crop returns, fertilizer bags, machine hire  
+5. `/info` — search tractor, urea, clay soil  
+6. `/collab` — friend + chat  
+7. **Ask AI** bubble (bottom-right) — Ollama locally with CORS, or Gemini/OpenRouter keys  
+8. Open a field → what-if ROI, feedback, print report  
 
 ---
 
-## 19b. Collaborate (friends, chat, field sharing)
+## 18. Blocked until Blaze (coded, not live)
 
-| | |
-|---|---|
-| **Status** | Live |
-| **Page** | [`collab.html`](collab.html) |
-| **What** | Send friend requests by email, accept/decline, 1:1 and group chat, share field locations/notes with friends. |
-| **Nav** | **Home** + **Collaborate** links on app pages; also in account menu. |
-
----
-
-## 20. Farm knowledge hub (Info)
-
-| | |
-|---|---|
-| **Status** | Live |
-| **Page** | [`info.html`](info.html) |
-| **What** | Interactive search for fertilizers, soil amendments, farm inputs, soil types, crops, **machines/tractors**, and **maintenance** — with composition, pros, cons, tips, and a “what grows on my soil?” matcher. |
-| **Why** | Helps farmers learn products and agronomy in plain language alongside the field app. |
+- NASA POWER fusion refresh & trends  
+- Alerts generation / mark-read API  
+- Server-side `classifyLocation` with trained model  
+- Server-side Ask AI (`aiChat`) with secret API keys  
+- Partner API live endpoints  
 
 ---
 
-## 20b. Price calculator (market rates)
+## 19. Planned (not built)
 
-| | |
-|---|---|
-| **Status** | Live |
-| **Page** | [`prices.html`](prices.html) |
-| **What** | Estimate crop returns at **GoI MSP**, fertilizer bag cost at **notified retail**, and **CHC machine hire** — plus a full rate sheet. No random prices. |
-| **Data** | [`js/market-prices.js`](js/market-prices.js) |
+SMS/WhatsApp alerts, offline mode, multi-language pack, referral program, full partner portal, advanced disease models, marketplace listings — see older roadmap sections in git history if needed.
 
 ---
 
-## 20d. Ask AI chatbot
-
-| | |
-|---|---|
-| **Status** | Live (client) |
-| **UI** | Floating bottom-right bubble on **every page** ([`js/ai-widget.js`](js/ai-widget.js)) |
-| **Default** | **Ollama** (`localhost:11434`, model e.g. `llama3.2`) |
-| **Ready** | **Gemini** + **OpenRouter** providers in widget Settings |
-| **Backend** | [`functions/lib/ai-chat.js`](functions/lib/ai-chat.js) + `exports.aiChat` for server-side keys after Blaze |
-| **CORS** | Set `OLLAMA_ORIGINS=https://prithviscan.web.app` when running Ollama |
-
----
-
-## 20c. Organizations
-
-| | |
-|---|---|
-| **Status** | Live |
-| **Page** | [`org.html`](org.html) · signup on [`auth.html`](auth.html) |
-| **What** | Create account as **Organization / farm group** (default) or individual. Owner creates the org and **adds people by email** (instant join if they have an account, or pending invite). |
-| **Why** | Individual farmers are rare — most work as FPOs, family holdings, or teams. |
-
----
-
-## 21. What you can try right now
-
-1. Open https://prithviscan.web.app and sign in (choose **Organization** on create account)  
-2. Browse **[Info](info.html)** — search tractor, rotavator, urea; try the soil matcher  
-3. Open **[Prices](prices.html)** — MSP crop returns, fertilizer bags, machine hire  
-4. Open **[Organization](org.html)** — owner adds teammates by email  
-5. Complete the **onboarding tour** (or Skip) — a **demo field** is created for you  
-6. Profile → accessibility, data opt-in, alert quiet hours / snooze  
-7. Open a field → safety banner, what-if ROI, **Print / save report**  
-8. Dashboard → Import / Export CSV · GeoJSON  
-
----
-
-*This file is the product feature inventory and roadmap for PrithviScan. Update it when major capabilities ship or change status.*
+*This sheet reflects the product as deployed on Spark hosting. Flip `FUNCTIONS_ENABLED` and deploy Functions after upgrading to Blaze.*
