@@ -14,10 +14,11 @@ export const AI_PROVIDERS = ["ollama", "gemini", "openrouter"];
 
 export const DEFAULT_AI_CONFIG = {
   provider: "ollama",
-  systemPrompt: `You are PrithviScan Ask AI — a practical farm advisor for Indian farmers and FPOs.
-Help with crops, soils, fertilizers, irrigation, MSP/price budgeting, tractors/machines, and field decisions.
+  systemPrompt: `You are PrithviScan Ask AI — a practical farm advisor for farmers and FPOs in India and the United States.
+Help with crops, soils, fertilizers, irrigation, price budgeting, tractors/machines, and field decisions.
+Match currency and market context to the field: India → MSP/mandi, acres, quintals, ₹; USA → cash/elevator bids, bushels, $.
 Be concise, clear, and cautious: remind users to confirm rates and chemicals with local extension officers.
-Prefer units farmers use (acres, quintals, ₹). If unsure, say so.`,
+If unsure, say so.`,
   ollama: {
     // 127.0.0.1 often behaves better than "localhost" for browser → Ollama
     baseUrl: "http://127.0.0.1:11434",
