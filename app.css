@@ -1152,17 +1152,77 @@ html.a11y-simple h2 {
   .sat-archive-controls { grid-template-columns: 1fr; }
 }
 
+.chart-wrap {
+  position: relative;
+  width: 100%;
+}
 .trend-chart {
   width: 100%;
   height: auto;
+  display: block;
   background: #f7fbf8;
   border-radius: 14px;
   border: 1px solid rgba(16,37,26,0.08);
+  cursor: crosshair;
+  touch-action: pan-y;
 }
 .chart-line { stroke-linecap: round; stroke-linejoin: round; }
 .past-line { stroke-dasharray: 400; stroke-dashoffset: 400; animation: drawLine 1.1s ease forwards; }
 .future-line { opacity: 0; animation: fadeIn 0.6s ease 0.7s forwards; }
-.chart-dot { opacity: 0; animation: fadeIn 0.4s ease 1s forwards; }
+.chart-point {
+  opacity: 0;
+  transform-origin: center;
+  animation: fadeIn 0.35s ease 0.85s forwards;
+  transition: r 0.15s ease, opacity 0.15s ease;
+}
+.chart-point.is-active {
+  opacity: 1;
+  r: 5.5;
+  stroke: #fff;
+  stroke-width: 2;
+}
+.chart-hit { cursor: pointer; outline: none; }
+.chart-crosshair {
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+.chart-tooltip {
+  position: absolute;
+  z-index: 3;
+  transform: translate(-50%, -110%);
+  min-width: 7.5rem;
+  max-width: 12rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 12px;
+  background: #0b2417;
+  color: #f7fbf8;
+  box-shadow: 0 8px 22px rgba(11, 36, 23, 0.28);
+  pointer-events: none;
+  display: grid;
+  gap: 0.12rem;
+  animation: chartTipIn 0.16s ease;
+}
+.chart-tooltip strong {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #a8d5b8;
+}
+.chart-tip-value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #fff;
+}
+.chart-tip-meta {
+  font-size: 0.74rem;
+  color: rgba(247, 251, 248, 0.78);
+}
+@keyframes chartTipIn {
+  from { opacity: 0; transform: translate(-50%, -95%); }
+  to { opacity: 1; transform: translate(-50%, -110%); }
+}
 
 .history-strip { margin-top: 1rem; }
 .history-strip h3 {

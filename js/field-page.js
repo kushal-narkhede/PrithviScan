@@ -272,43 +272,160 @@ function renderFacts(field) {
   factsEl.innerHTML = rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("");
 }
 
-function drawSeriesChart(svgId, pastPts, forecastVals) {
+function addDaysIso(isoDate, days) {
+  const d = new Date(`${isoDate}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function formatChartDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(`${iso}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function drawSeriesChart(svgId, pastPts, forecastVals, opts = {}) {
   const svg = document.getElementById(svgId);
   if (!svg) return;
-  const past = (pastPts || []).map((p) => Number(p.value)).filter(Number.isFinite);
-  const future = (forecastVals || []).map(Number).filter(Number.isFinite);
-  const all = [...past, ...future];
-  if (!all.length) {
+  const tip = document.getElementById(`${svgId}Tip`);
+  const label = opts.label || "Value";
+  const unit = opts.unit || "";
+  const decimals = Number.isFinite(opts.decimals) ? opts.decimals : 1;
+
+  const pastItems = (pastPts || [])
+    .map((p) => ({
+      date: p?.date || null,
+      value: Number(p?.value),
+      kind: "past",
+    }))
+    .filter((p) => Number.isFinite(p.value));
+  const futureVals = (forecastVals || []).map(Number).filter(Number.isFinite);
+  const lastPastDate = pastItems.length ? pastItems[pastItems.length - 1].date : null;
+  const futureItems = futureVals.map((value, i) => ({
+    date: lastPastDate ? addDaysIso(lastPastDate, i + 1) : null,
+    value,
+    kind: "forecast",
+  }));
+
+  const points = [...pastItems, ...futureItems];
+  if (!points.length) {
     svg.innerHTML = `<text x="12" y="60" fill="#718096" font-size="12">No data yet — tap Refresh insights or Load trends</text>`;
+    if (tip) tip.hidden = true;
     return;
   }
-  const w = 360, h = 120, pad = 16;
-  const min = Math.min(...all);
-  const max = Math.max(...all);
-  const span = max - min || 1;
-  const totalN = Math.max(past.length + future.length - 1, 1);
 
+  const w = 360;
+  const h = 120;
+  const pad = 16;
+  const values = points.map((p) => p.value);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  const totalN = Math.max(points.length - 1, 1);
   const xAt = (i) => pad + (i / totalN) * (w - pad * 2);
   const yAt = (v) => h - pad - ((v - min) / span) * (h - pad * 2);
 
-  const pastPath = past.map((v, i) => `${i === 0 ? "M" : "L"} ${xAt(i).toFixed(1)} ${yAt(v).toFixed(1)}`).join(" ");
-  const futureStart = Math.max(past.length - 1, 0);
-  const futurePath = [past[past.length - 1], ...future]
-    .filter((v) => v !== undefined)
-    .map((v, i) => `${i === 0 ? "M" : "L"} ${xAt(futureStart + i).toFixed(1)} ${yAt(v).toFixed(1)}`)
+  const pastPath = pastItems
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${xAt(i).toFixed(1)} ${yAt(p.value).toFixed(1)}`)
+    .join(" ");
+  const futureStart = Math.max(pastItems.length - 1, 0);
+  const futurePath = [pastItems[pastItems.length - 1], ...futureItems]
+    .filter(Boolean)
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${xAt(futureStart + i).toFixed(1)} ${yAt(p.value).toFixed(1)}`)
     .join(" ");
 
-  svg.innerHTML = `
-    <defs>
-      <linearGradient id="g-${svgId}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#3f9a63" stop-opacity="0.35"/>
-        <stop offset="100%" stop-color="#3f9a63" stop-opacity="0"/>
-      </linearGradient>
-    </defs>
+  const dots = points
+    .map((p, i) => {
+      const cx = xAt(i).toFixed(1);
+      const cy = yAt(p.value).toFixed(1);
+      const fill = p.kind === "forecast" ? "#3f9a63" : "#0b2417";
+      return `
+        <circle class="chart-point" data-i="${i}" cx="${cx}" cy="${cy}" r="3.2" fill="${fill}" />
+        <circle class="chart-hit" data-i="${i}" cx="${cx}" cy="${cy}" r="10" fill="transparent" tabindex="0" role="img" aria-label="${esc(label)} ${p.value.toFixed(decimals)}${unit ? ` ${unit}` : ""} on ${esc(formatChartDate(p.date))}" />
+      `;
+    })
+    .join("");
+
+  // Clone-replace to drop previous listeners when trends re-render
+  const fresh = svg.cloneNode(false);
+  fresh.innerHTML = `
+    <line class="chart-crosshair" x1="0" y1="${pad}" x2="0" y2="${h - pad}" stroke="#2f855a" stroke-width="1" stroke-dasharray="3 3" opacity="0" />
     <path d="${pastPath}" fill="none" stroke="#0b2417" stroke-width="2.5" class="chart-line past-line"/>
     <path d="${futurePath}" fill="none" stroke="#3f9a63" stroke-width="2.5" stroke-dasharray="6 4" class="chart-line future-line"/>
-    ${past.length ? `<circle cx="${xAt(past.length - 1)}" cy="${yAt(past[past.length - 1])}" r="4" fill="#3f9a63" class="chart-dot"/>` : ""}
+    ${dots}
   `;
+  svg.replaceWith(fresh);
+  const liveSvg = document.getElementById(svgId) || fresh;
+  const liveTip = document.getElementById(`${svgId}Tip`);
+  const liveCross = liveSvg.querySelector(".chart-crosshair");
+  const livePoints = [...liveSvg.querySelectorAll(".chart-point")];
+
+  const hideTip = () => {
+    if (liveTip) liveTip.hidden = true;
+    if (liveCross) liveCross.setAttribute("opacity", "0");
+    livePoints.forEach((el) => el.classList.remove("is-active"));
+  };
+
+  const showPoint = (i) => {
+    const p = points[i];
+    if (!p || !liveTip) return;
+    const cx = xAt(i);
+    const cy = yAt(p.value);
+    const kindLabel = p.kind === "forecast" ? "Forecast" : "Observed";
+    const valueText = `${p.value.toFixed(decimals)}${unit ? ` ${unit}` : ""}`;
+    liveTip.hidden = false;
+    liveTip.innerHTML = `
+      <strong>${esc(label)}</strong>
+      <span class="chart-tip-value">${esc(valueText)}</span>
+      <span class="chart-tip-meta">${esc(formatChartDate(p.date))} · ${esc(kindLabel)}</span>
+    `;
+    const rect = liveSvg.getBoundingClientRect();
+    const left = Math.min(Math.max(cx * (rect.width / w), 56), Math.max(rect.width - 56, 56));
+    const top = Math.max(cy * (rect.height / h) - 12, 18);
+    liveTip.style.left = `${left}px`;
+    liveTip.style.top = `${top}px`;
+    if (liveCross) {
+      liveCross.setAttribute("x1", cx.toFixed(1));
+      liveCross.setAttribute("x2", cx.toFixed(1));
+      liveCross.setAttribute("opacity", "1");
+    }
+    livePoints.forEach((el) => el.classList.toggle("is-active", Number(el.dataset.i) === i));
+  };
+
+  const nearestIndex = (clientX) => {
+    const rect = liveSvg.getBoundingClientRect();
+    if (!rect.width) return 0;
+    const x = ((clientX - rect.left) / rect.width) * w;
+    let best = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < points.length; i++) {
+      const d = Math.abs(xAt(i) - x);
+      if (d < bestDist) {
+        bestDist = d;
+        best = i;
+      }
+    }
+    return best;
+  };
+
+  const onMove = (evt) => {
+    const clientX = evt.touches?.[0]?.clientX ?? evt.clientX;
+    if (clientX == null) return;
+    showPoint(nearestIndex(clientX));
+  };
+
+  liveSvg.addEventListener("mousemove", onMove);
+  liveSvg.addEventListener("mouseleave", hideTip);
+  liveSvg.addEventListener("touchstart", onMove, { passive: true });
+  liveSvg.addEventListener("touchmove", onMove, { passive: true });
+  liveSvg.addEventListener("touchend", hideTip);
+  liveSvg.querySelectorAll(".chart-hit").forEach((hit) => {
+    hit.addEventListener("mouseenter", () => showPoint(Number(hit.dataset.i)));
+    hit.addEventListener("focus", () => showPoint(Number(hit.dataset.i)));
+    hit.addEventListener("blur", hideTip);
+  });
 }
 
 function renderTrends(data) {
@@ -328,8 +445,16 @@ function renderTrends(data) {
       .join("");
   }
 
-  drawSeriesChart("rainChart", data.series?.rainfall, data.forecasts?.rainfall);
-  drawSeriesChart("tempChart", data.series?.temp, data.forecasts?.temp);
+  drawSeriesChart("rainChart", data.series?.rainfall, data.forecasts?.rainfall, {
+    label: "Rainfall",
+    unit: "mm",
+    decimals: 1,
+  });
+  drawSeriesChart("tempChart", data.series?.temp, data.forecasts?.temp, {
+    label: "Temperature",
+    unit: "°C",
+    decimals: 1,
+  });
 
   const snaps = data.historySnapshots || [];
   if (historyStrip && historyTrack) {

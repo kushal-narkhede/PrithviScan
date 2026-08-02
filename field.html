@@ -19,7 +19,7 @@
       crossorigin=""
     />
     <link rel="stylesheet" href="styles.css?v=nav3" />
-    <link rel="stylesheet" href="app.css?v=satarch1" />
+    <link rel="stylesheet" href="app.css?v=charttip1" />
   </head>
   <body class="app-body">
     <header class="app-top">
@@ -208,14 +208,20 @@
               <span class="leg past">Past rainfall</span>
               <span class="leg future">Forecast</span>
             </div>
-            <svg id="rainChart" class="trend-chart" viewBox="0 0 360 120" role="img" aria-label="Rainfall trend chart"></svg>
+            <div class="chart-wrap" data-chart="rain">
+              <svg id="rainChart" class="trend-chart" viewBox="0 0 360 120" role="img" aria-label="Rainfall trend chart"></svg>
+              <div class="chart-tooltip" id="rainChartTip" hidden role="tooltip"></div>
+            </div>
           </div>
           <div class="chart-block">
             <div class="chart-legend">
               <span class="leg past">Past temperature</span>
               <span class="leg future">Forecast</span>
             </div>
-            <svg id="tempChart" class="trend-chart" viewBox="0 0 360 120" role="img" aria-label="Temperature trend chart"></svg>
+            <div class="chart-wrap" data-chart="temp">
+              <svg id="tempChart" class="trend-chart" viewBox="0 0 360 120" role="img" aria-label="Temperature trend chart"></svg>
+              <div class="chart-tooltip" id="tempChartTip" hidden role="tooltip"></div>
+            </div>
           </div>
 
           <div class="history-strip" id="historyStrip" hidden>
@@ -303,6 +309,6 @@
     ></script>
     <script type="module" src="js/tenant.js"></script>
     <script type="module" src="js/nav-auth.js?v=ai1"></script>
-    <script type="module" src="js/field-page.js?v=satarch1"></script>
+    <script type="module" src="js/field-page.js?v=charttip1"></script>
   </body>
 </html>

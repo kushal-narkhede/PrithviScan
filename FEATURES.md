@@ -122,23 +122,24 @@
 
 ---
 
-## 5. Field detail — Live shell; NASA refresh paused
+## 5. Field detail — Live (NASA panels on)
 
 **URL:** `/field?id=…`  
 **Files:** `field.html`, `js/field-page.js`, `js/scenario.js`, `js/feedback.js`, `js/safety.js`
 
 | Feature | Detail | Status |
 |---------|--------|--------|
-| Field header + map pin | Name, crop, coords | Live |
+| Field header + map pin | Name, crop, coords + Esri satellite basemap | Live |
 | Cached insight display | Last saved insight if any | Live |
 | Confidence / provenance UI | Shows when data exists | Live |
-| Rule traces + sensitivity | UI ready | Live UI / data needs Blaze |
+| Rule traces + sensitivity | UI ready | Live |
 | What-if ROI / yield calculator | Heuristic scenario tools | Live |
 | Ground-truth feedback | Farmer feedback capture | Live |
 | Safety confirmations | High-risk action checks | Live |
 | Print / save report | Browser print report | Live |
-| Refresh NASA fusion | `fuseFieldInsight` | Paused |
-| Trends / forecast charts | POWER trends | Paused |
+| Refresh NASA fusion | `fuseFieldInsight` | Live |
+| Satellite imagery archive | MODIS / SMAP / HLS browse + date list (`fieldSatelliteArchive`) | Live |
+| Trends / forecast charts | POWER weather past → outlook; hover shows date + rainfall/temp | Live |
 | Delete field | Removes field | Live |
 
 ---
