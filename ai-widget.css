@@ -279,6 +279,36 @@
   color: #fff;
 }
 
+.ps-ai-settings code {
+  font-size: 0.72rem;
+  background: #eef5f0;
+  padding: 0.05rem 0.25rem;
+  border-radius: 4px;
+}
+
+.ps-ai-diag {
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  max-height: 10rem;
+  overflow: auto;
+  background: #f0f5f1;
+  color: #3a5646;
+}
+
+.ps-ai-diag.is-ok {
+  background: #e6f4ea;
+  color: #1f6b45;
+}
+
+.ps-ai-diag.is-bad {
+  background: #fff5f5;
+  color: #9b2c2c;
+}
+
 @media (max-width: 480px) {
   .ps-ai-root {
     right: 0.75rem;

@@ -4,6 +4,7 @@
 
 import { loadAiConfig, saveAiConfig, AI_PROVIDERS } from "./ai-config.js";
 import { completeChat, providerLabel } from "./ai/client.js";
+import { diagnoseOllama } from "./ai/providers/ollama.js";
 
 const HISTORY_KEY = "prithviscan.ai.history.v1";
 const OPEN_KEY = "prithviscan.ai.widgetOpen";

@@ -19,7 +19,8 @@ Help with crops, soils, fertilizers, irrigation, MSP/price budgeting, tractors/m
 Be concise, clear, and cautious: remind users to confirm rates and chemicals with local extension officers.
 Prefer units farmers use (acres, quintals, ₹). If unsure, say so.`,
   ollama: {
-    baseUrl: "http://localhost:11434",
+    // 127.0.0.1 often behaves better than "localhost" for browser → Ollama
+    baseUrl: "http://127.0.0.1:11434",
     model: "llama3.2",
   },
   gemini: {
