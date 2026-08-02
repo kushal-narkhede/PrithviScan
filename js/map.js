@@ -93,10 +93,11 @@ export function createFieldMap(elementId, options = {}) {
 
   // Local Leaflet build — pin default marker icons next to leaflet.js
   try {
+    const iconBase = `${window.location.origin}/vendor/leaflet/images`;
     L.Icon.Default.mergeOptions({
-      iconUrl: "vendor/leaflet/images/marker-icon.png",
-      iconRetinaUrl: "vendor/leaflet/images/marker-icon-2x.png",
-      shadowUrl: "vendor/leaflet/images/marker-shadow.png",
+      iconUrl: `${iconBase}/marker-icon.png`,
+      iconRetinaUrl: `${iconBase}/marker-icon-2x.png`,
+      shadowUrl: `${iconBase}/marker-shadow.png`,
     });
   } catch {
     /* ignore */
