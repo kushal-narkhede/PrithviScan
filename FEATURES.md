@@ -40,7 +40,7 @@
 | Accessibility + alert quiet hours | Live | Profile settings |
 | NASA fusion / alerts / trends APIs | **Live** | Blaze Functions deployed |
 | Cloud Function `aiChat` (server keys) | **Live** | Secrets in Secret Manager (set real Gemini/OpenRouter keys) |
-| Trained EuroSAT classifier in prod | Partial | `classifyLocation` live (heuristic); local EuroSAT model not uploaded |
+| Trained EuroSAT classifier in prod | Ready to load | Export joblib → JSON on your PC, then deploy `classifyLocation` |
 
 ---
 
@@ -269,7 +269,7 @@ Person icon → dropdown: Home · My profile · Organization · Price calculator
 |-------|--------|
 | EuroSAT classifier training | `ml/train_field_classifier.py`, `ml/train_eurosat.bat` |
 | Local model artifact | `ml/models/field_classifier.joblib` (trained on your PC; ~87% reported) |
-| Not in production yet | App still uses Node heuristic when Functions exist; Functions not deployed |
+| Production path | Export with `ml/export_model_for_functions.bat` → `functions/models/field_classifier.json` → deploy `classifyLocation`. Falls back to heuristic if JSON missing. |
 | Datasets / ops docs | `ml/DATASETS.md`, `ml/MODEL_OPS.md` |
 
 Do **not** upload the EuroSAT dataset into the repo.

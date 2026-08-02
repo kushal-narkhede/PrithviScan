@@ -1,10 +1,11 @@
 "use strict";
 
 const sharp = require("sharp");
+const { loadRfModel, predictRf, featureVectorFromDict } = require("./rf-model");
 
 /**
- * Lightweight RGB vegetation heuristics for field vs not-field
- * (Node port of ml/preprocess.py heuristic — used until trained model is uploaded).
+ * Feature extraction aligned with ml/preprocess.py (used to train the EuroSAT RF).
+ * Inference: trained RandomForest JSON when present, else heuristic_v1.
  */
 
 async function bufferToRgb(buffer, size = 224) {
@@ -22,6 +23,37 @@ async function bufferToRgb(buffer, size = 224) {
   return { width: info.width, height: info.height, rgb };
 }
 
+/** Match OpenCV COLOR_RGB2GRAY + Laplacian(ksize=1).var() from ml/preprocess.py */
+function textureLaplacianVar(width, height, rgb) {
+  const n = width * height;
+  const gray = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    const r = rgb[i * 3] * 255;
+    const g = rgb[i * 3 + 1] * 255;
+    const b = rgb[i * 3 + 2] * 255;
+    gray[i] = 0.299 * r + 0.587 * g + 0.114 * b;
+  }
+
+  // Reflect101-ish border: clamp indices
+  const at = (x, y) => {
+    const xx = x < 0 ? -x : x >= width ? 2 * width - x - 2 : x;
+    const yy = y < 0 ? -y : y >= height ? 2 * height - y - 2 : y;
+    return gray[yy * width + xx];
+  };
+
+  let sum = 0;
+  let sumSq = 0;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const v = at(x, y - 1) + at(x - 1, y) + at(x + 1, y) + at(x, y + 1) - 4 * at(x, y);
+      sum += v;
+      sumSq += v * v;
+    }
+  }
+  const mean = sum / n;
+  return sumSq / n - mean * mean;
+}
+
 function extractFeatures(width, height, rgb) {
   const n = width * height;
   let sumExg = 0;
@@ -30,8 +62,6 @@ function extractFeatures(width, height, rgb) {
   let cloud = 0;
   let brightSum = 0;
   let hsvVeg = 0;
-  let texAcc = 0;
-  let texCount = 0;
 
   for (let i = 0; i < n; i++) {
     const r = rgb[i * 3];
@@ -57,27 +87,13 @@ function extractFeatures(width, height, rgb) {
     const s = max === 0 ? 0 : d / max;
     const v = max;
     if (h > 0.18 && h < 0.48 && s > 0.15 && v > 0.15) hsvVeg++;
-
-    const x = i % width;
-    const y = (i / width) | 0;
-    if (x + 1 < width) {
-      const g2 = rgb[(i + 1) * 3 + 1];
-      texAcc += (g - g2) ** 2;
-      texCount++;
-    }
-    if (y + 1 < height) {
-      const g2 = rgb[(i + width) * 3 + 1];
-      texAcc += (g - g2) ** 2;
-      texCount++;
-    }
   }
 
-  const texture = texCount ? (texAcc / texCount) * 10000 : 0;
   return {
     greenness: sumExg / n,
     veg_fraction: vegCount / n,
     ndvi_proxy: ndviSum / n,
-    texture,
+    texture: textureLaplacianVar(width, height, rgb),
     hsv_veg_ratio: hsvVeg / n,
     cloud_fraction: cloud / n,
     mean_brightness: brightSum / n,
@@ -85,6 +101,7 @@ function extractFeatures(width, height, rgb) {
 }
 
 function heuristicIsField(features) {
+  // Aligned with ml/preprocess.py heuristic_is_field
   let score = 0;
   const reasons = [];
   if (features.veg_fraction > 0.25) {
@@ -100,10 +117,10 @@ function heuristicIsField(features) {
     score += 0.25;
     reasons.push("Green crop-like hues present");
   }
-  if (features.texture > 0.5 && features.texture < 80) {
+  if (features.texture > 50 && features.texture < 2500) {
     score += 0.2;
     reasons.push("Texture matches cultivated land");
-  } else if (features.texture < 0.15) {
+  } else if (features.texture < 30) {
     score -= 0.15;
     reasons.push("Surface looks too smooth (water/road/roof)");
   }
@@ -124,6 +141,37 @@ function heuristicIsField(features) {
     reason: reasons.join("; "),
     features,
     model: "heuristic_v1",
+  };
+}
+
+function classifyWithRf(features) {
+  const model = loadRfModel();
+  if (!model) return null;
+  const order = model.features || [
+    "greenness",
+    "veg_fraction",
+    "ndvi_proxy",
+    "texture",
+    "hsv_veg_ratio",
+    "cloud_fraction",
+    "mean_brightness",
+  ];
+  const vec = featureVectorFromDict(features, order);
+  const pred = predictRf(vec);
+  if (!pred) return null;
+  const proba = pred.fieldProbability;
+  const is_field = proba >= 0.5;
+  const metrics = model.metrics || {};
+  const acc =
+    typeof metrics.accuracy === "number" ? ` (train acc ${(metrics.accuracy * 100).toFixed(1)}%)` : "";
+  return {
+    is_field,
+    confidence: is_field ? proba : 1 - proba,
+    field_probability: proba,
+    reason: `Trained EuroSAT RandomForest field classifier${acc}`,
+    features,
+    model: model.version ? `random_forest_${model.version}` : "random_forest",
+    model_metrics: metrics,
   };
 }
 
@@ -149,7 +197,9 @@ async function classifyLatLon(lat, lon) {
   const buf = await fetchEsriTile(lat, lon, 16);
   const { width, height, rgb } = await bufferToRgb(buf, 224);
   const features = extractFeatures(width, height, rgb);
+  const rf = classifyWithRf(features);
+  if (rf) return rf;
   return heuristicIsField(features);
 }
 
-module.exports = { classifyLatLon, heuristicIsField, extractFeatures };
+module.exports = { classifyLatLon, heuristicIsField, extractFeatures, classifyWithRf };
