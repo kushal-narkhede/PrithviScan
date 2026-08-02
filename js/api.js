@@ -3,6 +3,16 @@ import { getFirebaseApp } from "./auth.js";
 
 const FUNCTIONS_BASE = "https://us-central1-prithviscan.cloudfunctions.net";
 
+/**
+ * Cloud Functions need Firebase Blaze. Keep false on Spark so the UI
+ * shows clear "coming soon" messages instead of failed network calls.
+ * Flip to true after: firebase deploy --only functions
+ */
+export const FUNCTIONS_ENABLED = false;
+
+const BLAZE_MSG =
+  "Cloud Functions are paused until the project is on Blaze. Auth, fields, and map still work.";
+
 export async function getIdToken() {
   const auth = getAuth(getFirebaseApp());
   const user = auth.currentUser;
@@ -11,6 +21,9 @@ export async function getIdToken() {
 }
 
 async function apiFetch(path, params = {}) {
+  if (!FUNCTIONS_ENABLED) {
+    return { ok: false, disabled: true, error: BLAZE_MSG, status: 503 };
+  }
   const token = await getIdToken();
   const url = new URL(`${FUNCTIONS_BASE}/${path}`);
   Object.entries(params).forEach(([k, v]) => {

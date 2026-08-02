@@ -203,6 +203,8 @@ async function loadTrends() {
     if (data.ok) {
       renderTrends(data);
       setStatus("Trend analysis ready.", "ok");
+    } else if (data.disabled) {
+      setStatus("Trends need Cloud Functions (Blaze). Fields & map still work.", "error");
     } else {
       setStatus(data.error || "Could not load trends.", "error");
     }
@@ -250,10 +252,12 @@ document.addEventListener("DOMContentLoaded", () => {
             renderInsight(result.insight);
             setStatus("Insight updated.", "ok");
             loadTrends();
+          } else if (result.disabled) {
+            setStatus("NASA insight needs Cloud Functions (Blaze upgrade).", "error");
           } else if (result.error === "Rate limited") {
             setStatus(`Rate limited — try again in ${result.retryInMinutes} minute(s).`, "error");
           } else {
-            setStatus(result.error || "Could not compute insight. Deploy functions on Blaze.", "error");
+            setStatus(result.error || "Could not compute insight.", "error");
           }
         } catch (err) {
           setStatus(err.message || "Network error.", "error");

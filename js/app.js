@@ -135,6 +135,13 @@ function renderAlerts(alerts) {
 async function loadAlerts() {
   try {
     const data = await callGetAlerts();
+    if (data.disabled) {
+      alertsList.innerHTML = `
+        <div class="empty-state">
+          <p>Alerts need Cloud Functions (Blaze). Your fields still save normally.</p>
+        </div>`;
+      return;
+    }
     if (data.ok && Array.isArray(data.alerts)) {
       renderAlerts(data.alerts);
     }
@@ -159,8 +166,8 @@ async function validateLocation(lat, lon) {
   setStatus("Checking if this looks like a farm field…");
   try {
     const result = await callClassifyLocation(lat, lon);
-    if (result.softFail) {
-      setStatus(result.message || "Verification skipped — you can still save.", "ok");
+    if (result.disabled || result.softFail) {
+      setStatus("Field check paused (needs Blaze). You can still save the field.", "ok");
       return true;
     }
     if (!result.valid) {
@@ -174,8 +181,7 @@ async function validateLocation(lat, lon) {
     setStatus(`Looks like a field (${pct}% confidence). ${result.reason || ""}`, "ok");
     return true;
   } catch (err) {
-    // Functions may not be deployed yet (Blaze) — allow save with note
-    setStatus("Field check unavailable until Functions deploy. You can still save.", "ok");
+    setStatus("Field check unavailable. You can still save.", "ok");
     return true;
   }
 }

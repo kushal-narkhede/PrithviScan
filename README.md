@@ -38,41 +38,35 @@ python3 -m http.server 8000
 
 ## One-time setup (Firebase Console)
 
-1. **Upgrade to Blaze** (for Functions + Secrets)
-2. **Enable Firestore** in production mode
-3. **Enable Authentication** → Email/Password + Google
-4. **Enable Hosting** (done by default)
+1. **Enable Firestore** in production mode
+2. **Enable Authentication** → Email/Password + Google
+3. **Enable Hosting** (done by default)
+4. **Upgrade to Blaze** later (only needed for Cloud Functions + Secrets)
 
 ---
 
-## Deploy
+## Deploy (Spark-safe — current default)
+
+Cloud Functions are **disabled** until Blaze (see `firebase.functions.disabled.json` and `FUNCTIONS_ENABLED` in `js/api.js`).
 
 ```bash
 git checkout cursor/homepage-hero-ffb2
 git pull
 
-# If first time:
-npm install -g firebase-tools
-firebase login
-
-# Deploy everything
-firebase deploy --only hosting,firestore:rules,functions
+# Deploy site + security rules only
+npx firebase deploy --only hosting,firestore:rules
 ```
 
----
+### After upgrading to Blaze
 
-## Secrets (run once on your machine)
+1. Merge the `functions` block from `firebase.functions.disabled.json` back into `firebase.json`
+2. Set `FUNCTIONS_ENABLED = true` in `js/api.js`
+3. Set secrets and deploy functions:
 
 ```bash
-# Earthdata (satellite data via NASA CMR)
 firebase functions:secrets:set EARTHDATA_TOKEN
-# paste token when prompted → Enter → Ctrl+D
-
-# Optional: Google Maps (if you switch from Leaflet later)
-# firebase functions:secrets:set GOOGLE_MAPS_API_KEY
+firebase deploy --only hosting,firestore:rules,functions
 ```
-
-After setting secrets: `firebase deploy --only functions`
 
 ---
 
