@@ -4,6 +4,15 @@ import {
   isFirebaseConfigured,
 } from "./auth.js";
 
+async function syncProfile(user) {
+  try {
+    const { ensurePublicProfile } = await import("./collab.js");
+    await ensurePublicProfile(user);
+  } catch {
+    // non-fatal — collab page will retry
+  }
+}
+
 const PERSON_ICON = `
   <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
     <circle cx="12" cy="8" r="3.5" fill="currentColor"/>
@@ -23,7 +32,7 @@ function closeAllMenus() {
 
 function isAppPage() {
   const path = window.location.pathname.replace(/\/$/, "");
-  return /\/(app|field)(\.html)?$/i.test(path);
+  return /\/(app|field|collab)(\.html)?$/i.test(path);
 }
 
 function escapeHtml(v) {
@@ -85,7 +94,9 @@ function renderAuthControls(user) {
         </button>
         <div class="nav-menu" role="menu" hidden>
           <p class="nav-menu-name">${name}</p>
+          <a href="index.html" role="menuitem">Home</a>
           <a href="profile.html" role="menuitem">My profile</a>
+          <a href="collab.html" role="menuitem">Collaborate</a>
           <a href="profile.html#profilePrefs" role="menuitem">Settings</a>
           <button type="button" data-signout role="menuitem">Sign out</button>
         </div>
@@ -106,5 +117,8 @@ document.addEventListener("DOMContentLoaded", () => {
     renderAuthControls(null);
     return;
   }
-  watchAuth((user) => renderAuthControls(user));
+  watchAuth((user) => {
+    renderAuthControls(user);
+    if (user) syncProfile(user);
+  });
 });

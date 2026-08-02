@@ -630,6 +630,17 @@ Critical for farmer uptake and ethical deployment.
 
 ---
 
+## 19b. Collaborate (friends, chat, field sharing)
+
+| | |
+|---|---|
+| **Status** | Live |
+| **Page** | [`collab.html`](collab.html) |
+| **What** | Send friend requests by email, accept/decline, 1:1 and group chat, share field locations/notes with friends. |
+| **Nav** | **Home** + **Collaborate** links on app pages; also in account menu. |
+
+---
+
 ## 20. Farm knowledge hub (Info)
 
 | | |
