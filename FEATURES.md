@@ -647,19 +647,43 @@ Critical for farmer uptake and ethical deployment.
 |---|---|
 | **Status** | Live |
 | **Page** | [`info.html`](info.html) |
-| **What** | Interactive search for fertilizers, soil amendments, farm inputs, soil types, and crops — with composition, pros, cons, tips, and a “what grows on my soil?” matcher. |
+| **What** | Interactive search for fertilizers, soil amendments, farm inputs, soil types, crops, **machines/tractors**, and **maintenance** — with composition, pros, cons, tips, and a “what grows on my soil?” matcher. |
 | **Why** | Helps farmers learn products and agronomy in plain language alongside the field app. |
+
+---
+
+## 20b. Price calculator (market rates)
+
+| | |
+|---|---|
+| **Status** | Live |
+| **Page** | [`prices.html`](prices.html) |
+| **What** | Estimate crop returns at **GoI MSP**, fertilizer bag cost at **notified retail**, and **CHC machine hire** — plus a full rate sheet. No random prices. |
+| **Data** | [`js/market-prices.js`](js/market-prices.js) |
+
+---
+
+## 20c. Organizations
+
+| | |
+|---|---|
+| **Status** | Live |
+| **Page** | [`org.html`](org.html) · signup on [`auth.html`](auth.html) |
+| **What** | Create account as **Organization / farm group** (default) or individual. Owner creates the org and **adds people by email** (instant join if they have an account, or pending invite). |
+| **Why** | Individual farmers are rare — most work as FPOs, family holdings, or teams. |
 
 ---
 
 ## 21. What you can try right now
 
-1. Open https://prithviscan.web.app and sign in  
-2. Browse **[Info](info.html)** — search urea, clay soil, wheat; try the soil matcher  
-3. Complete the **onboarding tour** (or Skip) — a **demo field** is created for you  
-4. Profile → accessibility, data opt-in, alert quiet hours / snooze  
-5. Open a field → safety banner, what-if ROI, **Print / save report**  
-6. Dashboard → Import / Export CSV · GeoJSON  
+1. Open https://prithviscan.web.app and sign in (choose **Organization** on create account)  
+2. Browse **[Info](info.html)** — search tractor, rotavator, urea; try the soil matcher  
+3. Open **[Prices](prices.html)** — MSP crop returns, fertilizer bags, machine hire  
+4. Open **[Organization](org.html)** — owner adds teammates by email  
+5. Complete the **onboarding tour** (or Skip) — a **demo field** is created for you  
+6. Profile → accessibility, data opt-in, alert quiet hours / snooze  
+7. Open a field → safety banner, what-if ROI, **Print / save report**  
+8. Dashboard → Import / Export CSV · GeoJSON  
 
 ---
 

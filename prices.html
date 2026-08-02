@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Price calculator · PrithviScan</title>
+    <meta
+      name="description"
+      content="Estimate crop returns, fertilizer cost, and machine hire using Government of India MSP, notified fertilizer rates, and CHC hire rates."
+    />
+    <link rel="icon" type="image/png" href="assets/favicon.png" />
+    <link rel="apple-touch-icon" href="assets/logo-mark.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Figtree:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=nav3" />
+    <link rel="stylesheet" href="app.css?v=nav3" />
+    <link rel="stylesheet" href="prices.css" />
+  </head>
+  <body class="app-body prices-body">
+    <header class="app-top">
+      <div class="app-top-inner">
+        <a class="brand" href="index.html" aria-label="PrithviScan home">
+          <img class="brand-mark" src="assets/logo-mark.png" alt="" width="40" height="40" />
+          <span class="brand-wordmark">
+            <span class="brand-prithvi">Prithvi</span><span class="brand-scan">Scan</span>
+          </span>
+        </a>
+        <nav class="app-nav" aria-label="App">
+          <a href="index.html">Home</a>
+          <a href="app.html">Fields</a>
+          <a href="info.html">Info</a>
+          <a class="is-active" href="prices.html">Prices</a>
+          <a href="org.html">Organization</a>
+          <a href="collab.html">Collaborate</a>
+          <span data-auth-slot></span>
+        </nav>
+      </div>
+    </header>
+
+    <main class="prices-main">
+      <header class="prices-hero">
+        <p class="eyebrow">Market rates · not random estimates</p>
+        <h1>Price calculator</h1>
+        <p>
+          Uses <strong>Government of India MSP</strong> (Kharif / Rabi seasons),
+          <strong>notified fertilizer bag prices</strong>, and
+          <strong>Custom Hiring Centre (CHC)</strong> machine hire rates used across Indian states.
+        </p>
+      </header>
+
+      <div class="prices-tabs" role="tablist">
+        <button type="button" class="prices-tab is-active" data-tab="crop" role="tab">Crop returns</button>
+        <button type="button" class="prices-tab" data-tab="fert" role="tab">Fertilizer cost</button>
+        <button type="button" class="prices-tab" data-tab="machine" role="tab">Machine hire</button>
+        <button type="button" class="prices-tab" data-tab="rates" role="tab">Rate sheet</button>
+      </div>
+
+      <section class="prices-panel is-active" data-panel="crop" id="panel-crop">
+        <h2>Estimate crop sale value (MSP)</h2>
+        <p class="muted">MSP is the floor price at which government agencies procure. Local mandi prices may differ.</p>
+        <form class="prices-form" id="form-crop">
+          <label>
+            Crop
+            <select id="crop-select" required></select>
+          </label>
+          <label>
+            Expected yield (quintal / acre)
+            <input id="crop-yield" type="number" min="0.1" step="0.1" value="20" required />
+          </label>
+          <label>
+            Area (acres)
+            <input id="crop-acres" type="number" min="0.1" step="0.1" value="1" required />
+          </label>
+          <button class="btn btn-primary" type="submit">Calculate</button>
+        </form>
+        <div class="prices-result" id="crop-result" hidden></div>
+      </section>
+
+      <section class="prices-panel" data-panel="fert" id="panel-fert" hidden>
+        <h2>Fertilizer bag cost</h2>
+        <p class="muted">Notified MRP / subsidised retail prices for common bags.</p>
+        <form class="prices-form" id="form-fert">
+          <label>
+            Fertilizer
+            <select id="fert-select" required></select>
+          </label>
+          <label>
+            Number of bags
+            <input id="fert-bags" type="number" min="1" step="1" value="10" required />
+          </label>
+          <label>
+            Area (acres) — optional, for per-acre cost
+            <input id="fert-acres" type="number" min="0.1" step="0.1" value="1" />
+          </label>
+          <button class="btn btn-primary" type="submit">Calculate</button>
+        </form>
+        <div class="prices-result" id="fert-result" hidden></div>
+      </section>
+
+      <section class="prices-panel" data-panel="machine" id="panel-machine" hidden>
+        <h2>Machine / tractor hire (CHC rates)</h2>
+        <p class="muted">Indicative Custom Hiring Centre rates. Your district CHC may post local tariffs.</p>
+        <form class="prices-form" id="form-machine">
+          <label>
+            Machine / operation
+            <select id="machine-select" required></select>
+          </label>
+          <label>
+            Quantity (hours or acres, per unit below)
+            <input id="machine-qty" type="number" min="0.5" step="0.5" value="4" required />
+          </label>
+          <button class="btn btn-primary" type="submit">Calculate</button>
+        </form>
+        <div class="prices-result" id="machine-result" hidden></div>
+      </section>
+
+      <section class="prices-panel" data-panel="rates" id="panel-rates" hidden>
+        <h2>Full rate sheet</h2>
+        <div id="rates-tables"></div>
+        <p class="prices-footnote" id="rates-source"></p>
+      </section>
+    </main>
+
+    <script type="module" src="js/prices-page.js"></script>
+  </body>
+</html>

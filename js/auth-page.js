@@ -7,22 +7,35 @@ import {
   authErrorMessage,
   isFirebaseConfigured,
 } from "./auth.js";
+import { saveAccountMeta, claimOrgInvites } from "./org.js";
 
 const form = document.getElementById("authForm");
 const statusEl = document.getElementById("authStatus");
 const modeInput = document.getElementById("authMode");
 const nameField = document.getElementById("nameField");
 const nameInput = document.getElementById("nameInput");
+const accountTypeField = document.getElementById("accountTypeField");
+const accountTypeSelect = document.getElementById("accountType");
+const orgNameField = document.getElementById("orgNameField");
+const orgNameInput = document.getElementById("orgNameInput");
 const passwordInput = document.getElementById("passwordInput");
 const submitBtn = document.getElementById("authSubmit");
 const googleBtn = document.getElementById("googleBtn");
 const tabs = document.querySelectorAll("[data-auth-tab]");
 const setupNote = document.getElementById("setupNote");
+let navigatingAway = false;
 
 function setStatus(message, type = "") {
   if (!statusEl) return;
   statusEl.textContent = message || "";
   statusEl.className = `auth-msg${type ? ` is-${type}` : ""}`;
+}
+
+function syncOrgNameVisibility() {
+  const signup = modeInput?.value === "signup";
+  const isOrg = accountTypeSelect?.value === "organization";
+  if (orgNameField) orgNameField.hidden = !(signup && isOrg);
+  if (orgNameInput) orgNameInput.required = signup && isOrg;
 }
 
 function setMode(mode) {
@@ -35,16 +48,14 @@ function setMode(mode) {
     tab.setAttribute("aria-selected", String(active));
   });
 
-  if (nameField) {
-    nameField.hidden = next !== "signup";
-  }
-  if (nameInput) {
-    nameInput.required = next === "signup";
-  }
+  if (nameField) nameField.hidden = next !== "signup";
+  if (nameInput) nameInput.required = next === "signup";
+  if (accountTypeField) accountTypeField.hidden = next !== "signup";
   if (passwordInput) {
     passwordInput.autocomplete = next === "signup" ? "new-password" : "current-password";
   }
 
+  syncOrgNameVisibility();
   submitBtn.textContent = next === "signup" ? "Create account" : "Sign in";
   setStatus("");
 }
@@ -53,9 +64,22 @@ tabs.forEach((tab) => {
   tab.addEventListener("click", () => setMode(tab.dataset.authTab));
 });
 
-async function finishLogin() {
+accountTypeSelect?.addEventListener("change", syncOrgNameVisibility);
+
+async function afterAuth(user, { isNewSignup = false, accountType, orgName } = {}) {
+  if (!user || navigatingAway) return;
+  navigatingAway = true;
+  try {
+    if (isNewSignup) {
+      await saveAccountMeta(user, { accountType, orgName });
+    }
+    await claimOrgInvites(user);
+  } catch {
+    // non-fatal — org page can finish setup
+  }
   setStatus("Signed in — opening your app…", "ok");
-  window.location.href = "app.html";
+  const goOrg = isNewSignup && accountType === "organization";
+  window.location.href = goOrg ? "org.html" : "app.html";
 }
 
 form?.addEventListener("submit", async (event) => {
@@ -70,6 +94,13 @@ form?.addEventListener("submit", async (event) => {
   const name = String(data.get("name") || "");
   const email = String(data.get("email") || "").trim();
   const password = String(data.get("password") || "");
+  const accountType = String(data.get("accountType") || "individual");
+  const orgName = String(data.get("orgName") || "").trim();
+
+  if (mode === "signup" && accountType === "organization" && !orgName) {
+    setStatus("Enter an organization name, or switch to Individual farmer.", "error");
+    return;
+  }
 
   submitBtn.disabled = true;
   googleBtn.disabled = true;
@@ -77,11 +108,12 @@ form?.addEventListener("submit", async (event) => {
 
   try {
     if (mode === "signup") {
-      await signUpEmail(name, email, password);
+      const user = await signUpEmail(name, email, password);
+      await afterAuth(user, { isNewSignup: true, accountType, orgName });
     } else {
-      await signInEmail(email, password);
+      const user = await signInEmail(email, password);
+      await afterAuth(user);
     }
-    await finishLogin();
   } catch (err) {
     setStatus(authErrorMessage(err), "error");
   } finally {
@@ -102,7 +134,10 @@ googleBtn?.addEventListener("click", async () => {
 
   try {
     const user = await signInGoogle();
-    if (user) await finishLogin();
+    if (user) {
+      // Google may be first-time: claim invites; org create stays on org page
+      await afterAuth(user);
+    }
   } catch (err) {
     setStatus(authErrorMessage(err), "error");
     submitBtn.disabled = false;
@@ -121,7 +156,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     const redirect = await completeGoogleRedirect();
     if (redirect?.user) {
-      await finishLogin();
+      await afterAuth(redirect.user);
       return;
     }
   } catch (err) {
@@ -129,11 +164,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   watchAuth((user) => {
-    if (user) {
-      setStatus(`Signed in as ${user.email || user.displayName}. Opening app…`, "ok");
-      window.setTimeout(() => {
-        window.location.href = "app.html";
-      }, 600);
+    if (user && !navigatingAway) {
+      afterAuth(user);
     }
   });
 });

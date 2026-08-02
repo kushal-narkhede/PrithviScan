@@ -61,6 +61,24 @@
 }
 .profile-prefs-note a { color: #1f6b45; }
 
+.auth-field-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: #3a5646;
+  font-weight: 400;
+}
+
+.auth-row select {
+  width: 100%;
+  border: 1px solid rgba(16, 37, 26, 0.18);
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+  font: inherit;
+  background: #fff;
+  color: #10251a;
+}
+
 .auth-bg {
   position: fixed;
   inset: 0;

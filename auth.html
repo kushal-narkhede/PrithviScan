@@ -43,7 +43,7 @@
           <span class="auth-logo-prithvi">Prithvi</span><span class="auth-logo-scan">Scan</span>
         </h1>
         <p class="auth-sub">
-          Sign in to save fields, alerts, and recommendations as the platform grows.
+          Sign in to save fields, alerts, and organization teams as the platform grows.
         </p>
 
         <div id="setupNote" class="auth-banner" hidden>
@@ -67,6 +67,29 @@
           <div id="nameField" class="auth-row" hidden>
             <label for="nameInput">Full name</label>
             <input id="nameInput" type="text" name="name" autocomplete="name" placeholder="Your name" />
+          </div>
+
+          <div id="accountTypeField" class="auth-row" hidden>
+            <label for="accountType">Account type</label>
+            <select id="accountType" name="accountType">
+              <option value="organization" selected>Organization / farm group</option>
+              <option value="individual">Individual farmer</option>
+            </select>
+            <p class="auth-field-hint">
+              Most users join an FPO, family holding, or hire team. Pick organization to create one as owner — you can add people later.
+            </p>
+          </div>
+
+          <div id="orgNameField" class="auth-row" hidden>
+            <label for="orgNameInput">Organization name</label>
+            <input
+              id="orgNameInput"
+              type="text"
+              name="orgName"
+              maxlength="80"
+              placeholder="e.g. Green Valley FPO"
+              autocomplete="organization"
+            />
           </div>
 
           <div class="auth-row">

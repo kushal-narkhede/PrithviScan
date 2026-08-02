@@ -24,6 +24,8 @@ const CAT_LABEL = {
   amendment: "Amendment",
   soil: "Soil type",
   crop: "Crop",
+  machine: "Machine",
+  maintenance: "Maintenance",
   input: "Farm input",
 };
 

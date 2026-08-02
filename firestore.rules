@@ -20,16 +20,63 @@ service cloud.firestore {
     }
 
     // Public discoverable profiles (email lookup for friend requests)
+    function authEmailLower() {
+      return signedIn() && request.auth.token.email != null
+        ? request.auth.token.email.lower()
+        : "";
+    }
+
+    function isOrgOwner(orgId) {
+      return signedIn()
+        && orgId is string
+        && get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerUid
+          == request.auth.uid;
+    }
+
+    function orgMembershipKeysOnly() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(["orgId", "orgRole", "accountType", "orgName", "updatedAt"]);
+    }
+
     match /profiles/{userId} {
       allow read: if signedIn();
-      allow create, update: if isSelf(userId)
+      allow create: if isSelf(userId)
         && request.resource.data.uid == userId
         && request.resource.data.emailLower is string;
+      allow update: if (
+          isSelf(userId)
+          && request.resource.data.uid == userId
+          && request.resource.data.emailLower is string
+        )
+        || (
+          // Organization owner assigning / clearing membership on a profile
+          signedIn()
+          && orgMembershipKeysOnly()
+          && (
+            (request.resource.data.orgId is string
+              && isOrgOwner(request.resource.data.orgId))
+            || (resource.data.orgId is string
+              && isOrgOwner(resource.data.orgId))
+          )
+        );
       allow delete: if isSelf(userId);
     }
 
     match /users/{userId} {
-      allow read, write: if isSelf(userId);
+      allow read: if isSelf(userId);
+      allow create: if isSelf(userId);
+      allow update: if isSelf(userId)
+        || (
+          signedIn()
+          && orgMembershipKeysOnly()
+          && (
+            (request.resource.data.orgId is string
+              && isOrgOwner(request.resource.data.orgId))
+            || (resource.data.orgId is string
+              && isOrgOwner(resource.data.orgId))
+          )
+        );
+      allow delete: if isSelf(userId);
 
       match /friends/{friendId} {
         allow read: if isSelf(userId);
@@ -114,6 +161,48 @@ service cloud.firestore {
         && (resource.data.ownerUid == request.auth.uid
             || resource.data.sharedWithUid == request.auth.uid);
       allow update: if false;
+    }
+
+    match /organizations/{orgId} {
+      allow read: if signedIn() && (
+        request.auth.uid in resource.data.memberIds
+        || (authEmailLower() != ""
+            && authEmailLower() in resource.data.get("pendingEmails", []))
+      );
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.auth.uid in request.resource.data.memberIds
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80;
+      allow update: if signedIn() && (
+        resource.data.ownerUid == request.auth.uid
+        || (
+          // Claim pending invite: add self + remove own email from pendingEmails
+          authEmailLower() != ""
+          && authEmailLower() in resource.data.get("pendingEmails", [])
+          && request.auth.uid in request.resource.data.memberIds
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["memberIds", "pendingEmails", "updatedAt"])
+        )
+      );
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /orgInvites/{inviteId} {
+      allow read: if signedIn()
+        && (resource.data.fromUid == request.auth.uid
+            || resource.data.emailLower == authEmailLower());
+      allow create: if signedIn()
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.orgId is string
+        && request.resource.data.emailLower is string
+        && request.resource.data.status == "pending"
+        && isOrgOwner(request.resource.data.orgId);
+      allow update: if signedIn()
+        && (resource.data.fromUid == request.auth.uid
+            || resource.data.emailLower == authEmailLower());
+      allow delete: if signedIn() && resource.data.fromUid == request.auth.uid;
     }
   }
 }

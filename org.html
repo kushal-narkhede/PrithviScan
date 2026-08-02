@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Organization · PrithviScan</title>
+    <meta
+      name="description"
+      content="Manage your farm organization — owners can add members to the group."
+    />
+    <link rel="icon" type="image/png" href="assets/favicon.png" />
+    <link rel="apple-touch-icon" href="assets/logo-mark.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Figtree:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=nav3" />
+    <link rel="stylesheet" href="app.css?v=nav3" />
+    <link rel="stylesheet" href="org.css" />
+  </head>
+  <body class="app-body org-body">
+    <header class="app-top">
+      <div class="app-top-inner">
+        <a class="brand" href="index.html" aria-label="PrithviScan home">
+          <img class="brand-mark" src="assets/logo-mark.png" alt="" width="40" height="40" />
+          <span class="brand-wordmark">
+            <span class="brand-prithvi">Prithvi</span><span class="brand-scan">Scan</span>
+          </span>
+        </a>
+        <nav class="app-nav" aria-label="App">
+          <a href="index.html">Home</a>
+          <a href="app.html">Fields</a>
+          <a href="info.html">Info</a>
+          <a href="prices.html">Prices</a>
+          <a class="is-active" href="org.html">Organization</a>
+          <a href="collab.html">Collaborate</a>
+          <span data-auth-slot></span>
+        </nav>
+      </div>
+    </header>
+
+    <main class="org-main">
+      <header class="org-hero">
+        <p class="eyebrow">Farm groups</p>
+        <h1>Organization</h1>
+        <p>
+          Most farms work as groups — FPOs, family holdings, or custom-hire teams.
+          Create an organization when you sign up, then the owner can add people by email.
+        </p>
+      </header>
+
+      <div id="orgGate" class="org-card">
+        <p>Sign in to view or manage your organization.</p>
+        <a class="btn btn-primary" href="auth.html">Sign in</a>
+      </div>
+
+      <div id="orgContent" hidden>
+        <section class="org-card" id="orgSummary"></section>
+
+        <section class="org-card" id="orgMembersCard" hidden>
+          <h2>Members</h2>
+          <ul class="org-member-list" id="orgMemberList"></ul>
+        </section>
+
+        <section class="org-card" id="orgOwnerTools" hidden>
+          <h2>Add people</h2>
+          <p class="muted">
+            Enter a teammate’s email. If they already have a PrithviScan account, they join immediately.
+            Otherwise we send a pending invite they claim when they sign up.
+          </p>
+          <form class="org-form" id="orgInviteForm">
+            <label>
+              Email
+              <input id="orgInviteEmail" type="email" required placeholder="member@farm.org" autocomplete="email" />
+            </label>
+            <button class="btn btn-primary" type="submit">Add to organization</button>
+          </form>
+          <p id="orgInviteStatus" class="org-status" role="status"></p>
+          <div id="orgPendingInvites"></div>
+        </section>
+
+        <section class="org-card" id="orgCreateCard" hidden>
+          <h2>Start an organization</h2>
+          <p class="muted">You don’t have an organization yet. Create one to add your team.</p>
+          <form class="org-form" id="orgCreateForm">
+            <label>
+              Organization name
+              <input id="orgCreateName" type="text" required maxlength="80" placeholder="e.g. Green Valley FPO" />
+            </label>
+            <button class="btn btn-primary" type="submit">Create organization</button>
+          </form>
+          <p id="orgCreateStatus" class="org-status" role="status"></p>
+        </section>
+      </div>
+    </main>
+
+    <script type="module" src="js/org-page.js"></script>
+  </body>
+</html>
