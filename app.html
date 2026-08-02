@@ -20,7 +20,7 @@
       crossorigin=""
     />
     <link rel="stylesheet" href="styles.css?v=nav4" />
-    <link rel="stylesheet" href="app.css?v=nav4" />
+    <link rel="stylesheet" href="app.css?v=sat1" />
   </head>
   <body class="app-body">
     <header class="app-top">
@@ -107,8 +107,11 @@
                 <h2>Place a field</h2>
                 <button type="button" class="app-btn-ghost" id="useLocationBtn">📍 My location</button>
               </div>
-              <p class="app-muted map-hint">Click the map to set the field center, then save.</p>
-              <div id="fieldMap" class="field-map" role="application" aria-label="Field map"></div>
+              <p class="app-muted map-hint">
+                Satellite map — click cropland to set the field center. The same imagery is checked by the field classifier.
+              </p>
+              <div id="fieldMap" class="field-map" role="application" aria-label="Satellite field map"></div>
+              <p id="fieldCheckBanner" class="field-check-banner" role="status" aria-live="polite" hidden></p>
 
               <form id="addFieldForm" class="add-field-form">
                 <input type="hidden" id="authMode" name="mode" value="signin" />
@@ -146,6 +149,6 @@
     <script type="module" src="js/a11y.js"></script>
     <script type="module" src="js/tenant.js"></script>
     <script type="module" src="js/nav-auth.js?v=ai1"></script>
-    <script type="module" src="js/app.js"></script>
+    <script type="module" src="js/app.js?v=sat1"></script>
   </body>
 </html>

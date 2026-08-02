@@ -237,12 +237,45 @@
 
 .field-map {
   width: 100%;
-  height: 280px;
+  height: 320px;
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid rgba(16, 37, 26, 0.1);
-  background: #e8f2eb;
+  background: #1a2e1f;
   z-index: 1;
+}
+
+.field-check-banner {
+  margin: 0.65rem 0 0;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.field-check-banner.is-pending {
+  background: #edf2f7;
+  color: #2d3748;
+  border: 1px solid rgba(45, 55, 72, 0.12);
+}
+
+.field-check-banner.is-ok {
+  background: #e6f4ea;
+  color: #1f6b45;
+  border: 1px solid rgba(47, 133, 90, 0.25);
+}
+
+.field-check-banner.is-warn {
+  background: #fffaf0;
+  color: #9c4221;
+  border: 1px solid rgba(214, 158, 46, 0.35);
+}
+
+.field-check-banner.is-error {
+  background: #fff5f5;
+  color: #9b2c2c;
+  border: 1px solid rgba(229, 62, 62, 0.35);
 }
 
 .field-map-detail {

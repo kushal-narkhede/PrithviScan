@@ -36,11 +36,28 @@ const tabBtns = document.querySelectorAll(".app-tab-btn");
 let currentUser = null;
 let mapApi = null;
 let cachedFields = [];
+/** Only allow save after classifier says the pin is a field */
+let lastLocationValid = false;
+
+const fieldCheckBanner = document.getElementById("fieldCheckBanner");
 
 function setStatus(message, type = "") {
   if (!statusEl) return;
   statusEl.textContent = message || "";
   statusEl.className = `app-status${type ? ` is-${type}` : ""}`;
+}
+
+function setFieldCheckBanner(message, type = "") {
+  if (!fieldCheckBanner) return;
+  if (!message) {
+    fieldCheckBanner.hidden = true;
+    fieldCheckBanner.textContent = "";
+    fieldCheckBanner.className = "field-check-banner";
+    return;
+  }
+  fieldCheckBanner.hidden = false;
+  fieldCheckBanner.textContent = message;
+  fieldCheckBanner.className = `field-check-banner${type ? ` is-${type}` : ""}`;
 }
 
 function esc(v) {
@@ -258,26 +275,62 @@ tabBtns.forEach((btn) => {
 });
 
 async function validateLocation(lat, lon) {
-  setStatus("Checking if this looks like a farm field…");
+  lastLocationValid = false;
+  setStatus("Checking satellite imagery — is this a farm field?");
+  setFieldCheckBanner("Checking this location against the field classifier…", "pending");
+  if (saveBtn) saveBtn.disabled = true;
+
   try {
     const result = await callClassifyLocation(lat, lon);
-    if (result.disabled || result.softFail) {
-      setStatus("Field check paused (needs Blaze). You can still save the field.", "ok");
+    if (result.disabled) {
+      setFieldCheckBanner(
+        "Field check is offline. Try again in a moment, or pick another point.",
+        "error"
+      );
+      setStatus("Field check unavailable.", "error");
+      if (saveBtn) saveBtn.disabled = false;
+      return false;
+    }
+    if (result.softFail) {
+      // Imagery fetch failed — allow save with a clear warning
+      lastLocationValid = true;
+      setFieldCheckBanner(
+        result.message || "Could not verify imagery right now. You can save, but pick cropland carefully.",
+        "warn"
+      );
+      setStatus("Imagery check skipped — you can still save.", "ok");
+      if (saveBtn) saveBtn.disabled = false;
       return true;
     }
     if (!result.valid) {
-      setStatus(
-        result.message || "Not a field — pick cropland on the map.",
-        "error"
-      );
+      lastLocationValid = false;
+      const msg =
+        result.message ||
+        "This location does not look like a farm field (city, water, forest, or bare land). Move the pin to cropland.";
+      setFieldCheckBanner(`Not a field — ${msg}`, "error");
+      setStatus("Not a field. Choose cropland on the satellite map.", "error");
+      if (saveBtn) saveBtn.disabled = false;
       return false;
     }
+    lastLocationValid = true;
     const pct = Math.round((result.confidence || result.field_probability || 0) * 100);
+    const model = result.model ? ` · ${result.model}` : "";
+    setFieldCheckBanner(
+      `Looks like a field (${pct}% confidence)${model}. You can save this location.`,
+      "ok"
+    );
     setStatus(`Looks like a field (${pct}% confidence). ${result.reason || ""}`, "ok");
+    if (saveBtn) saveBtn.disabled = false;
     return true;
   } catch (err) {
-    setStatus("Field check unavailable. You can still save.", "ok");
-    return true;
+    lastLocationValid = false;
+    setFieldCheckBanner(
+      "Could not reach the field classifier. Check your connection and try again.",
+      "error"
+    );
+    setStatus("Field check failed. Try another point.", "error");
+    if (saveBtn) saveBtn.disabled = false;
+    return false;
   }
 }
 
@@ -304,7 +357,11 @@ form?.addEventListener("submit", async (event) => {
   const lon = Number(lonInput.value);
 
   const ok = await validateLocation(lat, lon);
-  if (!ok) {
+  if (!ok || !lastLocationValid) {
+    setFieldCheckBanner(
+      "Cannot save — pick a location that looks like cropland on the satellite map.",
+      "error"
+    );
     saveBtn.disabled = false;
     return;
   }
