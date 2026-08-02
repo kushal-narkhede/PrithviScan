@@ -630,14 +630,25 @@ Critical for farmer uptake and ethical deployment.
 
 ---
 
-## 20. What you can try right now
+## 20. Farm knowledge hub (Info)
+
+| | |
+|---|---|
+| **Status** | Live |
+| **Page** | [`info.html`](info.html) |
+| **What** | Interactive search for fertilizers, soil amendments, farm inputs, soil types, and crops — with composition, pros, cons, tips, and a “what grows on my soil?” matcher. |
+| **Why** | Helps farmers learn products and agronomy in plain language alongside the field app. |
+
+---
+
+## 21. What you can try right now
 
 1. Open https://prithviscan.web.app and sign in  
-2. Complete the **onboarding tour** (or Skip) — a **demo field** is created for you  
-3. Profile → accessibility, data opt-in, alert quiet hours / snooze  
-4. Open a field → safety banner, what-if ROI, **Print / save report**  
-5. Dashboard → Import / Export CSV · GeoJSON  
-6. Read [Data ownership](privacy.html) and [Partners](partners.html)  
+2. Browse **[Info](info.html)** — search urea, clay soil, wheat; try the soil matcher  
+3. Complete the **onboarding tour** (or Skip) — a **demo field** is created for you  
+4. Profile → accessibility, data opt-in, alert quiet hours / snooze  
+5. Open a field → safety banner, what-if ROI, **Print / save report**  
+6. Dashboard → Import / Export CSV · GeoJSON  
 
 ---
 
