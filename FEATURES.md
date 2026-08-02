@@ -216,7 +216,103 @@
 
 ---
 
-## 10. Quick status matrix
+## 10. Farmer-facing features (high impact)
+
+Features that directly increase farmer value and adoption.
+
+### 2.1 Persistent last-view and session restore
+| | |
+|---|---|
+| **Status** | Live (client + Firestore) |
+| **Priority** | Medium |
+| **What** | Open a field to the last viewed insight/page and scroll position. |
+| **Why** | Improves usability for frequent users. |
+| **Implementation** | `js/session.js` saves `users/{uid}.lastSession` and `fields/{id}.lastView` (scrollY, section). Field page restores on load; dashboard shows **Continue where you left off**. |
+
+### 2.2 Actionable recommendations with confidence and provenance
+| | |
+|---|---|
+| **Status** | Code ready — UI Live; generation Paused until Blaze Functions |
+| **Priority** | Critical |
+| **What** | Each insight includes clear action, confidence score, data sources, timestamp, and why (factors). |
+| **Why** | Farmers need to trust and understand recommendations. |
+| **Implementation** | `fuseFieldInsight` now emits `action`, `confidence`, `evidence[]`, `why`, `provenance{sources,model,windowDays,generatedAt}`. Field page renders action line, confidence bar, evidence list, and source line. Stored on `insights/latest`. |
+
+### 2.3 Localized language and units
+| | |
+|---|---|
+| **Status** | Planned |
+| **Priority** | Critical |
+| **What** | Multi-language UI, local units (mm/inches, °C/°F), and region-specific crop names. |
+| **Why** | Global adoption requires localization. |
+| **Implementation notes** | Use i18n framework; community translations; detect locale from browser or profile preferences. |
+
+### 2.4 SMS / IVR and low-bandwidth channels
+| | |
+|---|---|
+| **Status** | Planned (needs Blaze + Twilio/MessageBird) |
+| **Priority** | Critical |
+| **What** | Deliver alerts and recommendations via SMS, WhatsApp, or IVR for non-smartphone users. |
+| **Why** | Many farmers lack smartphones or reliable data. |
+| **Implementation notes** | Integrate Twilio/MessageBird; concise SMS templates; IVR flows for voice delivery in local languages. Opt-in consent required. |
+
+### 2.5 Offline data capture and sync
+| | |
+|---|---|
+| **Status** | Planned |
+| **Priority** | High |
+| **What** | Allow field notes, photos, and manual measurements to be captured offline and synced later. |
+| **Why** | Fieldwork often offline; photos and notes are valuable ground truth. |
+| **Implementation notes** | IndexedDB/local storage; conflict resolution UI; attach metadata (timestamp, GPS). |
+
+### 2.6 Photo-based diagnostics and farmer uploads
+| | |
+|---|---|
+| **Status** | Planned (local ML pieces exist under `ml/`) |
+| **Priority** | High |
+| **What** | Allow farmers to upload photos of crops/pests/disease for automated classification or expert review. |
+| **Why** | Visual evidence improves diagnosis and trust. |
+| **Implementation notes** | Integrate classifyLocation-style heuristics; queue images for ML inference; human-in-the-loop escalation. |
+
+### 2.7 Action tracking and task lists
+| | |
+|---|---|
+| **Status** | Planned |
+| **Priority** | High |
+| **What** | Convert insights into tasks (irrigate, spray, sample) and track completion. |
+| **Why** | Turns recommendations into measurable actions and outcomes. |
+| **Implementation notes** | Task CRUD, reminders, share tasks with workers, attach photos and notes. |
+
+### 2.8 Multi-field and portfolio views
+| | |
+|---|---|
+| **Status** | Planned (basic field list exists) |
+| **Priority** | High |
+| **What** | Aggregate metrics across all fields (water use, alerts, risk) with filtering and grouping. |
+| **Why** | Useful for larger farms and advisors. |
+| **Implementation notes** | Dashboard with KPIs, exportable CSV summaries. |
+
+### 2.9 Role-based access and advisor workflows
+| | |
+|---|---|
+| **Status** | Planned |
+| **Priority** | High |
+| **What** | Farm owners, managers, agronomists, and extension agents with different permissions. |
+| **Why** | Enables advisors to manage multiple farms and collaborate. |
+| **Implementation notes** | Invite/accept flows, shareable read/write links, audit logs. |
+
+### 2.10 Market & input price signals
+| | |
+|---|---|
+| **Status** | Planned |
+| **Priority** | Medium |
+| **What** | Local market prices, input (seed/fertilizer) prices, and supplier contacts. |
+| **Why** | Helps farmers make economic decisions tied to agronomic recommendations. |
+| **Implementation notes** | Integrate regional price feeds or crowdsourced price reporting; show price trends. |
+
+---
+
+## 11. Quick status matrix
 
 | Feature | Status |
 |---------|--------|
@@ -227,6 +323,8 @@
 | Add / list / open / delete fields | Live |
 | Leaflet map + my location | Live |
 | Firestore security rules | Live |
+| **2.1 Last-view / session restore** | **Live** |
+| **2.2 Confidence + provenance UI** | **Live (data needs Blaze)** |
 | Map field classifier API | Paused |
 | NASA POWER weather | Paused |
 | Fusion insights (“Irrigate tomorrow”, etc.) | Paused |
@@ -234,6 +332,14 @@
 | Field trends + 7-day forecast charts | Paused |
 | SMAP / MODIS Earthdata status | Paused |
 | Python EuroSAT training / inference | Local-only |
+| 2.3 Localization (language + units) | Planned |
+| 2.4 SMS / WhatsApp / IVR | Planned |
+| 2.5 Offline capture + sync | Planned |
+| 2.6 Photo diagnostics / uploads | Planned |
+| 2.7 Action tracking / tasks | Planned |
+| 2.8 Multi-field portfolio views | Planned |
+| 2.9 Role-based advisor workflows | Planned |
+| 2.10 Market & input price signals | Planned |
 | HLS NDVI overlays | Not built yet |
 | GPM realtime rainfall stream | Not built yet |
 | Push notifications (FCM) | Not built yet |
@@ -241,13 +347,14 @@
 
 ---
 
-## 11. What you can try right now
+## 12. What you can try right now
 
 1. Open https://prithviscan.web.app  
 2. Create an account / sign in  
 3. Open the app → drop a pin on the map → save a field  
-4. Open the field page (insight/trends buttons will explain they need Blaze)  
-5. On your PC (optional): run `ml\train_eurosat.bat` to train the EuroSAT model locally  
+4. Open a field, scroll around, leave, then use **Continue where you left off** on the dashboard  
+5. Field insight card is ready for action / confidence / provenance (fills when Functions are on Blaze)  
+6. On your PC (optional): run `ml\train_eurosat.bat` to train the EuroSAT model locally  
 
 ---
 

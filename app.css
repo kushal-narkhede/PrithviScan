@@ -402,6 +402,45 @@
   line-height: 1.2;
 }
 .insight-message { margin: 0 0 0.85rem; color: #2d5016; }
+.insight-action-line {
+  margin: 0 0 0.65rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(11, 36, 23, 0.06);
+  color: #0b2417;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.insight-confidence {
+  margin: 0 0 0.85rem;
+}
+.insight-confidence-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: #3a5646;
+  margin-bottom: 0.35rem;
+}
+.insight-confidence-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(11, 36, 23, 0.1);
+  overflow: hidden;
+}
+.insight-confidence-bar span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #2f855a, #38a169);
+  border-radius: inherit;
+  transition: width 0.35s ease;
+}
+.insight-why {
+  margin: 0 0 0.75rem;
+  color: #3a5646;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
 .insight-factors {
   margin: 0;
   padding: 0 0 0 1.15rem;
@@ -410,7 +449,58 @@
   display: grid;
   gap: 0.25rem;
 }
-.insight-age { margin: 0.85rem 0 0; font-size: 0.82rem; color: #718096; }
+.insight-evidence {
+  margin: 0.85rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(11, 36, 23, 0.08);
+  font-size: 0.88rem;
+  color: #3a5646;
+}
+.insight-evidence-title {
+  margin: 0 0 0.35rem;
+  font-weight: 700;
+  color: #0b2417;
+}
+.insight-evidence ul {
+  margin: 0;
+  padding: 0 0 0 1.1rem;
+  display: grid;
+  gap: 0.2rem;
+}
+.insight-evidence span { color: #718096; }
+.insight-provenance {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  color: #4a5568;
+  line-height: 1.4;
+}
+.insight-age { margin: 0.55rem 0 0; font-size: 0.82rem; color: #718096; }
+
+.continue-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0 0 1rem;
+  padding: 0.9rem 1.05rem;
+  border-radius: 14px;
+  text-decoration: none;
+  color: inherit;
+  background: linear-gradient(135deg, #e8f5ee, #f4faf6);
+  border: 1px solid rgba(47, 133, 90, 0.25);
+}
+.continue-banner[hidden] { display: none !important; }
+.continue-kicker {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #276749;
+}
+.continue-banner strong {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.15rem;
+  color: #0b2417;
+}
 
 /* ---- Metrics grid ---- */
 .metrics-grid {

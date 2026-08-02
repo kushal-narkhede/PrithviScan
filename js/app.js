@@ -1,7 +1,8 @@
 import { watchAuth, isFirebaseConfigured } from "./auth.js";
-import { listFields, createField } from "./fields.js";
+import { listFields, createField, getField } from "./fields.js";
 import { createFieldMap, useBrowserLocation } from "./map.js";
 import { callGetAlerts, callMarkAlertRead, callClassifyLocation } from "./api.js";
+import { loadLastSession, saveLastSession } from "./session.js";
 
 const statusEl = document.getElementById("appStatus");
 const welcomeLine = document.getElementById("welcomeLine");
@@ -59,7 +60,7 @@ function renderFields(fields) {
       const lvl = insight?.level || "info";
       const crop = f.cropType ? ` · ${esc(f.cropType)}` : "";
       return `
-        <a class="field-card ${levelClass(lvl)}" href="field.html?id=${encodeURIComponent(f.id)}">
+        <a class="field-card ${levelClass(lvl)}" href="field.html?id=${encodeURIComponent(f.id)}" data-field-id="${esc(f.id)}">
           <div class="field-card-head">
             <strong>${esc(f.name || "Untitled field")}</strong>
             ${insight ? `<span class="field-card-badge ${levelClass(lvl)}">${esc(insight.title)}</span>` : ""}
@@ -68,6 +69,37 @@ function renderFields(fields) {
         </a>`;
     })
     .join("");
+
+  fieldsList.querySelectorAll("a.field-card").forEach((a) => {
+    a.addEventListener("click", () => {
+      if (!currentUser) return;
+      const id = a.dataset.fieldId;
+      if (id) saveLastSession(currentUser.uid, { fieldId: id, scrollY: 0, section: "insight", page: "field" }).catch(() => {});
+    });
+  });
+}
+
+async function showContinueBanner(uid) {
+  const banner = document.getElementById("continueSession");
+  const label = document.getElementById("continueLabel");
+  if (!banner || !label) return;
+  try {
+    const session = await loadLastSession(uid);
+    if (!session?.fieldId) {
+      banner.hidden = true;
+      return;
+    }
+    const field = await getField(uid, session.fieldId);
+    if (!field) {
+      banner.hidden = true;
+      return;
+    }
+    label.textContent = field.name || "Untitled field";
+    banner.href = `field.html?id=${encodeURIComponent(field.id)}`;
+    banner.hidden = false;
+  } catch {
+    banner.hidden = true;
+  }
 }
 
 async function refreshFields() {
@@ -264,6 +296,6 @@ document.addEventListener("DOMContentLoaded", () => {
     currentUser = user;
     const label = user.displayName || user.email || "farmer";
     if (welcomeLine) welcomeLine.textContent = `Welcome, ${label}.`;
-    await Promise.all([refreshFields(), loadAlerts()]);
+    await Promise.all([refreshFields(), loadAlerts(), showContinueBanner(user.uid)]);
   });
 });

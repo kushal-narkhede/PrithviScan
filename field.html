@@ -56,13 +56,26 @@
 
         <p id="fieldStatus" class="app-status" role="status" aria-live="polite"></p>
 
-        <!-- Insight card -->
+        <!-- Insight card (action + confidence + provenance) -->
         <div class="insight-card-wrap" id="insightWrap">
           <div class="insight-card insight-info" id="insightCard">
             <p class="insight-level" id="insightLevel">—</p>
             <h2 class="insight-title" id="insightTitle">Loading insight…</h2>
+            <p class="insight-action-line" id="insightAction" hidden></p>
             <p class="insight-message" id="insightMessage"></p>
+            <div class="insight-confidence" id="insightConfidenceWrap" hidden>
+              <div class="insight-confidence-head">
+                <span>Confidence</span>
+                <strong id="insightConfidenceLabel">—</strong>
+              </div>
+              <div class="insight-confidence-bar" aria-hidden="true">
+                <span id="insightConfidenceFill"></span>
+              </div>
+            </div>
+            <p class="insight-why" id="insightWhy" hidden></p>
             <ul class="insight-factors" id="insightFactors"></ul>
+            <div class="insight-evidence" id="insightEvidence" hidden></div>
+            <p class="insight-provenance" id="insightProvenance" hidden></p>
             <p class="insight-age" id="insightAge"></p>
           </div>
         </div>

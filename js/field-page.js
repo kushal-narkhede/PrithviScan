@@ -4,6 +4,7 @@ import { getDb } from "./firebase-db.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 import { createFieldMap } from "./map.js";
 import { callFuseInsight, callFieldTrends } from "./api.js";
+import { bindSessionPersistence, restoreScroll } from "./session.js";
 
 const titleEl  = document.getElementById("fieldTitle");
 const metaEl   = document.getElementById("fieldMeta");
@@ -15,8 +16,15 @@ const loadTrendsBtn = document.getElementById("loadTrendsBtn");
 const insightCard    = document.getElementById("insightCard");
 const insightLevel   = document.getElementById("insightLevel");
 const insightTitle   = document.getElementById("insightTitle");
+const insightAction  = document.getElementById("insightAction");
 const insightMessage = document.getElementById("insightMessage");
+const insightWhy     = document.getElementById("insightWhy");
 const insightFactors = document.getElementById("insightFactors");
+const insightEvidence = document.getElementById("insightEvidence");
+const insightProvenance = document.getElementById("insightProvenance");
+const insightConfidenceWrap = document.getElementById("insightConfidenceWrap");
+const insightConfidenceLabel = document.getElementById("insightConfidenceLabel");
+const insightConfidenceFill = document.getElementById("insightConfidenceFill");
 const insightAge     = document.getElementById("insightAge");
 const metricsGrid    = document.getElementById("metricsGrid");
 const satelliteRow   = document.getElementById("satelliteRow");
@@ -60,7 +68,78 @@ function renderInsight(insight) {
   insightLevel.textContent = levelLabel(lvl);
   insightTitle.textContent = insight.title || "—";
   insightMessage.textContent = insight.message || "";
-  insightFactors.innerHTML = (insight.factors || []).map((f) => `<li>${f}</li>`).join("");
+
+  if (insightAction) {
+    if (insight.action) {
+      insightAction.hidden = false;
+      insightAction.textContent = `Action: ${insight.action}`;
+    } else {
+      insightAction.hidden = true;
+    }
+  }
+
+  if (insightConfidenceWrap && insightConfidenceLabel && insightConfidenceFill) {
+    if (typeof insight.confidence === "number") {
+      const pct = Math.round(Math.max(0, Math.min(1, insight.confidence)) * 100);
+      insightConfidenceWrap.hidden = false;
+      insightConfidenceLabel.textContent = `${pct}%`;
+      insightConfidenceFill.style.width = `${pct}%`;
+    } else {
+      insightConfidenceWrap.hidden = true;
+    }
+  }
+
+  if (insightWhy) {
+    if (insight.why) {
+      insightWhy.hidden = false;
+      insightWhy.textContent = insight.why;
+    } else {
+      insightWhy.hidden = true;
+    }
+  }
+
+  insightFactors.innerHTML = (insight.factors || []).map((f) => `<li>${esc(f)}</li>`).join("");
+
+  if (insightEvidence) {
+    const ev = insight.evidence || [];
+    if (ev.length) {
+      insightEvidence.hidden = false;
+      insightEvidence.innerHTML = `
+        <p class="insight-evidence-title">Evidence</p>
+        <ul>
+          ${ev
+            .map(
+              (e) =>
+                `<li><strong>${esc(e.label || e.metric)}</strong>: ${esc(String(e.value))} ${esc(e.unit || "")} <span>(${esc(e.source)})</span></li>`
+            )
+            .join("")}
+        </ul>`;
+    } else {
+      insightEvidence.hidden = true;
+      insightEvidence.innerHTML = "";
+    }
+  }
+
+  if (insightProvenance) {
+    const p = insight.provenance || {};
+    const sources = p.sources || [];
+    if (sources.length || insight.generatedAt) {
+      insightProvenance.hidden = false;
+      const when = insight.generatedAt
+        ? new Date(insight.generatedAt).toLocaleString()
+        : "";
+      insightProvenance.textContent = [
+        sources.length ? `Sources: ${sources.join(" · ")}` : "",
+        p.model ? `Model: ${p.model}` : "",
+        when ? `Generated: ${when}` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+    } else {
+      insightProvenance.hidden = true;
+    }
+  }
+
   if (insight.generatedAt) {
     insightAge.textContent = `Updated ${new Date(insight.generatedAt).toLocaleString()}`;
   }
@@ -78,7 +157,7 @@ function renderInsight(insight) {
   fill("mSolar", m.avgSolar, 2);
   if (metricsGrid) metricsGrid.hidden = false;
 
-  const ef = insight.earthFlags || {};
+  const ef = insight.earthFlags || insight.provenance?.earthFlags || {};
   if (satelliteRow) {
     satelliteRow.hidden = false;
     satSMAP.textContent = `SMAP ${ef.smapAvailable ? "yes" : "—"}`;
@@ -89,6 +168,14 @@ function renderInsight(insight) {
       satNote.textContent = "Connect Earthdata token to enable satellite layers.";
     }
   }
+}
+
+function esc(v) {
+  return String(v)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function renderFacts(field) {
@@ -238,6 +325,12 @@ document.addEventListener("DOMContentLoaded", () => {
       createFieldMap("detailMap", { lat: field.lat, lon: field.lon, pickable: false, detailZoom: 14 });
 
       await loadSavedInsight(user.uid, fieldId);
+
+      // 2.1 — restore last scroll/section, then keep saving as user browses
+      const lv = field.lastView || {};
+      restoreScroll(lv.scrollY, lv.section);
+      bindSessionPersistence(user.uid, fieldId);
+
       // Auto-load trends (non-blocking)
       loadTrends();
 

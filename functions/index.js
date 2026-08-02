@@ -329,10 +329,12 @@ exports.fuseFieldInsight = onRequest(
         }
       }
 
-      // ---- Fusion rules ----
+      // ---- Fusion rules (with confidence + provenance — feature 2.2) ----
       const factors = [];
+      const evidence = [];
       let level = "info";
       let titleKey = "conditions_ok";
+      let confidence = 0.55;
 
       const rain = metrics.totalRain_mm;
       const et = metrics.totalET_mm;
@@ -340,14 +342,57 @@ exports.fuseFieldInsight = onRequest(
       const maxTemp = metrics.maxTemp_c;
       const humidity = metrics.avgHumidity_pct;
 
+      if (rain !== null) {
+        evidence.push({
+          source: "NASA POWER",
+          metric: "PRECTOTCORR",
+          label: "7-day rainfall",
+          value: Number(rain.toFixed(2)),
+          unit: "mm",
+          weight: 0.35,
+        });
+      }
+      if (et !== null) {
+        evidence.push({
+          source: "NASA POWER",
+          metric: "EVPTRNS",
+          label: "7-day ET demand",
+          value: Number(et.toFixed(2)),
+          unit: "mm",
+          weight: 0.3,
+        });
+      }
+      if (maxTemp !== null) {
+        evidence.push({
+          source: "NASA POWER",
+          metric: "T2M_MAX",
+          label: "Avg daily max temp",
+          value: Number(maxTemp.toFixed(2)),
+          unit: "°C",
+          weight: 0.2,
+        });
+      }
+      if (humidity !== null) {
+        evidence.push({
+          source: "NASA POWER",
+          metric: "RH2M",
+          label: "Avg humidity",
+          value: Number(humidity.toFixed(1)),
+          unit: "%",
+          weight: 0.15,
+        });
+      }
+
       // Rule 1: Irrigation needed
       if (rain !== null && et !== null && rain < 5 && et > 10) {
         level = "action";
         titleKey = "irrigate_soon";
+        confidence = 0.88;
         factors.push(`Only ${rain?.toFixed(1)} mm rain in 7 days vs ${et?.toFixed(1)} mm ET demand`);
       } else if (rain !== null && et !== null && rain < 12 && et > 8) {
         level = "watch";
         titleKey = "low_moisture";
+        confidence = 0.74;
         factors.push(`Low rainfall (${rain?.toFixed(1)} mm) relative to ET demand`);
       }
 
@@ -355,6 +400,7 @@ exports.fuseFieldInsight = onRequest(
       if (maxTemp !== null && maxTemp > 37) {
         level = level === "action" ? "action" : "watch";
         titleKey = titleKey === "irrigate_soon" ? "irrigate_soon" : "heat_stress";
+        confidence = Math.max(confidence, 0.82);
         factors.push(`Max temperature ${maxTemp?.toFixed(1)}°C exceeds heat stress threshold`);
       }
 
@@ -362,19 +408,30 @@ exports.fuseFieldInsight = onRequest(
       if (rain !== null && rain > 60) {
         level = level === "action" ? "action" : "watch";
         titleKey = "excess_rain";
+        confidence = Math.max(confidence, 0.8);
         factors.push(`Heavy rainfall: ${rain?.toFixed(1)} mm in 7 days — watch for waterlogging`);
       }
 
       // Rule 4: High humidity disease risk
       if (humidity !== null && humidity > 85 && maxTemp !== null && maxTemp > 28) {
         if (level === "info") { level = "watch"; titleKey = "disease_risk"; }
+        confidence = Math.max(confidence, 0.7);
         factors.push(`High humidity (${humidity?.toFixed(0)}%) + warm temps increase disease risk`);
       }
 
       // Rule 5: Good conditions
       if (factors.length === 0) {
         factors.push("Rainfall, temperature and ET are within normal range");
+        confidence = 0.68;
       }
+
+      // Satellite availability nudges confidence slightly
+      if (earthFlags.smapAvailable || earthFlags.modisAvailable) {
+        confidence = Math.min(0.95, confidence + 0.04);
+      }
+      // Fewer usable POWER metrics → lower confidence
+      const metricCount = [rain, et, maxTemp, humidity].filter((v) => v !== null).length;
+      if (metricCount < 3) confidence = Math.max(0.35, confidence - 0.15);
 
       const TITLES = {
         irrigate_soon: "Irrigate tomorrow",
@@ -383,6 +440,15 @@ exports.fuseFieldInsight = onRequest(
         excess_rain: "Excess rainfall — check drainage",
         disease_risk: "Disease risk elevated",
         conditions_ok: "Field conditions look good",
+      };
+
+      const ACTIONS = {
+        irrigate_soon: "Schedule irrigation within 24 hours",
+        low_moisture: "Scout soil moisture and plan light irrigation",
+        heat_stress: "Apply cooling irrigation / reduce midday stress",
+        excess_rain: "Clear drainage channels and scout for waterlogging",
+        disease_risk: "Scout leaves for disease; consider preventive spray",
+        conditions_ok: "No action required — continue routine monitoring",
       };
 
       const MESSAGES = {
@@ -394,14 +460,39 @@ exports.fuseFieldInsight = onRequest(
         conditions_ok: "No immediate action required. Continue monitoring as conditions can change quickly.",
       };
 
+      const why =
+        `We recommend “${ACTIONS[titleKey]}” because: ${factors.join("; ")}. ` +
+        `Based on the last ${days} days of NASA POWER weather` +
+        (earthFlags.smapAvailable || earthFlags.modisAvailable
+          ? " plus nearby Earthdata satellite granule availability."
+          : ".");
+
+      const sources = ["NASA POWER"];
+      if (earthFlags.smapAvailable) sources.push("NASA SMAP (Earthdata CMR)");
+      if (earthFlags.modisAvailable) sources.push("NASA MODIS MOD13Q1 (Earthdata CMR)");
+
+      const generatedAt = new Date().toISOString();
       const insight = {
         level,
         title: TITLES[titleKey] || TITLES.conditions_ok,
+        action: ACTIONS[titleKey] || ACTIONS.conditions_ok,
         message: MESSAGES[titleKey] || MESSAGES.conditions_ok,
+        why,
         factors,
+        evidence,
+        confidence: Number(confidence.toFixed(2)),
+        provenance: {
+          sources,
+          model: "rule_fusion_v1",
+          windowDays: days,
+          generatedAt,
+          lat: Number(lat),
+          lon: Number(lon),
+          earthFlags,
+        },
         metrics,
         earthFlags,
-        generatedAt: new Date().toISOString(),
+        generatedAt,
       };
 
       // Persist to Firestore
@@ -431,6 +522,8 @@ exports.fuseFieldInsight = onRequest(
         lastInsight: {
           level,
           title: insight.title,
+          action: insight.action,
+          confidence: insight.confidence,
           generatedAt: insight.generatedAt,
         },
         updatedAt: FieldValue.serverTimestamp(),
