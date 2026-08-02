@@ -611,6 +611,40 @@
   .scenario-grid { grid-template-columns: 1fr; }
 }
 
+.bulk-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0 0 0.45rem;
+}
+.bulk-hint {
+  margin: 0 0 0.85rem;
+  font-size: 0.82rem;
+}
+.bulk-hint code {
+  font-size: 0.78rem;
+  background: rgba(11, 36, 23, 0.06);
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+}
+.bulk-upload {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* White-label hooks (4.3) — tenant.js sets --tenant-* */
+:root {
+  --tenant-primary: #1f6b45;
+  --tenant-accent: #c4a35a;
+}
+.app-btn-primary {
+  background: var(--tenant-primary, #1f6b45);
+}
+.continue-kicker {
+  color: var(--tenant-primary, #276749);
+}
+
 /* ---- Metrics grid ---- */
 .metrics-grid {
   display: grid;

@@ -79,6 +79,15 @@
                 <h2>Your fields</h2>
                 <span class="app-count" id="fieldCount">0</span>
               </div>
+              <div class="bulk-toolbar">
+                <button type="button" class="app-btn-ghost" id="exportCsvBtn">Export CSV</button>
+                <button type="button" class="app-btn-ghost" id="exportGeoBtn">Export GeoJSON</button>
+                <label class="app-btn-ghost bulk-upload">
+                  Import CSV / GeoJSON
+                  <input id="importFileInput" type="file" accept=".csv,.json,.geojson,text/csv,application/json" hidden />
+                </label>
+              </div>
+              <p class="app-muted bulk-hint">CSV columns: <code>name,lat,lon,cropType</code> — or a GeoJSON Point FeatureCollection.</p>
               <div id="fieldsList" class="fields-list">
                 <div class="empty-state">
                   <strong>No fields yet</strong>
@@ -129,6 +138,7 @@
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
+    <script type="module" src="js/tenant.js"></script>
     <script type="module" src="js/nav-auth.js"></script>
     <script type="module" src="js/app.js"></script>
   </body>

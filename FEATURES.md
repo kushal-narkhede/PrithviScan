@@ -372,7 +372,58 @@ Invest in data quality, model performance, and explainability.
 
 ---
 
-## 12. Quick status matrix
+## 12. Operations, scale, and integrations
+
+Make the platform enterprise-grade and easy to integrate.
+
+### 4.1 API and webhooks for partners
+| | |
+|---|---|
+| **Status** | Contract defined — live endpoints need Blaze |
+| **Priority** | High |
+| **What** | REST API and webhook endpoints for alerts, insights, and field updates. |
+| **Why** | Enables integration with farm management systems, cooperatives, and input suppliers. |
+| **Implementation** | Spec in [`docs/PARTNER_API.md`](docs/PARTNER_API.md): API keys, rate limits, `/v1` versioning, webhook events + HMAC signatures. Sample SDKs planned. |
+
+### 4.2 Bulk import/export and migration tools
+| | |
+|---|---|
+| **Status** | Live |
+| **Priority** | High |
+| **What** | CSV/GeoJSON import for fields, bulk snapshot export, and migration scripts. |
+| **Why** | Onboarding at scale (cooperatives, NGOs). |
+| **Implementation** | Dashboard **Import CSV / GeoJSON**, **Export CSV**, **Export GeoJSON**. Validates coords, maps crop aliases, dedupes against existing fields. Offline validator: `scripts/migrate_fields_csv.py`. |
+
+### 4.3 Multi-tenant and white-label options
+| | |
+|---|---|
+| **Status** | Partial — theming hook Live |
+| **Priority** | Medium |
+| **What** | Offer white-label apps for NGOs, governments, or agribusinesses. |
+| **Why** | Revenue and distribution channels. |
+| **Implementation** | `js/tenant.js` + `assets/tenant.json` apply brand name, primary/accent CSS variables, logo. Custom domains + hard tenant isolation Planned. |
+
+### 4.4 Payment, credits, and subsidy flows
+| | |
+|---|---|
+| **Status** | Planned |
+| **Priority** | Medium |
+| **What** | In-app payments, credits for premium features, and integration with subsidy programs. |
+| **Why** | Monetization and farmer incentives. |
+| **Implementation notes** | PCI compliance, local payment gateways, voucher codes. |
+
+### 4.5 Offline field agent app
+| | |
+|---|---|
+| **Status** | Planned |
+| **Priority** | High |
+| **What** | Lightweight app for extension agents to collect data, push recommendations, and manage farmer lists. |
+| **Why** | Scales human support and adoption. |
+| **Implementation notes** | Sync, role permissions, bulk operations. Builds on 2.5 offline + 2.9 roles. |
+
+---
+
+## 13. Quick status matrix
 
 | Feature | Status |
 |---------|--------|
@@ -388,8 +439,11 @@ Invest in data quality, model performance, and explainability.
 | **3.3 Farmer ground-truth feedback** | **Live** |
 | **3.4 Rule traces + sensitivity** | **Live (data needs Blaze)** |
 | **3.5 What-if scenarios** | **Live** |
+| **4.2 Bulk CSV / GeoJSON import-export** | **Live** |
 | **3.1 Model versioning / registry** | **Partial (local)** |
 | **3.2 Ensemble data layer** | **Partial (POWER + stubs)** |
+| **4.1 Partner API / webhooks** | **Contract only** |
+| **4.3 White-label theming** | **Partial** |
 | Map field classifier API | Paused |
 | NASA POWER weather | Paused |
 | Fusion insights (“Irrigate tomorrow”, etc.) | Paused |
@@ -406,6 +460,8 @@ Invest in data quality, model performance, and explainability.
 | 2.9 Role-based advisor workflows | Planned |
 | 2.10 Market & input price signals | Planned |
 | 3.6 Edge / TFLite / ONNX | Planned |
+| 4.4 Payments / credits / subsidies | Planned |
+| 4.5 Offline field agent app | Planned |
 | HLS NDVI overlays | Not built yet |
 | GPM realtime rainfall stream | Not built yet |
 | Push notifications (FCM) | Not built yet |
@@ -413,13 +469,13 @@ Invest in data quality, model performance, and explainability.
 
 ---
 
-## 13. What you can try right now
+## 14. What you can try right now
 
 1. Open https://prithviscan.web.app  
 2. Create an account / sign in  
 3. Open the app → drop a pin on the map → save a field  
-4. Open a field — try **What-if scenarios** and **Help improve recommendations**  
-5. Use **Continue where you left off** after revisiting the dashboard  
+4. Use **Export CSV / GeoJSON** or **Import CSV / GeoJSON** on the dashboard  
+5. Open a field — try **What-if** and **Help improve recommendations**  
 6. On your PC (optional): run `ml\train_eurosat.bat` — check `ml/models/registry.json` for version/accuracy  
 
 ---

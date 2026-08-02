@@ -61,3 +61,19 @@ export async function deleteField(uid, fieldId) {
   const ref = doc(getDb(), "users", uid, "fields", fieldId);
   await deleteDoc(ref);
 }
+
+/** Sequential bulk create for CSV/GeoJSON import (feature 4.2). */
+export async function createFieldsBulk(uid, rows, onProgress) {
+  const created = [];
+  const failed = [];
+  for (let i = 0; i < rows.length; i++) {
+    try {
+      const field = await createField(uid, rows[i]);
+      created.push(field);
+    } catch (err) {
+      failed.push({ row: rows[i], error: err?.message || "failed" });
+    }
+    onProgress?.(i + 1, rows.length);
+  }
+  return { created, failed };
+}

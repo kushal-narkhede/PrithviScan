@@ -1,8 +1,16 @@
 import { watchAuth, isFirebaseConfigured } from "./auth.js";
-import { listFields, createField, getField } from "./fields.js";
+import { listFields, createField, createFieldsBulk, getField } from "./fields.js";
 import { createFieldMap, useBrowserLocation } from "./map.js";
 import { callGetAlerts, callMarkAlertRead, callClassifyLocation } from "./api.js";
 import { loadLastSession, saveLastSession } from "./session.js";
+import {
+  parseFieldsCsv,
+  parseFieldsGeoJson,
+  dedupeAgainstExisting,
+  fieldsToCsv,
+  fieldsToGeoJson,
+  downloadText,
+} from "./import-export.js";
 
 const statusEl = document.getElementById("appStatus");
 const welcomeLine = document.getElementById("welcomeLine");
@@ -24,6 +32,7 @@ const tabBtns = document.querySelectorAll(".app-tab-btn");
 
 let currentUser = null;
 let mapApi = null;
+let cachedFields = [];
 
 function setStatus(message, type = "") {
   if (!statusEl) return;
@@ -106,6 +115,7 @@ async function refreshFields() {
   if (!currentUser) return;
   try {
     const fields = await listFields(currentUser.uid);
+    cachedFields = fields;
     renderFields(fields);
   } catch (err) {
     setStatus(
@@ -115,6 +125,47 @@ async function refreshFields() {
       "error"
     );
   }
+}
+
+async function handleImportFile(file) {
+  if (!currentUser || !file) return;
+  const text = await file.text();
+  const name = (file.name || "").toLowerCase();
+  let parsed;
+  try {
+    if (name.endsWith(".csv") || file.type.includes("csv")) {
+      parsed = parseFieldsCsv(text);
+    } else {
+      parsed = parseFieldsGeoJson(text);
+    }
+  } catch (err) {
+    setStatus(err?.message || "Could not parse file.", "error");
+    return;
+  }
+
+  const { unique, skipped } = dedupeAgainstExisting(parsed.rows, cachedFields);
+  if (!unique.length) {
+    setStatus(
+      `No new fields to import (${skipped} duplicates, ${parsed.errors.length} invalid).`,
+      "error"
+    );
+    return;
+  }
+
+  setStatus(`Importing ${unique.length} field(s)…`);
+  const { created, failed } = await createFieldsBulk(
+    currentUser.uid,
+    unique,
+    (done, total) => setStatus(`Importing ${done}/${total}…`)
+  );
+  await refreshFields();
+  const parts = [
+    `Imported ${created.length}`,
+    skipped ? `${skipped} skipped (duplicates)` : "",
+    failed.length ? `${failed.length} failed` : "",
+    parsed.errors.length ? `${parsed.errors.length} invalid rows` : "",
+  ].filter(Boolean);
+  setStatus(parts.join(" · "), failed.length ? "error" : "ok");
 }
 
 function renderAlerts(alerts) {
@@ -281,6 +332,34 @@ useLocationBtn?.addEventListener("click", () => {
 openAddField?.addEventListener("click", () => {
   document.getElementById("addFieldPanel")?.scrollIntoView({ behavior: "smooth", block: "center" });
   nameInput?.focus();
+});
+
+document.getElementById("exportCsvBtn")?.addEventListener("click", () => {
+  if (!cachedFields.length) {
+    setStatus("No fields to export yet.", "error");
+    return;
+  }
+  downloadText("prithviscan-fields.csv", fieldsToCsv(cachedFields), "text/csv");
+  setStatus(`Exported ${cachedFields.length} field(s) as CSV.`, "ok");
+});
+
+document.getElementById("exportGeoBtn")?.addEventListener("click", () => {
+  if (!cachedFields.length) {
+    setStatus("No fields to export yet.", "error");
+    return;
+  }
+  downloadText(
+    "prithviscan-fields.geojson",
+    JSON.stringify(fieldsToGeoJson(cachedFields), null, 2),
+    "application/geo+json"
+  );
+  setStatus(`Exported ${cachedFields.length} field(s) as GeoJSON.`, "ok");
+});
+
+document.getElementById("importFileInput")?.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  e.target.value = "";
+  await handleImportFile(file);
 });
 
 if (window.location.hash === "#alerts") {
