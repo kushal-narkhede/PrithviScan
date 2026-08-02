@@ -312,7 +312,67 @@ Features that directly increase farmer value and adoption.
 
 ---
 
-## 11. Quick status matrix
+## 11. Data, models, and intelligence (differentiate & scale)
+
+Invest in data quality, model performance, and explainability.
+
+### 3.1 Improve field classifier and model ops
+| | |
+|---|---|
+| **Status** | Partial — local versioning Live; CI / Artifact Registry Planned |
+| **Priority** | Critical |
+| **What** | Productionize EuroSAT model: retraining pipeline, model versioning, A/B testing, and fallback heuristics. |
+| **Why** | Accurate field detection is foundational. |
+| **Implementation** | Trainer writes `version`, accuracy/F1, `ml/models/versions/*`, and `registry.json`. Fallback `heuristic_v1` documented. Ops guide: [`ml/MODEL_OPS.md`](ml/MODEL_OPS.md). Next: CI + Artifact Registry + A/B routing in `classifyLocation`. |
+
+### 3.2 Ensemble weather and satellite inputs
+| | |
+|---|---|
+| **Status** | Partial — abstraction Live; extra providers Planned |
+| **Priority** | High |
+| **What** | Combine NASA POWER, GPM, ECMWF/other forecasts, and multiple satellite sources (SMAP, MODIS, Sentinel, Landsat). |
+| **Why** | Redundancy and better accuracy across regions. |
+| **Implementation** | `functions/lib/data-layer.js` normalizes POWER and stubs GPM/ECMWF/Sentinel/Landsat. Fusion provenance lists provider availability. Full wiring needs Blaze + API access/licensing. |
+
+### 3.3 Local calibration and farmer feedback loop
+| | |
+|---|---|
+| **Status** | Live (capture); training use Planned |
+| **Priority** | High |
+| **What** | Allow farmers to submit ground truth (yields, soil moisture) to calibrate models per region. |
+| **Why** | Improves model relevance and trust. |
+| **Implementation** | Field page feedback form → `users/{uid}/fields/{fieldId}/feedback/*` with consent flag. Firestore rules allow create/read by owner. Later: aggregate for regional calibration + incentives. |
+
+### 3.4 Explainable AI and rule transparency
+| | |
+|---|---|
+| **Status** | Live (UI + ruleTraces); full refresh needs Blaze |
+| **Priority** | High |
+| **What** | Show which rules/factors triggered a recommendation and allow toggling rule sensitivity. |
+| **Why** | Farmers and advisors need to understand and trust automated advice. |
+| **Implementation** | `fuseFieldInsight` emits `ruleTraces[]` (id, fired, condition, inputs, reason). Field UI lists triggered/quiet rules. Sensitivity slider (0.7–1.3×) saved locally and passed on refresh. |
+
+### 3.5 Scenario simulation and what-if analysis
+| | |
+|---|---|
+| **Status** | Live (heuristic simulator) |
+| **Priority** | Medium |
+| **What** | Simulate outcomes of actions (irrigate now vs later; apply X kg fertilizer) using simple crop models. |
+| **Why** | Helps farmers weigh tradeoffs and costs. |
+| **Implementation** | `js/scenario.js` + field **What-if** panel: effective water, deficit, stress, expected yield, cost. Uses latest insight metrics when available. |
+
+### 3.6 Edge inference and mobile model deployment
+| | |
+|---|---|
+| **Status** | Planned |
+| **Priority** | Medium |
+| **What** | Run lightweight models on device for instant classification (photos, field detection). |
+| **Why** | Faster responses and offline capability. |
+| **Implementation notes** | Convert models to TensorFlow Lite or ONNX; manage model updates. Documented under [`ml/MODEL_OPS.md`](ml/MODEL_OPS.md). |
+
+---
+
+## 12. Quick status matrix
 
 | Feature | Status |
 |---------|--------|
@@ -325,6 +385,11 @@ Features that directly increase farmer value and adoption.
 | Firestore security rules | Live |
 | **2.1 Last-view / session restore** | **Live** |
 | **2.2 Confidence + provenance UI** | **Live (data needs Blaze)** |
+| **3.3 Farmer ground-truth feedback** | **Live** |
+| **3.4 Rule traces + sensitivity** | **Live (data needs Blaze)** |
+| **3.5 What-if scenarios** | **Live** |
+| **3.1 Model versioning / registry** | **Partial (local)** |
+| **3.2 Ensemble data layer** | **Partial (POWER + stubs)** |
 | Map field classifier API | Paused |
 | NASA POWER weather | Paused |
 | Fusion insights (“Irrigate tomorrow”, etc.) | Paused |
@@ -340,6 +405,7 @@ Features that directly increase farmer value and adoption.
 | 2.8 Multi-field portfolio views | Planned |
 | 2.9 Role-based advisor workflows | Planned |
 | 2.10 Market & input price signals | Planned |
+| 3.6 Edge / TFLite / ONNX | Planned |
 | HLS NDVI overlays | Not built yet |
 | GPM realtime rainfall stream | Not built yet |
 | Push notifications (FCM) | Not built yet |
@@ -347,14 +413,14 @@ Features that directly increase farmer value and adoption.
 
 ---
 
-## 12. What you can try right now
+## 13. What you can try right now
 
 1. Open https://prithviscan.web.app  
 2. Create an account / sign in  
 3. Open the app → drop a pin on the map → save a field  
-4. Open a field, scroll around, leave, then use **Continue where you left off** on the dashboard  
-5. Field insight card is ready for action / confidence / provenance (fills when Functions are on Blaze)  
-6. On your PC (optional): run `ml\train_eurosat.bat` to train the EuroSAT model locally  
+4. Open a field — try **What-if scenarios** and **Help improve recommendations**  
+5. Use **Continue where you left off** after revisiting the dashboard  
+6. On your PC (optional): run `ml\train_eurosat.bat` — check `ml/models/registry.json` for version/accuracy  
 
 ---
 
