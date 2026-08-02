@@ -1,6 +1,6 @@
 import { watchAuth, isFirebaseConfigured } from "./auth.js";
 import { listFields, createField, createFieldsBulk, getField } from "./fields.js";
-import { createFieldMap, useBrowserLocation } from "./map.js";
+import { createFieldMap, useBrowserLocation } from "./map.js?v=sat2";
 import { callGetAlerts, callMarkAlertRead, callClassifyLocation } from "./api.js";
 import { loadLastSession, saveLastSession } from "./session.js";
 import {
@@ -387,12 +387,12 @@ form?.addEventListener("submit", async (event) => {
 useLocationBtn?.addEventListener("click", () => {
   setStatus("Getting location…");
   useBrowserLocation(
-    async (lat, lon) => {
+    (lat, lon) => {
       latInput.value = lat.toFixed(6);
       lonInput.value = lon.toFixed(6);
+      mapApi?.map.setView([lat, lon], 16);
+      // setMarker triggers onPick → validateLocation
       mapApi?.setMarker(lat, lon);
-      mapApi?.map.setView([lat, lon], 14);
-      await validateLocation(lat, lon);
     },
     () => setStatus("Could not get location. Click the map instead.", "error")
   );

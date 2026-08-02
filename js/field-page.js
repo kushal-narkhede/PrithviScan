@@ -2,7 +2,7 @@ import { watchAuth, isFirebaseConfigured } from "./auth.js";
 import { getField, deleteField } from "./fields.js";
 import { getDb } from "./firebase-db.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
-import { createFieldMap } from "./map.js";
+import { createFieldMap } from "./map.js?v=sat2";
 import { callFuseInsight, callFieldTrends } from "./api.js";
 import { bindSessionPersistence, restoreScroll } from "./session.js";
 import { submitGroundTruth } from "./feedback.js";

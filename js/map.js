@@ -1,15 +1,22 @@
 /**
- * Leaflet helpers for field placement.
- * Uses Esri World Imagery (satellite) so the map matches classifyLocation tiles.
+ * Leaflet satellite map for field placement.
+ * Esri World Imagery — same provider family as classifyLocation imagery.
  */
 
 const DEFAULT_CENTER = [20.5937, 78.9629]; // India
 const DEFAULT_ZOOM = 5;
 
-const SAT_URL =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
-const LABELS_URL =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
+/** Primary + fallback satellite tile endpoints */
+const SAT_LAYERS = [
+  {
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles © Esri — Maxar, Earthstar Geographics",
+  },
+  {
+    url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles © Esri — Maxar, Earthstar Geographics",
+  },
+];
 
 export function createFieldMap(elementId, options = {}) {
   const el = document.getElementById(elementId);
@@ -17,22 +24,52 @@ export function createFieldMap(elementId, options = {}) {
     throw new Error("Map container or Leaflet is missing.");
   }
 
+  // Avoid gray leftover from previous map instance
+  if (el._leaflet_id) {
+    try {
+      el._leaflet_id = null;
+      el.innerHTML = "";
+    } catch {
+      /* ignore */
+    }
+  }
+
   const center = options.center || DEFAULT_CENTER;
   const zoom = options.zoom ?? DEFAULT_ZOOM;
-  const map = L.map(el, { scrollWheelZoom: true }).setView(center, zoom);
-
-  L.tileLayer(SAT_URL, {
+  const map = L.map(el, {
+    scrollWheelZoom: true,
+    // Prefer higher zoom for satellite detail
     maxZoom: 19,
-    attribution:
-      "Tiles &copy; Esri — Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+  }).setView(center, zoom);
+
+  const sat = SAT_LAYERS[0];
+  const satLayer = L.tileLayer(sat.url, {
+    maxZoom: 19,
+    maxNativeZoom: 19,
+    attribution: sat.attribution,
+    errorTileUrl:
+      "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
   }).addTo(map);
 
-  // Place names on top of satellite (keeps map readable)
-  L.tileLayer(LABELS_URL, {
-    maxZoom: 19,
-    opacity: 0.9,
-    pane: "overlayPane",
-  }).addTo(map);
+  // If primary Esri endpoint fails repeatedly, swap to fallback
+  let errors = 0;
+  satLayer.on("tileerror", () => {
+    errors += 1;
+    if (errors === 4 && SAT_LAYERS[1]) {
+      satLayer.setUrl(SAT_LAYERS[1].url);
+    }
+  });
+
+  // Light place labels only (does not replace satellite)
+  L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+    {
+      maxZoom: 19,
+      opacity: 0.75,
+      pane: "overlayPane",
+      attribution: "",
+    }
+  ).addTo(map);
 
   let marker = null;
 
@@ -57,14 +94,14 @@ export function createFieldMap(elementId, options = {}) {
   if (options.pickable !== false) {
     map.on("click", (e) => {
       setMarker(e.latlng.lat, e.latlng.lng);
-      // Zoom in so the satellite patch matches what the model sees (~z16)
-      if (map.getZoom() < 15) {
-        map.setView(e.latlng, 16);
+      if (map.getZoom() < 16) {
+        map.setView(e.latlng, 17);
       }
     });
   }
 
   setTimeout(() => map.invalidateSize(), 80);
+  setTimeout(() => map.invalidateSize(), 300);
 
   return {
     map,
