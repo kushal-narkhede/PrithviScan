@@ -63,3 +63,29 @@ export async function callFieldTrends(fieldId, lat, lon) {
 export async function callClassifyLocation(lat, lon) {
   return apiFetch("classifyLocation", { lat, lon });
 }
+
+/** POST helper for chat / larger bodies */
+async function apiPost(path, body = {}) {
+  if (!FUNCTIONS_ENABLED) {
+    return { ok: false, disabled: true, error: BLAZE_MSG, status: 503 };
+  }
+  const token = await getIdToken();
+  const res = await fetch(`${FUNCTIONS_BASE}/${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => ({ error: "Invalid JSON", status: res.status }));
+  return json;
+}
+
+/**
+ * Server-side AI chat (Gemini / OpenRouter keys via secrets).
+ * Available after Blaze + deploy of functions/aiChat.
+ */
+export async function callAiChat({ provider, messages, model } = {}) {
+  return apiPost("aiChat", { provider, messages, model });
+}

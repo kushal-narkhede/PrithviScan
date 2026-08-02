@@ -663,6 +663,19 @@ Critical for farmer uptake and ethical deployment.
 
 ---
 
+## 20d. Ask AI chatbot
+
+| | |
+|---|---|
+| **Status** | Live (client) |
+| **Page** | [`ai.html`](ai.html) |
+| **Default** | **Ollama** (`localhost:11434`, model e.g. `llama3.2`) |
+| **Ready** | **Gemini** + **OpenRouter** providers in Settings (API keys in localStorage for testing) |
+| **Backend** | [`functions/lib/ai-chat.js`](functions/lib/ai-chat.js) + `exports.aiChat` for server-side keys after Blaze |
+| **CORS** | Set `OLLAMA_ORIGINS=https://prithviscan.web.app` when running Ollama |
+
+---
+
 ## 20c. Organizations
 
 | | |

@@ -8,6 +8,7 @@ const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getAuth } = require("firebase-admin/auth");
 const { analyzePowerBundle } = require("./lib/trends");
 const { classifyLatLon } = require("./lib/vision");
+const { runAiChat } = require("./lib/ai-chat");
 
 setGlobalOptions({ region: "us-central1" });
 
@@ -847,6 +848,33 @@ exports.classifyLocation = onRequest(
         message: "Could not verify imagery right now. You can still save — verification skipped.",
         error: err.message,
       });
+    }
+  }
+);
+
+// ---------- Function: aiChat (Gemini / OpenRouter / optional Ollama) ----------
+// Client uses Ollama directly today. When on Blaze, prefer secrets:
+//   firebase functions:secrets:set GEMINI_API_KEY
+//   firebase functions:secrets:set OPENROUTER_API_KEY
+// then add them to this function's `secrets` array (see earthdataToken pattern).
+exports.aiChat = onRequest(
+  { cors: true, timeoutSeconds: 120 },
+  async (req, res) => {
+    try {
+      if (req.method !== "POST") {
+        return jsonRes(res, 405, { error: "POST required" });
+      }
+      await verifyIdToken(req);
+      const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
+      const result = await runAiChat(body, {
+        geminiKey: process.env.GEMINI_API_KEY || "",
+        openrouterKey: process.env.OPENROUTER_API_KEY || "",
+        ollamaBaseUrl: body.ollamaBaseUrl || process.env.OLLAMA_BASE_URL || "",
+      });
+      jsonRes(res, 200, { ok: true, ...result });
+    } catch (err) {
+      if (err.status === 401) return jsonRes(res, 401, { error: "Unauthenticated" });
+      jsonRes(res, err.status || 500, { ok: false, error: err.message || "AI chat failed" });
     }
   }
 );

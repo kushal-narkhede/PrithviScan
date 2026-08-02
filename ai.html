@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ask AI · PrithviScan</title>
+    <meta
+      name="description"
+      content="Ask PrithviScan AI about crops, prices, machines, and field decisions. Powered by Ollama, with Gemini and OpenRouter ready."
+    />
+    <link rel="icon" type="image/png" href="assets/favicon.png" />
+    <link rel="apple-touch-icon" href="assets/logo-mark.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Figtree:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=nav4" />
+    <link rel="stylesheet" href="app.css?v=nav4" />
+    <link rel="stylesheet" href="ai.css" />
+  </head>
+  <body class="app-body ai-body">
+    <header class="app-top">
+      <div class="app-top-inner">
+        <a class="brand" href="index.html" aria-label="PrithviScan home">
+          <img class="brand-mark" src="assets/logo-mark.png" alt="" width="40" height="40" />
+          <span class="brand-wordmark">
+            <span class="brand-prithvi">Prithvi</span><span class="brand-scan">Scan</span>
+          </span>
+        </a>
+        <nav class="app-nav" aria-label="App">
+          <a href="index.html">Home</a>
+          <a href="app.html">Fields</a>
+          <a href="prices.html">Prices</a>
+          <a class="is-active" href="ai.html">Ask AI</a>
+          <a href="org.html">Organization</a>
+          <a href="info.html">Info</a>
+          <a href="collab.html">Collaborate</a>
+          <span data-auth-slot></span>
+        </nav>
+      </div>
+    </header>
+
+    <main class="ai-main">
+      <header class="ai-hero">
+        <div>
+          <p class="eyebrow">Farm advisor</p>
+          <h1>Ask AI</h1>
+          <p>
+            Chat about crops, fertilizers, MSP prices, tractors, and field decisions.
+            Default engine: <strong>Ollama</strong>. Gemini and OpenRouter are ready when you add keys.
+          </p>
+        </div>
+        <div class="ai-hero-actions">
+          <button type="button" class="btn btn-secondary" id="aiSettingsBtn">Settings</button>
+          <button type="button" class="btn btn-secondary" id="aiClearBtn">Clear chat</button>
+        </div>
+      </header>
+
+      <p class="ai-provider-pill" id="aiProviderPill">Provider: Ollama</p>
+
+      <section class="ai-chat" aria-label="AI chat">
+        <div class="ai-messages" id="aiMessages" role="log" aria-live="polite"></div>
+        <form class="ai-compose" id="aiForm">
+          <label class="visually-hidden" for="aiInput">Message</label>
+          <textarea
+            id="aiInput"
+            rows="2"
+            placeholder="e.g. What’s a fair MSP estimate for 5 acres of wheat at 20 qtl/acre?"
+            required
+          ></textarea>
+          <button class="btn btn-primary" type="submit" id="aiSendBtn">Send</button>
+        </form>
+        <p class="ai-status" id="aiStatus" role="status"></p>
+      </section>
+
+      <aside class="ai-settings" id="aiSettings" hidden>
+        <h2>AI settings</h2>
+        <p class="muted">
+          Keys stay in this browser (localStorage) for testing. On Blaze, move Gemini / OpenRouter keys to Cloud Functions secrets.
+        </p>
+        <form class="ai-settings-form" id="aiSettingsForm">
+          <label>
+            Provider
+            <select id="cfgProvider">
+              <option value="ollama">Ollama (local / self-hosted)</option>
+              <option value="gemini">Google Gemini</option>
+              <option value="openrouter">OpenRouter</option>
+            </select>
+          </label>
+
+          <fieldset data-provider-fields="ollama">
+            <legend>Ollama</legend>
+            <label>
+              Base URL
+              <input id="cfgOllamaUrl" type="url" placeholder="http://localhost:11434" />
+            </label>
+            <label>
+              Model
+              <input id="cfgOllamaModel" type="text" placeholder="llama3.2" />
+            </label>
+            <p class="hint">
+              Allow this site: set <code>OLLAMA_ORIGINS=https://prithviscan.web.app</code> when starting Ollama.
+            </p>
+            <button type="button" class="btn btn-secondary" id="aiPingOllama">Test Ollama connection</button>
+          </fieldset>
+
+          <fieldset data-provider-fields="gemini">
+            <legend>Gemini <span class="ready-tag">ready</span></legend>
+            <label>
+              API key
+              <input id="cfgGeminiKey" type="password" autocomplete="off" placeholder="AIza…" />
+            </label>
+            <label>
+              Model
+              <input id="cfgGeminiModel" type="text" placeholder="gemini-2.0-flash" />
+            </label>
+          </fieldset>
+
+          <fieldset data-provider-fields="openrouter">
+            <legend>OpenRouter <span class="ready-tag">ready</span></legend>
+            <label>
+              API key
+              <input id="cfgOpenrouterKey" type="password" autocomplete="off" placeholder="sk-or-…" />
+            </label>
+            <label>
+              Model
+              <input id="cfgOpenrouterModel" type="text" placeholder="meta-llama/llama-3.2-3b-instruct:free" />
+            </label>
+          </fieldset>
+
+          <div class="ai-settings-actions">
+            <button class="btn btn-primary" type="submit">Save settings</button>
+            <button type="button" class="btn btn-secondary" id="aiSettingsClose">Close</button>
+          </div>
+        </form>
+      </aside>
+    </main>
+
+    <style>
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        border: 0;
+      }
+    </style>
+    <script type="module" src="js/ai-page.js"></script>
+  </body>
+</html>
