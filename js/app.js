@@ -1,6 +1,6 @@
 import { watchAuth, isFirebaseConfigured } from "./auth.js";
 import { listFields, createField, createFieldsBulk, getField } from "./fields.js";
-import { createFieldMap, useBrowserLocation } from "./map.js?v=sat2";
+import { createFieldMap, useBrowserLocation } from "./map.js?v=sat3";
 import { callGetAlerts, callMarkAlertRead, callClassifyLocation, callProcessAlertOutbox } from "./api.js";
 import { loadLastSession, saveLastSession } from "./session.js";
 import {
@@ -343,6 +343,15 @@ function switchTab(tab) {
   tabBtns.forEach((b) => b.classList.toggle("is-active", b.dataset.tab === which));
   if (which === "alerts") loadAlerts();
   if (which === "actions") refreshTasks();
+  if (which === "fields") {
+    // Map was hidden — Leaflet needs a size refresh or tiles stay gray/blank
+    const refresh = () => {
+      if (mapApi?.invalidateSize) mapApi.invalidateSize();
+      else mapApi?.map?.invalidateSize?.();
+    };
+    requestAnimationFrame(refresh);
+    setTimeout(refresh, 150);
+  }
 }
 
 tabBtns.forEach((btn) => {
@@ -410,17 +419,37 @@ async function validateLocation(lat, lon) {
 }
 
 function initMap() {
-  try {
-    mapApi = createFieldMap("fieldMap", {
-      async onPick(lat, lon) {
-        if (latInput) latInput.value = lat.toFixed(6);
-        if (lonInput) lonInput.value = lon.toFixed(6);
-        await validateLocation(lat, lon);
-      },
-    });
-  } catch (err) {
-    setStatus("Map failed to load.", "error");
+  const mount = () => {
+    try {
+      mapApi = createFieldMap("fieldMap", {
+        async onPick(lat, lon) {
+          if (latInput) latInput.value = lat.toFixed(6);
+          if (lonInput) lonInput.value = lon.toFixed(6);
+          await validateLocation(lat, lon);
+        },
+      });
+      setStatus("Satellite map ready — click cropland to place a field.", "ok");
+    } catch (err) {
+      setStatus(err?.message || "Map failed to load. Refresh the page.", "error");
+    }
+  };
+
+  // Leaflet script is classic (non-module); wait briefly if it races modules
+  if (typeof L !== "undefined") {
+    mount();
+    return;
   }
+  let tries = 0;
+  const wait = setInterval(() => {
+    tries += 1;
+    if (typeof L !== "undefined") {
+      clearInterval(wait);
+      mount();
+    } else if (tries >= 40) {
+      clearInterval(wait);
+      setStatus("Map library failed to load (Leaflet). Check network / ad-block.", "error");
+    }
+  }, 50);
 }
 
 form?.addEventListener("submit", async (event) => {
@@ -474,7 +503,12 @@ useLocationBtn?.addEventListener("click", () => {
 });
 
 openAddField?.addEventListener("click", () => {
+  switchTab("fields");
   document.getElementById("addFieldPanel")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  setTimeout(() => {
+    if (mapApi?.invalidateSize) mapApi.invalidateSize();
+    else mapApi?.map?.invalidateSize?.();
+  }, 200);
   nameInput?.focus();
 });
 

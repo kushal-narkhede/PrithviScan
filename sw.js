@@ -1,5 +1,5 @@
 /* PrithviScan offline shell — caches app pages + last-used static assets */
-const CACHE = "prithviscan-shell-v1";
+const CACHE = "prithviscan-shell-v2";
 const SHELL = [
   "/",
   "/index.html",
@@ -11,6 +11,8 @@ const SHELL = [
   "/styles.css",
   "/app.css",
   "/auth.css",
+  "/vendor/leaflet/leaflet.css",
+  "/vendor/leaflet/leaflet.js",
   "/assets/logo-mark.png",
   "/assets/favicon.png",
 ];

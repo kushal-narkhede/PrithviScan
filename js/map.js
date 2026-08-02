@@ -6,70 +6,171 @@
 const DEFAULT_CENTER = [20.5937, 78.9629]; // India
 const DEFAULT_ZOOM = 5;
 
-/** Primary + fallback satellite tile endpoints */
+/** Primary + fallback tile endpoints (satellite first, OSM last) */
 const SAT_LAYERS = [
   {
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
     attribution: "Tiles © Esri — Maxar, Earthstar Geographics",
+    maxNativeZoom: 19,
   },
   {
     url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
     attribution: "Tiles © Esri — Maxar, Earthstar Geographics",
+    maxNativeZoom: 19,
+  },
+  {
+    url: "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles © USGS The National Map",
+    maxNativeZoom: 16,
+  },
+  {
+    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: "© OpenStreetMap",
+    maxNativeZoom: 19,
+    street: true,
   },
 ];
 
-export function createFieldMap(elementId, options = {}) {
-  const el = document.getElementById(elementId);
-  if (!el || typeof L === "undefined") {
-    throw new Error("Map container or Leaflet is missing.");
-  }
+const LABELS_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
 
-  // Avoid gray leftover from previous map instance
-  if (el._leaflet_id) {
+function showMapError(el, message) {
+  let banner = el.querySelector(".field-map-error");
+  if (!banner) {
+    banner = document.createElement("p");
+    banner.className = "field-map-error";
+    banner.setAttribute("role", "status");
+    el.appendChild(banner);
+  }
+  banner.textContent = message;
+}
+
+function clearMapError(el) {
+  el.querySelector(".field-map-error")?.remove();
+}
+
+function destroyMap(el) {
+  if (!el) return;
+  if (el._psMap) {
     try {
-      el._leaflet_id = null;
-      el.innerHTML = "";
+      el._psMap.remove();
     } catch {
       /* ignore */
     }
+    el._psMap = null;
   }
+  if (el._leaflet_id) {
+    try {
+      delete el._leaflet_id;
+    } catch {
+      el._leaflet_id = undefined;
+    }
+  }
+  el.innerHTML = "";
+}
+
+export function createFieldMap(elementId, options = {}) {
+  const el = document.getElementById(elementId);
+  if (!el) {
+    throw new Error("Map container is missing.");
+  }
+  if (typeof L === "undefined") {
+    throw new Error("Leaflet failed to load. Check your network and refresh.");
+  }
+
+  destroyMap(el);
+  clearMapError(el);
 
   const center = options.center || DEFAULT_CENTER;
   const zoom = options.zoom ?? DEFAULT_ZOOM;
   const map = L.map(el, {
     scrollWheelZoom: true,
-    // Prefer higher zoom for satellite detail
     maxZoom: 19,
+    fadeAnimation: true,
   }).setView(center, zoom);
 
-  const sat = SAT_LAYERS[0];
-  const satLayer = L.tileLayer(sat.url, {
-    maxZoom: 19,
-    maxNativeZoom: 19,
-    attribution: sat.attribution,
-    errorTileUrl:
-      "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
-  }).addTo(map);
+  el._psMap = map;
 
-  // If primary Esri endpoint fails repeatedly, swap to fallback
+  // Local Leaflet build — pin default marker icons next to leaflet.js
+  try {
+    L.Icon.Default.mergeOptions({
+      iconUrl: "vendor/leaflet/images/marker-icon.png",
+      iconRetinaUrl: "vendor/leaflet/images/marker-icon-2x.png",
+      shadowUrl: "vendor/leaflet/images/marker-shadow.png",
+    });
+  } catch {
+    /* ignore */
+  }
+
+  let layerIndex = 0;
+  let satLayer = null;
+  let labelsLayer = null;
   let errors = 0;
-  satLayer.on("tileerror", () => {
-    errors += 1;
-    if (errors === 4 && SAT_LAYERS[1]) {
-      satLayer.setUrl(SAT_LAYERS[1].url);
-    }
-  });
 
-  // Light place labels only (does not replace satellite)
-  L.tileLayer(
-    "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
-    {
-      maxZoom: 19,
-      opacity: 0.75,
-      pane: "overlayPane",
-      attribution: "",
+  function addSatLayer(index) {
+    const conf = SAT_LAYERS[index];
+    if (!conf) return null;
+    if (satLayer) {
+      try {
+        map.removeLayer(satLayer);
+      } catch {
+        /* ignore */
+      }
     }
-  ).addTo(map);
+    satLayer = L.tileLayer(conf.url, {
+      maxZoom: 19,
+      maxNativeZoom: conf.maxNativeZoom ?? 19,
+      attribution: conf.attribution,
+      crossOrigin: true,
+      // Transparent 1x1 if a single tile 404s — avoids pink broken icons
+      errorTileUrl:
+        "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+    }).addTo(map);
+
+    satLayer.on("tileerror", () => {
+      errors += 1;
+      // After a few failures, try next provider
+      if (errors >= 3 && layerIndex < SAT_LAYERS.length - 1) {
+        errors = 0;
+        layerIndex += 1;
+        const next = SAT_LAYERS[layerIndex];
+        addSatLayer(layerIndex);
+        if (next?.street) {
+          showMapError(
+            el,
+            "Satellite tiles blocked — showing street map. You can still drop a pin."
+          );
+          // Labels redundant on OSM
+          if (labelsLayer) {
+            try {
+              map.removeLayer(labelsLayer);
+            } catch {
+              /* ignore */
+            }
+            labelsLayer = null;
+          }
+        }
+      } else if (errors >= 8 && layerIndex >= SAT_LAYERS.length - 1) {
+        showMapError(el, "Map tiles failed to load. Check network / ad-block, then refresh.");
+      }
+    });
+
+    satLayer.on("load", () => {
+      if (!SAT_LAYERS[layerIndex]?.street) clearMapError(el);
+    });
+
+    return satLayer;
+  }
+
+  addSatLayer(0);
+
+  labelsLayer = L.tileLayer(LABELS_URL, {
+    maxZoom: 19,
+    opacity: 0.75,
+    pane: "overlayPane",
+    attribution: "",
+    crossOrigin: true,
+  }).addTo(map);
 
   let marker = null;
 
@@ -77,7 +178,7 @@ export function createFieldMap(elementId, options = {}) {
     if (marker) {
       marker.setLatLng([lat, lon]);
     } else {
-      marker = L.marker([lat, lon], { draggable: true }).addTo(map);
+      marker = L.marker([lat, lon], { draggable: options.pickable !== false }).addTo(map);
       marker.on("dragend", () => {
         const pos = marker.getLatLng();
         options.onPick?.(pos.lat, pos.lng);
@@ -100,8 +201,30 @@ export function createFieldMap(elementId, options = {}) {
     });
   }
 
-  setTimeout(() => map.invalidateSize(), 80);
-  setTimeout(() => map.invalidateSize(), 300);
+  const resize = () => {
+    try {
+      map.invalidateSize({ animate: false });
+    } catch {
+      /* ignore */
+    }
+  };
+
+  // Layout can settle after fonts/panels — refresh size a few times
+  requestAnimationFrame(resize);
+  setTimeout(resize, 80);
+  setTimeout(resize, 300);
+  setTimeout(resize, 800);
+
+  let ro = null;
+  if (typeof ResizeObserver !== "undefined") {
+    ro = new ResizeObserver(() => resize());
+    ro.observe(el);
+  }
+
+  // When tab/panel becomes visible again
+  document.addEventListener("visibilitychange", resize);
+
+  map.whenReady(resize);
 
   return {
     map,
@@ -110,6 +233,12 @@ export function createFieldMap(elementId, options = {}) {
       if (!marker) return null;
       const p = marker.getLatLng();
       return { lat: p.lat, lon: p.lng };
+    },
+    invalidateSize: resize,
+    destroy() {
+      ro?.disconnect();
+      document.removeEventListener("visibilitychange", resize);
+      destroyMap(el);
     },
   };
 }

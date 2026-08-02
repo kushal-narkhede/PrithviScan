@@ -45,6 +45,14 @@ video {
   max-width: 100%;
 }
 
+/* Leaflet tiles break if global max-width:100% shrinks them */
+.leaflet-container img.leaflet-tile,
+.leaflet-container .leaflet-marker-icon,
+.leaflet-container .leaflet-marker-shadow {
+  max-width: none !important;
+  max-height: none !important;
+}
+
 a {
   color: inherit;
   text-decoration: none;
