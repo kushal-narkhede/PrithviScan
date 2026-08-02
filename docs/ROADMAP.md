@@ -21,10 +21,11 @@ This document lists **practical next features** after what is already shipped. I
 | Organizations | Live | Owner invites members by email |
 | Collaborate | Live | Friends, chat, field share |
 | Ask AI widget | Live (client) | Ollama local + Gemini/OpenRouter ready |
-| NASA fusion / alerts APIs | **Paused** | Needs Blaze + Functions deploy |
-| EuroSAT classifier | Local train | Not in production path yet |
+| NASA fusion / alerts APIs | **Live** | Blaze Functions + `EARTHDATA_TOKEN` in Secret Manager |
+| Ask AI `aiChat` API | **Live** | Set real `GEMINI_API_KEY` / `OPENROUTER_API_KEY` when ready |
+| EuroSAT classifier | Local train | `classifyLocation` live (heuristic); upload model later |
 
-**Prerequisite for almost every High item below:** enable Blaze, deploy Functions, set `FUNCTIONS_ENABLED = true`.
+**Blaze enablement (done):** Functions deployed; `FUNCTIONS_ENABLED = true`. Next product work starts at H1.
 
 ---
 

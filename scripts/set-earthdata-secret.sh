@@ -22,5 +22,9 @@ if [[ -z "${EARTHDATA_TOKEN:-}" ]]; then
 fi
 
 echo "Setting Firebase secret EARTHDATA_TOKEN for project prithviscan..."
-printf '%s' "$EARTHDATA_TOKEN" | firebase functions:secrets:set EARTHDATA_TOKEN --project prithviscan --data-file -
-echo "Done. Deploy functions with: firebase deploy --only functions"
+FIREBASE_BIN=(npx firebase)
+if command -v firebase >/dev/null 2>&1; then
+  FIREBASE_BIN=(firebase)
+fi
+printf '%s' "$EARTHDATA_TOKEN" | "${FIREBASE_BIN[@]}" functions:secrets:set EARTHDATA_TOKEN --project prithviscan --data-file -
+echo "Done. Deploy functions with: npx firebase deploy --only functions --project prithviscan"

@@ -1,5 +1,5 @@
 {
-  "_comment": "Re-enable Cloud Functions after upgrading to Blaze: merge this 'functions' block back into firebase.json, then run: firebase deploy --only functions",
+  "_comment": "HISTORICAL — Functions are now enabled in firebase.json after Blaze. Kept for reference only.",
   "functions": [
     {
       "source": "functions",

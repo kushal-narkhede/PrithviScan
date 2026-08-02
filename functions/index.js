@@ -10,11 +10,13 @@ const { analyzePowerBundle } = require("./lib/trends");
 const { classifyLatLon } = require("./lib/vision");
 const { runAiChat } = require("./lib/ai-chat");
 
-setGlobalOptions({ region: "us-central1" });
+setGlobalOptions({ region: "us-central1", invoker: "public" });
 
 if (!getApps().length) initializeApp();
 
 const earthdataToken = defineSecret("EARTHDATA_TOKEN");
+const geminiApiKey = defineSecret("GEMINI_API_KEY");
+const openrouterApiKey = defineSecret("OPENROUTER_API_KEY");
 
 // ---------- helpers ----------
 
@@ -63,7 +65,7 @@ const POWER_PARAMS = [
 
 // ---------- Function: earthdataStatus ----------
 exports.earthdataStatus = onRequest(
-  { secrets: [earthdataToken], cors: true },
+  { secrets: [earthdataToken], cors: true, invoker: "public" },
   (req, res) => {
     const t = earthdataToken.value();
     const ok = isTokenReal(t);
@@ -853,12 +855,13 @@ exports.classifyLocation = onRequest(
 );
 
 // ---------- Function: aiChat (Gemini / OpenRouter / optional Ollama) ----------
-// Client uses Ollama directly today. When on Blaze, prefer secrets:
-//   firebase functions:secrets:set GEMINI_API_KEY
-//   firebase functions:secrets:set OPENROUTER_API_KEY
-// then add them to this function's `secrets` array (see earthdataToken pattern).
+// Secrets: GEMINI_API_KEY, OPENROUTER_API_KEY (set via firebase functions:secrets:set)
 exports.aiChat = onRequest(
-  { cors: true, timeoutSeconds: 120 },
+  {
+    secrets: [geminiApiKey, openrouterApiKey],
+    cors: true,
+    timeoutSeconds: 120,
+  },
   async (req, res) => {
     try {
       if (req.method !== "POST") {
@@ -866,9 +869,11 @@ exports.aiChat = onRequest(
       }
       await verifyIdToken(req);
       const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
+      const gemini = geminiApiKey.value();
+      const openrouter = openrouterApiKey.value();
       const result = await runAiChat(body, {
-        geminiKey: process.env.GEMINI_API_KEY || "",
-        openrouterKey: process.env.OPENROUTER_API_KEY || "",
+        geminiKey: isTokenReal(gemini) ? gemini : "",
+        openrouterKey: isTokenReal(openrouter) ? openrouter : "",
         ollamaBaseUrl: body.ollamaBaseUrl || process.env.OLLAMA_BASE_URL || "",
       });
       jsonRes(res, 200, { ok: true, ...result });

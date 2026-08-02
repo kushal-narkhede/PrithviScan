@@ -38,9 +38,9 @@
 | What-if ROI / yield calculator | Live | Field page |
 | Printable field report | Live | Field page |
 | Accessibility + alert quiet hours | Live | Profile settings |
-| NASA fusion / alerts / trends APIs | Paused | Need Blaze |
-| Cloud Function `aiChat` (server keys) | Paused | Need Blaze |
-| Trained EuroSAT classifier in prod | Local / Paused | Trained on PC; Functions not live |
+| NASA fusion / alerts / trends APIs | **Live** | Blaze Functions deployed |
+| Cloud Function `aiChat` (server keys) | **Live** | Secrets in Secret Manager (set real Gemini/OpenRouter keys) |
+| Trained EuroSAT classifier in prod | Partial | `classifyLocation` live (heuristic); local EuroSAT model not uploaded |
 
 ---
 
@@ -240,10 +240,11 @@ Person icon → dropdown: Home · My profile · Organization · Price calculator
 
 ---
 
-## 12. Cloud Functions (backend) — Paused (Blaze)
+## 12. Cloud Functions (backend) — Live (Blaze)
 
 **Files:** `functions/index.js`, `functions/lib/*`  
-**Gate:** `FUNCTIONS_ENABLED = false` in `js/api.js`
+**Gate:** `FUNCTIONS_ENABLED = true` in `js/api.js`  
+**Base:** `https://us-central1-prithviscan.cloudfunctions.net`
 
 | Function | Purpose |
 |----------|---------|
@@ -256,7 +257,7 @@ Person icon → dropdown: Home · My profile · Organization · Price calculator
 | `aiChat` | Server-side Gemini / OpenRouter / Ollama proxy |
 | `earthdataStatus` / `cmrSearch` | Earthdata token / granule search |
 
-Config to re-enable after Blaze: `firebase.functions.disabled.json`.
+**Secret Manager:** `EARTHDATA_TOKEN` (real), `GEMINI_API_KEY` + `OPENROUTER_API_KEY` (placeholders — replace with real keys).
 
 ---
 
@@ -299,8 +300,8 @@ Do **not** upload the EuroSAT dataset into the repo.
 | Firestore rules + indexes | Live (incl. orgs / invites) |
 | Auth Email + Google | Live (must be enabled in Console) |
 | HTML cache | `must-revalidate` (faster nav updates) |
-| Cloud Functions | Paused — Spark / Blaze |
-| Secrets (`EARTHDATA_TOKEN`, future AI keys) | Pattern in `.env.example` |
+| Cloud Functions | **Live** (Blaze) |
+| Secrets | `EARTHDATA_TOKEN`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY` in Secret Manager |
 
 ---
 
@@ -327,13 +328,12 @@ Do **not** upload the EuroSAT dataset into the repo.
 
 ---
 
-## 18. Blocked until Blaze (coded, not live)
+## 18. Follow-ups after Blaze enablement
 
-- NASA POWER fusion refresh & trends  
-- Alerts generation / mark-read API  
-- Server-side `classifyLocation` with trained model  
-- Server-side Ask AI (`aiChat`) with secret API keys  
-- Partner API live endpoints  
+- Replace placeholder `GEMINI_API_KEY` / `OPENROUTER_API_KEY` with real keys  
+- Upload trained EuroSAT model into Functions vision path  
+- Partner API live endpoints / docs polish  
+- Upgrade Functions runtime from Node 20 before Oct 2026 decommission  
 
 ---
 

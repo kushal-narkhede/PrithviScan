@@ -4,14 +4,13 @@ import { getFirebaseApp } from "./auth.js";
 const FUNCTIONS_BASE = "https://us-central1-prithviscan.cloudfunctions.net";
 
 /**
- * Cloud Functions need Firebase Blaze. Keep false on Spark so the UI
- * shows clear "coming soon" messages instead of failed network calls.
- * Flip to true after: firebase deploy --only functions
+ * Cloud Functions enabled after Blaze upgrade.
+ * Base: https://us-central1-prithviscan.cloudfunctions.net
  */
-export const FUNCTIONS_ENABLED = false;
+export const FUNCTIONS_ENABLED = true;
 
 const BLAZE_MSG =
-  "Cloud Functions are paused until the project is on Blaze. Auth, fields, and map still work.";
+  "Cloud Functions are temporarily unavailable. Try again shortly, or check the Firebase console.";
 
 export async function getIdToken() {
   const auth = getAuth(getFirebaseApp());
