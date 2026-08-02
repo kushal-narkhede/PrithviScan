@@ -343,4 +343,6 @@ SMS/WhatsApp alerts, offline mode, multi-language pack, referral program, full p
 
 ---
 
+**Next features (prioritized):** see [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
 *This sheet reflects the product as deployed on Spark hosting. Flip `FUNCTIONS_ENABLED` and deploy Functions after upgrading to Blaze.*
