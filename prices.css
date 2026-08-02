@@ -37,9 +37,9 @@
 }
 
 .prices-tab {
-  border: 1px solid rgba(28, 42, 28, 0.14);
-  background: rgba(255, 255, 255, 0.55);
-  color: var(--ink);
+  border: 1px solid rgba(28, 42, 28, 0.18);
+  background: #fff;
+  color: #3a5646;
   border-radius: 999px;
   padding: 0.45rem 0.95rem;
   font: inherit;
@@ -49,9 +49,14 @@
 }
 
 .prices-tab.is-active {
-  background: var(--canopy);
-  border-color: var(--canopy);
+  background: #2f855a;
+  border-color: #2f855a;
   color: #fff;
+}
+
+.prices-tab:hover:not(.is-active) {
+  border-color: #2f855a;
+  color: #1f6b45;
 }
 
 .prices-panel {
@@ -118,7 +123,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--canopy);
+  color: #2f855a;
 }
 
 .prices-result .result-value {
