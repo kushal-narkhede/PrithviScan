@@ -16,5 +16,7 @@ ml/models/*.keras
 ml/models/*_meta.json
 ml/models/registry.json
 ml/models/versions/
+# Exported RF JSON for Cloud Functions is OK to commit (no training data inside)
+!functions/models/field_classifier.json
 __pycache__/
 *.pyc

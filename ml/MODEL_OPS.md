@@ -28,7 +28,17 @@ python -m ml.train_field_classifier --eurosat "D:\Kushal\EuroSAT_RGB\EuroSAT_RGB
 | `ml/models/registry.json` | Append-only local registry; `active` flags the current model |
 
 ## Fallback
-`ml/infer_field.py` and Cloud Function `classifyLocation` use vegetation heuristics (`heuristic_v1`) when no trained weights are available.
+`ml/infer_field.py` loads `field_classifier.joblib` when present.
+
+Cloud Function `classifyLocation` loads `functions/models/field_classifier.json`
+(exported RandomForest). When that file is missing it uses `heuristic_v1`.
+
+**Ship your 87% model to production (Windows):**
+```bat
+ml\export_model_for_functions.bat
+npx firebase deploy --only functions:classifyLocation --project prithviscan
+```
+Or: `python -m ml.export_rf_json` then deploy.
 
 ## Production roadmap
 1. CI job: download EuroSAT → train → unit-test accuracy floor → upload artifact

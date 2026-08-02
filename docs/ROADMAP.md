@@ -23,7 +23,7 @@ This document lists **practical next features** after what is already shipped. I
 | Ask AI widget | Live (client) | Ollama local + Gemini/OpenRouter ready |
 | NASA fusion / alerts APIs | **Live** | Blaze Functions + `EARTHDATA_TOKEN` in Secret Manager |
 | Ask AI `aiChat` API | **Live** | Set real `GEMINI_API_KEY` / `OPENROUTER_API_KEY` when ready |
-| EuroSAT classifier | Local train | `classifyLocation` live (heuristic); upload model later |
+| EuroSAT classifier | Export → deploy | Run `ml\\export_model_for_functions.bat` then deploy `classifyLocation` |
 
 **Blaze enablement (done):** Functions deployed; `FUNCTIONS_ENABLED = true`. Next product work starts at H1.
 
