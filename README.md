@@ -4,6 +4,8 @@ Earth-intelligence platform for farmers — fusing NASA satellite data into fiel
 
 **Live:** https://prithviscan.web.app
 
+**Full feature list:** [`FEATURES.md`](FEATURES.md)
+
 ---
 
 ## Local preview
