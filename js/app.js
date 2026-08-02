@@ -418,25 +418,50 @@ async function validateLocation(lat, lon) {
   }
 }
 
+function wireMapPick(api) {
+  const onPick = async (lat, lon) => {
+    if (latInput) latInput.value = Number(lat).toFixed(6);
+    if (lonInput) lonInput.value = Number(lon).toFixed(6);
+    await validateLocation(lat, lon);
+  };
+  // Classic map-boot.js path
+  window.__psFieldMapOnPick = onPick;
+  if (api?.map && !api._pickBound) {
+    api._pickBound = true;
+    // createFieldMap already calls onPick via options; for boot map use global hook
+  }
+  return onPick;
+}
+
 function initMap() {
+  const onPick = wireMapPick(null);
+
+  // Prefer the classic boot map (independent of ES module failures / stale SW)
+  if (window.__psFieldMap?.map) {
+    mapApi = window.__psFieldMap;
+    window.__psFieldMapOnPick = onPick;
+    mapApi.invalidateSize?.();
+    setStatus("Satellite map ready — click cropland to place a field.", "ok");
+    return;
+  }
+
   const mount = () => {
     try {
-      mapApi = createFieldMap("fieldMap", {
-        async onPick(lat, lon) {
-          if (latInput) latInput.value = lat.toFixed(6);
-          if (lonInput) lonInput.value = lon.toFixed(6);
-          await validateLocation(lat, lon);
-        },
-      });
+      if (window.__psFieldMap?.map) {
+        mapApi = window.__psFieldMap;
+        window.__psFieldMapOnPick = onPick;
+      } else {
+        mapApi = createFieldMap("fieldMap", { onPick });
+      }
       setStatus("Satellite map ready — click cropland to place a field.", "ok");
     } catch (err) {
       setStatus(err?.message || "Map failed to load. Refresh the page.", "error");
     }
   };
 
-  // Leaflet script is classic (non-module); wait briefly if it races modules
   if (typeof L !== "undefined") {
-    mount();
+    // Give map-boot.js a tick to finish if both scripts race
+    setTimeout(mount, 0);
     return;
   }
   let tries = 0;
