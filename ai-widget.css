@@ -1,0 +1,292 @@
+/* Floating Ask AI chatbot — bottom-right, all pages */
+
+.ps-ai-root {
+  position: fixed;
+  right: 1.1rem;
+  bottom: 1.1rem;
+  z-index: 9999;
+  font-family: "Figtree", "Source Sans 3", system-ui, sans-serif;
+  color: #10251a;
+}
+
+.ps-ai-fab {
+  width: 3.5rem;
+  height: 3.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: #2f855a;
+  color: #fff;
+  box-shadow: 0 10px 28px rgba(16, 37, 26, 0.22);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.ps-ai-fab:hover {
+  background: #276749;
+  transform: translateY(-2px);
+}
+
+.ps-ai-fab:focus-visible {
+  outline: 3px solid rgba(47, 133, 90, 0.45);
+  outline-offset: 3px;
+}
+
+.ps-ai-fab[aria-expanded="true"] {
+  background: #1f6b45;
+}
+
+.ps-ai-fab svg {
+  width: 1.45rem;
+  height: 1.45rem;
+  fill: currentColor;
+}
+
+.ps-ai-panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(3.5rem + 0.65rem);
+  width: min(380px, calc(100vw - 1.5rem));
+  height: min(520px, calc(100vh - 6.5rem));
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: #fafdfb;
+  border: 1px solid rgba(16, 37, 26, 0.12);
+  border-radius: 18px;
+  box-shadow: 0 18px 48px rgba(16, 37, 26, 0.18);
+  overflow: hidden;
+}
+
+.ps-ai-panel[hidden] {
+  display: none !important;
+}
+
+.ps-ai-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.85rem 0.95rem;
+  background: linear-gradient(135deg, #2f855a, #276749);
+  color: #fff;
+}
+
+.ps-ai-head strong {
+  display: block;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+.ps-ai-head span {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  opacity: 0.9;
+}
+
+.ps-ai-head-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.ps-ai-icon-btn {
+  border: 0;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ps-ai-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.ps-ai-messages {
+  padding: 0.75rem;
+  overflow: auto;
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+  background: #f3faf5;
+}
+
+.ps-ai-msg {
+  max-width: 88%;
+  padding: 0.55rem 0.7rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ps-ai-msg.user {
+  justify-self: end;
+  background: #2f855a;
+  color: #fff;
+}
+
+.ps-ai-msg.assistant {
+  justify-self: start;
+  background: #fff;
+  border: 1px solid rgba(16, 37, 26, 0.08);
+}
+
+.ps-ai-msg.system {
+  justify-self: center;
+  max-width: 100%;
+  text-align: center;
+  background: transparent;
+  color: #6d8577;
+  font-size: 0.82rem;
+}
+
+.ps-ai-msg.error {
+  justify-self: start;
+  background: #fff5f5;
+  border: 1px solid #feb2b2;
+  color: #9b2c2c;
+}
+
+.ps-ai-compose {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.4rem;
+  padding: 0.65rem;
+  border-top: 1px solid rgba(16, 37, 26, 0.08);
+  background: #fff;
+}
+
+.ps-ai-compose textarea {
+  width: 100%;
+  min-height: 2.6rem;
+  max-height: 6rem;
+  resize: none;
+  border: 1px solid rgba(16, 37, 26, 0.16);
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  font: inherit;
+  font-size: 0.9rem;
+  background: #fff;
+  color: #10251a;
+}
+
+.ps-ai-compose button[type="submit"] {
+  border: 0;
+  border-radius: 10px;
+  background: #2f855a;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.88rem;
+  padding: 0 0.9rem;
+  cursor: pointer;
+  align-self: end;
+  height: 2.6rem;
+}
+
+.ps-ai-compose button[type="submit"]:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.ps-ai-status {
+  grid-column: 1 / -1;
+  margin: 0;
+  min-height: 1.1em;
+  font-size: 0.75rem;
+  color: #6d8577;
+}
+
+.ps-ai-status.is-error {
+  color: #9b2c2c;
+}
+
+.ps-ai-settings {
+  position: absolute;
+  inset: 0;
+  background: #fafdfb;
+  padding: 0.9rem;
+  overflow: auto;
+  display: grid;
+  gap: 0.65rem;
+  align-content: start;
+}
+
+.ps-ai-settings[hidden] {
+  display: none !important;
+}
+
+.ps-ai-settings h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-family: "Fraunces", Georgia, serif;
+}
+
+.ps-ai-settings p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #3a5646;
+  line-height: 1.4;
+}
+
+.ps-ai-settings label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.ps-ai-settings input,
+.ps-ai-settings select {
+  border: 1px solid rgba(16, 37, 26, 0.16);
+  border-radius: 8px;
+  padding: 0.45rem 0.55rem;
+  font: inherit;
+  font-weight: 400;
+  font-size: 0.85rem;
+}
+
+.ps-ai-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+
+.ps-ai-settings-actions button {
+  border: 1px solid rgba(16, 37, 26, 0.16);
+  background: #fff;
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: #1f6b45;
+}
+
+.ps-ai-settings-actions button.primary {
+  background: #2f855a;
+  border-color: #2f855a;
+  color: #fff;
+}
+
+@media (max-width: 480px) {
+  .ps-ai-root {
+    right: 0.75rem;
+    bottom: 0.75rem;
+  }
+
+  .ps-ai-panel {
+    width: calc(100vw - 1.5rem);
+    height: min(70vh, 560px);
+  }
+}

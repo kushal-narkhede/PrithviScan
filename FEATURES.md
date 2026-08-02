@@ -668,9 +668,9 @@ Critical for farmer uptake and ethical deployment.
 | | |
 |---|---|
 | **Status** | Live (client) |
-| **Page** | [`ai.html`](ai.html) |
+| **UI** | Floating bottom-right bubble on **every page** ([`js/ai-widget.js`](js/ai-widget.js)) |
 | **Default** | **Ollama** (`localhost:11434`, model e.g. `llama3.2`) |
-| **Ready** | **Gemini** + **OpenRouter** providers in Settings (API keys in localStorage for testing) |
+| **Ready** | **Gemini** + **OpenRouter** providers in widget Settings |
 | **Backend** | [`functions/lib/ai-chat.js`](functions/lib/ai-chat.js) + `exports.aiChat` for server-side keys after Blaze |
 | **CORS** | Set `OLLAMA_ORIGINS=https://prithviscan.web.app` when running Ollama |
 

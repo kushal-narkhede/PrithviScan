@@ -3,6 +3,7 @@ import {
   logOut,
   isFirebaseConfigured,
 } from "./auth.js";
+import "./ai-widget.js";
 
 async function syncProfile(user) {
   try {
@@ -98,7 +99,6 @@ function renderAuthControls(user) {
           <a href="profile.html" role="menuitem">My profile</a>
           <a href="org.html" role="menuitem">Organization</a>
           <a href="prices.html" role="menuitem">Price calculator</a>
-          <a href="ai.html" role="menuitem">Ask AI</a>
           <a href="collab.html" role="menuitem">Collaborate</a>
           <a href="profile.html#profilePrefs" role="menuitem">Settings</a>
           <button type="button" data-signout role="menuitem">Sign out</button>
