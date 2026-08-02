@@ -5,108 +5,25 @@ import {
 } from "./auth.js";
 
 const PERSON_ICON = `
-  <svg class="nav-person-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
-    <circle cx="12" cy="8.2" r="3.6" fill="currentColor"/>
-    <path fill="currentColor" d="M4.5 19.6c.6-3.5 3.6-5.6 7.5-5.6s6.9 2.1 7.5 5.6c.1.5-.3 1-.8 1H5.3c-.5 0-.9-.5-.8-1z"/>
+  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+    <circle cx="12" cy="8" r="3.5" fill="currentColor"/>
+    <path fill="currentColor" d="M5 18.8C5.7 15.6 8.4 13.8 12 13.8s6.3 1.8 7 5c.1.5-.3.9-.8.9H5.8c-.5 0-.9-.4-.8-.9z"/>
   </svg>
 `;
 
 function closeAllMenus() {
-  document.querySelectorAll(".nav-account.is-open").forEach((el) => {
+  document.querySelectorAll(".nav-account").forEach((el) => {
     el.classList.remove("is-open");
-    const btn = el.querySelector(".nav-profile");
+    const btn = el.querySelector(".nav-profile-btn");
+    const menu = el.querySelector(".nav-menu");
     if (btn) btn.setAttribute("aria-expanded", "false");
+    if (menu) menu.hidden = true;
   });
 }
 
-function bindAccountMenus(root) {
-  const account = root.querySelector(".nav-account");
-  if (!account) return;
-
-  const btn = account.querySelector(".nav-profile");
-  const menu = account.querySelector(".nav-account-menu");
-  if (!btn || !menu) return;
-
-  btn.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const willOpen = !account.classList.contains("is-open");
-    closeAllMenus();
-    if (willOpen) {
-      account.classList.add("is-open");
-      btn.setAttribute("aria-expanded", "true");
-    }
-  });
-
-  menu.addEventListener("click", (e) => e.stopPropagation());
-
-  const signOutBtn = menu.querySelector("[data-signout]");
-  signOutBtn?.addEventListener("click", async (e) => {
-    e.preventDefault();
-    signOutBtn.disabled = true;
-    try {
-      await logOut();
-      window.location.href = "index.html";
-    } catch {
-      signOutBtn.disabled = false;
-      window.location.href = "profile.html";
-    }
-  });
-}
-
-function renderAuthControls(user) {
-  const slots = document.querySelectorAll("[data-auth-slot]");
-  slots.forEach((slot) => {
-    slot.classList.add("auth-slot");
-
-    if (!user) {
-      slot.innerHTML = `<a class="nav-cta" href="auth.html">Get started</a>`;
-      return;
-    }
-
-    const onApp =
-      window.location.pathname.endsWith("app.html") ||
-      window.location.pathname.endsWith("field.html") ||
-      window.location.pathname.endsWith("/app") ||
-      window.location.pathname.endsWith("/field");
-
-    const name = user.displayName || user.email || "Account";
-    const email = user.email || "";
-
-    slot.innerHTML = `
-      ${onApp ? "" : `<a class="nav-app" href="app.html"><span>Open app</span></a>`}
-      <div class="nav-account">
-        <button
-          type="button"
-          class="nav-profile"
-          aria-label="Account menu"
-          aria-haspopup="menu"
-          aria-expanded="false"
-          title="${name}"
-        >
-          <span class="nav-profile-frame">${PERSON_ICON}</span>
-        </button>
-        <div class="nav-account-menu" role="menu" hidden>
-          <div class="nav-account-head">
-            <span class="nav-account-name">${escapeHtml(name)}</span>
-            ${email ? `<span class="nav-account-email">${escapeHtml(email)}</span>` : ""}
-          </div>
-          <a class="nav-account-item" role="menuitem" href="profile.html">My profile</a>
-          <a class="nav-account-item" role="menuitem" href="profile.html#profilePrefs">Settings</a>
-          <a class="nav-account-item" role="menuitem" href="info.html">Farm knowledge</a>
-          <a class="nav-account-item" role="menuitem" href="app.html">My fields</a>
-          <a class="nav-account-item" role="menuitem" href="privacy.html">Data ownership</a>
-          <button type="button" class="nav-account-item nav-account-danger" role="menuitem" data-signout>Sign out</button>
-        </div>
-      </div>
-    `;
-
-    // Use hidden attribute toggle via CSS class instead
-    const menu = slot.querySelector(".nav-account-menu");
-    if (menu) menu.removeAttribute("hidden");
-
-    bindAccountMenus(slot);
-  });
+function isAppPage() {
+  const path = window.location.pathname.replace(/\/$/, "");
+  return /\/(app|field)(\.html)?$/i.test(path);
 }
 
 function escapeHtml(v) {
@@ -117,8 +34,70 @@ function escapeHtml(v) {
     .replace(/"/g, "&quot;");
 }
 
+function bindAccountMenu(slot) {
+  const account = slot.querySelector(".nav-account");
+  const btn = slot.querySelector(".nav-profile-btn");
+  const menu = slot.querySelector(".nav-menu");
+  if (!account || !btn || !menu) return;
+
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const open = menu.hidden;
+    closeAllMenus();
+    if (open) {
+      account.classList.add("is-open");
+      menu.hidden = false;
+      btn.setAttribute("aria-expanded", "true");
+    }
+  });
+
+  menu.addEventListener("click", (e) => e.stopPropagation());
+
+  menu.querySelector("[data-signout]")?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    try {
+      await logOut();
+      window.location.href = "index.html";
+    } catch {
+      window.location.href = "profile.html";
+    }
+  });
+}
+
+function renderAuthControls(user) {
+  document.querySelectorAll("[data-auth-slot]").forEach((slot) => {
+    slot.classList.add("auth-slot");
+
+    if (!user) {
+      slot.innerHTML = `<a class="nav-cta" href="auth.html">Get started</a>`;
+      return;
+    }
+
+    const name = escapeHtml(user.displayName || user.email || "Account");
+    const showOpenApp = !isAppPage();
+
+    slot.innerHTML = `
+      ${showOpenApp ? `<a class="nav-app" href="app.html">Open app</a>` : ""}
+      <div class="nav-account">
+        <button type="button" class="nav-profile-btn" aria-label="Account" aria-haspopup="true" aria-expanded="false">
+          <span class="nav-profile-circle">${PERSON_ICON}</span>
+        </button>
+        <div class="nav-menu" role="menu" hidden>
+          <p class="nav-menu-name">${name}</p>
+          <a href="profile.html" role="menuitem">My profile</a>
+          <a href="profile.html#profilePrefs" role="menuitem">Settings</a>
+          <button type="button" data-signout role="menuitem">Sign out</button>
+        </div>
+      </div>
+    `;
+
+    bindAccountMenu(slot);
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-  document.addEventListener("click", () => closeAllMenus());
+  document.addEventListener("click", closeAllMenus);
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeAllMenus();
   });
