@@ -82,7 +82,7 @@
 }
 
 .app-shell {
-  width: min(1120px, calc(100% - 2rem));
+  width: min(1180px, calc(100% - 2rem));
   margin: 0 auto;
 }
 
@@ -191,6 +191,59 @@
   grid-template-columns: 1fr 1.15fr;
   gap: 1.1rem;
   align-items: start;
+}
+
+/* Fields dashboard — profile-style side-by-side */
+.fields-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  gap: 1rem 1.15rem;
+  align-items: start;
+}
+
+.fields-sidebar {
+  position: sticky;
+  top: 5rem;
+  max-height: calc(100svh - 6rem);
+  overflow: auto;
+  align-self: start;
+}
+
+.fields-main {
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.fields-main .app-panel-map {
+  margin: 0;
+}
+
+.field-map-wide {
+  height: min(58vh, 520px);
+  min-height: 340px;
+}
+
+.fields-add-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 0.85rem;
+  margin-top: 1rem;
+  align-items: end;
+}
+
+.fields-add-form .fields-save-btn {
+  grid-column: 1 / -1;
+  justify-self: start;
+  min-width: 10rem;
+}
+
+.fields-sidebar .bulk-toolbar {
+  flex-wrap: wrap;
+}
+
+.fields-sidebar .fields-list {
+  margin-top: 0.35rem;
 }
 
 .app-panel {
@@ -2053,6 +2106,19 @@ html.a11y-simple h2 {
 }
 
 /* ---- Responsive ---- */
+@media (max-width: 960px) {
+  .fields-layout {
+    grid-template-columns: 1fr;
+  }
+  .fields-sidebar {
+    position: static;
+    max-height: none;
+  }
+  .field-map-wide {
+    height: min(48vh, 400px);
+    min-height: 280px;
+  }
+}
 @media (max-width: 860px) {
   .app-grid { grid-template-columns: 1fr; }
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
@@ -2063,4 +2129,10 @@ html.a11y-simple h2 {
   .app-btn-primary, .app-btn-danger { width: 100%; }
   .field-top-row { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
   .outlook-stats { grid-template-columns: 1fr; }
+  .fields-add-form {
+    grid-template-columns: 1fr;
+  }
+  .fields-add-form .fields-save-btn {
+    width: 100%;
+  }
 }
