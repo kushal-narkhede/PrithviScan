@@ -9,7 +9,8 @@ import {
   callSatelliteArchive,
   callFieldHealth,
   callSnapFieldBoundary,
-} from "./api.js?v=urtc1";
+  callFieldTomorrowWeather,
+} from "./api.js?v=tmrw1";
 import {
   healthFromNdvi,
   saveHealthSnapshot,
@@ -56,6 +57,7 @@ import {
   renderRiskZones,
   fuelCostEstimate,
 } from "./urtc-field-ui.js?v=urtc1";
+import { renderTomorrowWeather } from "./tomorrow-weather.js?v=tmrw1";
 import { createTask } from "./tasks.js";
 import { getUserMeta } from "./org.js";
 import "./a11y.js";
@@ -67,6 +69,9 @@ const factsEl  = document.getElementById("fieldFacts");
 const deleteBtn  = document.getElementById("deleteFieldBtn");
 const refreshBtn = document.getElementById("refreshBtn");
 const loadTrendsBtn = document.getElementById("loadTrendsBtn");
+const loadTomorrowBtn = document.getElementById("loadTomorrowBtn");
+const tomorrowWeatherCard = document.getElementById("tomorrowWeatherCard");
+const tomorrowWeatherStatus = document.getElementById("tomorrowWeatherStatus");
 const loadSatArchiveBtn = document.getElementById("loadSatArchiveBtn");
 const satProductSelect = document.getElementById("satProductSelect");
 const satDaysSelect = document.getElementById("satDaysSelect");
@@ -582,6 +587,7 @@ function showFieldTool(toolId, { updateHash = true } = {}) {
   }
 
   if (next === "weather") {
+    loadTomorrowWeather();
     // Charts need a layout pass after becoming visible
     requestAnimationFrame(() => {
       window.dispatchEvent(new Event("resize"));
@@ -775,8 +781,13 @@ function setStatus(msg, type = "") {
   if (!statusEl) return;
   statusEl.textContent = msg || "";
   statusEl.className = `app-status${type ? ` is-${type}` : ""}`;
-  if (type === "ok" && msg) {
-    window.dispatchEvent(new CustomEvent("ux-toast", { detail: { message: msg, ms: 2200 } }));
+  if (
+    type === "ok" &&
+    msg &&
+    msg.length < 90 &&
+    !/(…|\.\.\.|Loading|Computing|Checking|Getting|Saving|Snapping)/i.test(msg)
+  ) {
+    window.dispatchEvent(new CustomEvent("ux-toast", { detail: { message: msg, ms: 2000 } }));
   }
 }
 
@@ -1569,6 +1580,39 @@ async function loadSavedInsight(uid, fieldId) {
   }
 }
 
+async function loadTomorrowWeather(force = false) {
+  if (!currentUser || !currentField) return;
+  if (loadTomorrowBtn) loadTomorrowBtn.disabled = true;
+  if (tomorrowWeatherStatus) tomorrowWeatherStatus.textContent = "Loading Tomorrow.io hyperlocal weather…";
+  try {
+    const data = await callFieldTomorrowWeather(
+      currentField.id,
+      currentField.lat,
+      currentField.lon
+    );
+    renderTomorrowWeather(tomorrowWeatherCard, data);
+    if (data.ok) {
+      if (tomorrowWeatherStatus) tomorrowWeatherStatus.textContent = "Tomorrow.io forecast ready.";
+      if (force) setStatus("Tomorrow.io weather refreshed.", "ok");
+    } else if (data.configured === false) {
+      if (tomorrowWeatherStatus) {
+        tomorrowWeatherStatus.textContent =
+          "Add your Tomorrow.io API key (TOMORROW_API_KEY), then redeploy Functions.";
+      }
+    } else {
+      if (tomorrowWeatherStatus) tomorrowWeatherStatus.textContent = data.error || "Tomorrow.io unavailable.";
+    }
+  } catch (err) {
+    renderTomorrowWeather(tomorrowWeatherCard, {
+      ok: false,
+      error: err?.message || "Tomorrow.io request failed",
+    });
+    if (tomorrowWeatherStatus) tomorrowWeatherStatus.textContent = err?.message || "Tomorrow.io failed.";
+  } finally {
+    if (loadTomorrowBtn) loadTomorrowBtn.disabled = false;
+  }
+}
+
 async function loadTrends() {
   if (!currentUser || !currentField) return;
   if (loadTrendsBtn) loadTrendsBtn.disabled = true;
@@ -1874,10 +1918,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
 
-      // Auto-load trends + satellite archive (non-blocking)
+      // Auto-load weather + satellite archive (non-blocking)
+      loadTomorrowWeather();
       loadTrends();
       loadSatelliteArchive();
 
+      loadTomorrowBtn?.addEventListener("click", () => loadTomorrowWeather(true));
       loadTrendsBtn?.addEventListener("click", loadTrends);
       loadSatArchiveBtn?.addEventListener("click", loadSatelliteArchive);
       satProductSelect?.addEventListener("change", loadSatelliteArchive);

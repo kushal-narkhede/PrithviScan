@@ -291,12 +291,20 @@
         <section class="app-panel trends-panel field-tool-panel" id="trendsPanel" data-tool-panel="weather" hidden>
           <div class="app-panel-head">
             <h2>Weather past → trend → next week</h2>
-            <button type="button" class="app-btn-ghost" id="loadTrendsBtn">Load weather trends</button>
+            <div class="field-actions-row">
+              <button type="button" class="app-btn-ghost" id="loadTomorrowBtn">Refresh Tomorrow.io</button>
+              <button type="button" class="app-btn-ghost" id="loadTrendsBtn">Load NASA trends</button>
+            </div>
           </div>
-          <p class="app-muted">NASA POWER weather history for this field — rainfall, temperature, ET — plus a 7-day outlook. Pair with satellite scenes above for vegetation/moisture context.</p>
+          <p class="app-muted">
+            Hyperlocal forecast from Tomorrow.io (hourly, daily, spray/frost/heat advisories), plus NASA POWER history charts for this field.
+          </p>
+
+          <div id="tomorrowWeatherCard" class="tmrw-card" hidden></div>
+          <p id="tomorrowWeatherStatus" class="app-muted" role="status"></p>
 
           <div class="outlook-card outlook-stable reveal-up" id="outlookCard" hidden>
-            <p class="outlook-kicker">Where this is heading</p>
+            <p class="outlook-kicker">Where this is heading (NASA POWER)</p>
             <h3 id="outlookTitle">—</h3>
             <p id="outlookMessage"></p>
             <div class="outlook-stats">
@@ -611,7 +619,7 @@
     <script src="vendor/leaflet/leaflet.js"></script>
     <script type="module" src="js/tenant.js"></script>
     <script type="module" src="js/nav-auth.js?v=ai1"></script>
-    <script type="module" src="js/field-page.js?v=urtc1"></script>
+    <script type="module" src="js/field-page.js?v=tmrw1"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("sw.js").catch(() => {});

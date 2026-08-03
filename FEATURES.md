@@ -49,6 +49,7 @@ Product sequencing follows the **URTC waves** in [`docs/ROADMAP.md`](docs/ROADMA
 | Printable field report | Live | Field page |
 | Accessibility + alert quiet hours | Live | Profile settings |
 | NASA fusion / alerts / trends APIs | **Live** | Blaze Functions deployed |
+| **Tomorrow.io hyperlocal weather** | Live (needs key) | Field → Weather · `TOMORROW_API_KEY` |
 | Cloud Function `aiChat` (server keys) | **Live** | Secrets in Secret Manager (set real Gemini/OpenRouter keys) |
 | Trained EuroSAT classifier in prod | Ready to load | Export joblib → JSON on your PC, then deploy `classifyLocation` |
 
@@ -280,7 +281,7 @@ Person icon → dropdown: Home · My profile · Organization · Price calculator
 | `aiChat` | Server-side Gemini / OpenRouter / Ollama proxy |
 | `earthdataStatus` / `cmrSearch` | Earthdata token / granule search |
 
-**Secret Manager:** `EARTHDATA_TOKEN` (real), `GEMINI_API_KEY` + `OPENROUTER_API_KEY` (placeholders — replace with real keys).
+**Secret Manager:** `EARTHDATA_TOKEN` (real), `TOMORROW_API_KEY` (set via `scripts/set-tomorrow-secret.sh`), `GEMINI_API_KEY` + `OPENROUTER_API_KEY` (placeholders — replace with real keys).
 
 ---
 

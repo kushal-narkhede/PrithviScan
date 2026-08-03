@@ -550,6 +550,141 @@
   }
 }
 
+/* Tomorrow.io hyperlocal weather */
+.tmrw-card {
+  margin: 0 0 1.15rem;
+  padding: 1rem 1.05rem;
+  border-radius: 16px;
+  background: linear-gradient(160deg, rgba(232, 245, 238, 0.95), rgba(255, 255, 255, 0.92));
+  border: 1px solid rgba(16, 37, 26, 0.1);
+}
+.tmrw-head h3 {
+  margin: 0.15rem 0 0.35rem;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.35rem;
+  color: #0b2417;
+}
+.tmrw-now {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.7fr) 1.3fr;
+  gap: 0.85rem;
+  align-items: center;
+  margin: 0.85rem 0 1rem;
+}
+.tmrw-now-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #3f9a63;
+}
+.tmrw-now-temp {
+  display: block;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: clamp(2rem, 4vw, 2.6rem);
+  line-height: 1;
+  color: #0b2417;
+}
+.tmrw-section-title {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.95rem;
+  color: #1a4a33;
+}
+.tmrw-hours {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(108px, 1fr);
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.35rem;
+  scroll-snap-type: x proximity;
+}
+.tmrw-hour,
+.tmrw-day {
+  scroll-snap-align: start;
+  padding: 0.65rem 0.7rem;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid rgba(16, 37, 26, 0.1);
+  display: grid;
+  gap: 0.2rem;
+}
+.tmrw-hour time,
+.tmrw-day time {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #3a5646;
+}
+.tmrw-hour strong,
+.tmrw-day strong {
+  font-size: 1.05rem;
+  color: #0b2417;
+}
+.tmrw-meta {
+  font-size: 0.75rem;
+  color: #3a5646;
+}
+.tmrw-days {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.55rem;
+}
+.tmrw-advice-grid {
+  display: grid;
+  gap: 0.55rem;
+}
+.tmrw-advice {
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(16, 37, 26, 0.1);
+  background: #fff;
+}
+.tmrw-advice h4 {
+  margin: 0 0 0.25rem;
+  font-size: 0.98rem;
+}
+.tmrw-advice p {
+  margin: 0;
+  color: #3a5646;
+  font-size: 0.9rem;
+}
+.tmrw-advice ul {
+  margin: 0.45rem 0 0;
+  padding-left: 1.1rem;
+  color: #1a4a33;
+  font-size: 0.85rem;
+}
+.tmrw-advice.is-ok {
+  border-color: rgba(47, 133, 90, 0.35);
+  background: #f0fff4;
+}
+.tmrw-advice.is-watch {
+  border-color: rgba(214, 158, 46, 0.4);
+  background: #fffaf0;
+}
+.tmrw-advice.is-action {
+  border-color: rgba(197, 48, 48, 0.35);
+  background: #fff5f5;
+}
+.tmrw-banner {
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: #fffaf0;
+  border: 1px solid rgba(214, 158, 46, 0.4);
+}
+.tmrw-banner p {
+  margin: 0.35rem 0 0;
+}
+.tmrw-prov {
+  margin-top: 0.85rem;
+}
+@media (max-width: 720px) {
+  .tmrw-now {
+    grid-template-columns: 1fr;
+  }
+}
+
 .empty-state {
   padding: 1.25rem 0.25rem 0.5rem;
   color: #3a5646;

@@ -10,6 +10,7 @@ const { analyzePowerBundle } = require("./lib/trends");
 const { classifyLatLon } = require("./lib/vision");
 const { runAiChat } = require("./lib/ai-chat");
 const { buildUrtcSuite, snapBoundary } = require("./lib/urtc-models");
+const { buildTomorrowFieldWeather } = require("./lib/tomorrow");
 
 setGlobalOptions({ region: "us-central1", invoker: "public" });
 
@@ -18,6 +19,7 @@ if (!getApps().length) initializeApp();
 const earthdataToken = defineSecret("EARTHDATA_TOKEN");
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
 const openrouterApiKey = defineSecret("OPENROUTER_API_KEY");
+const tomorrowApiKey = defineSecret("TOMORROW_API_KEY");
 
 // ---------- helpers ----------
 
@@ -1420,6 +1422,77 @@ exports.cmrSearch = onRequest(
     } catch (err) {
       if (err.status === 401) return jsonRes(res, 401, { error: "Unauthenticated" });
       jsonRes(res, 500, { error: err.message });
+    }
+  }
+);
+
+// ---------- Function: tomorrowStatus ----------
+exports.tomorrowStatus = onRequest(
+  { secrets: [tomorrowApiKey], cors: true, invoker: "public" },
+  (req, res) => {
+    const t = tomorrowApiKey.value();
+    const ok = Boolean(t && t.length > 12 && !t.startsWith("PLACEHOLDER"));
+    jsonRes(res, 200, {
+      ok,
+      configured: ok,
+      provider: "tomorrow.io",
+      hint: ok
+        ? "Tomorrow.io API key loaded."
+        : "Run: firebase functions:secrets:set TOMORROW_API_KEY  (or scripts/set-tomorrow-secret.sh)",
+    });
+  }
+);
+
+// ---------- Function: fieldTomorrowWeather (hyperlocal forecast + farm advisories) ----------
+exports.fieldTomorrowWeather = onRequest(
+  { secrets: [tomorrowApiKey], cors: true, timeoutSeconds: 60 },
+  async (req, res) => {
+    try {
+      await verifyIdToken(req);
+      const lat = Number(req.query.lat ?? req.body?.lat);
+      const lon = Number(req.query.lon ?? req.body?.lon);
+      const fieldId = String(req.query.fieldId || req.body?.fieldId || "");
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        return jsonRes(res, 400, { error: "lat and lon required" });
+      }
+
+      const key = tomorrowApiKey.value();
+      if (!key || key.length < 12 || key.startsWith("PLACEHOLDER")) {
+        return jsonRes(res, 200, {
+          ok: false,
+          configured: false,
+          error: "TOMORROW_API_KEY is not set. Add it with: firebase functions:secrets:set TOMORROW_API_KEY",
+          hint: "Create a free key at https://app.tomorrow.io → Development → API Keys, then run scripts/set-tomorrow-secret.sh",
+        });
+      }
+
+      const rlKey = `tmrw:${fieldId || `${lat.toFixed(3)},${lon.toFixed(3)}`}`;
+      // Tighter than Earthdata — free Tomorrow.io quotas are limited
+      const last = rateMap.get(rlKey) || 0;
+      const now = Date.now();
+      const TMRW_RATE_MS = 3 * 60 * 1000;
+      if (now - last < TMRW_RATE_MS) {
+        const wait = Math.ceil((TMRW_RATE_MS - (now - last)) / 1000);
+        return jsonRes(res, 429, {
+          ok: false,
+          error: `Tomorrow.io rate limit — try again in ~${wait}s`,
+          retryAfterSec: wait,
+        });
+      }
+      rateMap.set(rlKey, now);
+
+      const units = String(req.query.units || req.body?.units || "metric") === "imperial" ? "imperial" : "metric";
+      const pack = await buildTomorrowFieldWeather(key, lat, lon, { units });
+      jsonRes(res, 200, { ...pack, fieldId: fieldId || null, lat, lon });
+    } catch (err) {
+      if (err.status === 401) return jsonRes(res, 401, { error: "Unauthenticated" });
+      console.error("fieldTomorrowWeather error", err);
+      const status = err.status >= 400 && err.status < 600 ? err.status : 502;
+      jsonRes(res, status, {
+        ok: false,
+        error: err.message || "Tomorrow.io request failed",
+        detail: err.body || null,
+      });
     }
   }
 );

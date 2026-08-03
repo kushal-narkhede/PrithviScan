@@ -59,6 +59,19 @@ export async function callFieldTrends(fieldId, lat, lon) {
   return apiFetch("fieldTrends", { fieldId, lat, lon });
 }
 
+/** Tomorrow.io hyperlocal forecast + farm advisories */
+export async function callFieldTomorrowWeather(fieldId, lat, lon, units = "metric") {
+  return apiFetch("fieldTomorrowWeather", { fieldId, lat, lon, units });
+}
+
+export async function callTomorrowStatus() {
+  if (!FUNCTIONS_ENABLED) {
+    return { ok: false, disabled: true, error: BLAZE_MSG, status: 503 };
+  }
+  const res = await fetch(`${FUNCTIONS_BASE}/tomorrowStatus`);
+  return res.json().catch(() => ({ ok: false, error: "Invalid JSON" }));
+}
+
 /** Historical NASA granules + browse imagery (MODIS / SMAP / HLS) */
 export async function callSatelliteArchive(lat, lon, { product = "modis_terra", days = 90 } = {}) {
   return apiFetch("fieldSatelliteArchive", { lat, lon, product, days });
