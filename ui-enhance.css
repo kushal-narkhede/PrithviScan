@@ -1,0 +1,558 @@
+/**
+ * Shared interactive UX polish — all PrithviScan pages.
+ * Forest palette only; respects prefers-reduced-motion.
+ */
+
+:root {
+  --ux-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ux-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --ux-focus: 0 0 0 3px rgba(63, 154, 99, 0.35);
+}
+
+/* Page enter */
+html.ux-ready body {
+  animation: uxPageIn 0.55s var(--ux-ease) both;
+}
+
+@keyframes uxPageIn {
+  from {
+    opacity: 0.01;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Scroll progress under sticky headers */
+.ux-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 0%;
+  z-index: 100;
+  background: linear-gradient(90deg, #1a4a33, #3f9a63, #62c084);
+  pointer-events: none;
+  transform-origin: left center;
+  transition: width 0.08s linear;
+}
+
+/* Reveal on scroll */
+.ux-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 0.55s var(--ux-ease),
+    transform 0.55s var(--ux-ease);
+  transition-delay: var(--ux-delay, 0ms);
+}
+
+.ux-reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Interactive pressables */
+.ux-pressable {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.18s var(--ux-ease),
+    box-shadow 0.18s var(--ux-ease),
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease !important;
+}
+
+.ux-pressable:hover {
+  transform: translateY(-2px);
+}
+
+.ux-pressable:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.ux-ripple {
+  position: absolute;
+  border-radius: 50%;
+  transform: scale(0);
+  background: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+  animation: uxRipple 0.55s var(--ux-ease) forwards;
+}
+
+.ux-pressable.ux-dark-ink .ux-ripple {
+  background: rgba(16, 37, 26, 0.12);
+}
+
+@keyframes uxRipple {
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+/* Nav active underline */
+.app-nav > a,
+.site-header .nav > a,
+.auth-top a {
+  position: relative;
+}
+
+.app-nav > a::after,
+.site-header .nav > a:not(.nav-cta)::after {
+  content: "";
+  position: absolute;
+  left: 0.1rem;
+  right: 0.1rem;
+  bottom: -0.2rem;
+  height: 2px;
+  border-radius: 2px;
+  background: #3f9a63;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s var(--ux-ease);
+}
+
+.app-nav > a.is-active::after,
+.app-nav > a:hover::after,
+.site-header .nav > a:not(.nav-cta):hover::after,
+.site-header .nav > a.is-active::after {
+  transform: scaleX(1);
+}
+
+/* Form focus polish */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+select,
+textarea {
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease,
+    transform 0.15s ease;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #3f9a63 !important;
+  box-shadow: var(--ux-focus);
+}
+
+label:has(input:focus),
+label:has(select:focus),
+label:has(textarea:focus) {
+  color: #1a4a33;
+}
+
+/* Status messages pop in */
+.app-status:not(:empty),
+.auth-status:not(:empty),
+#fieldStatus:not(:empty),
+#financeStatus:not(:empty) {
+  animation: uxStatusIn 0.35s var(--ux-spring) both;
+}
+
+@keyframes uxStatusIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.app-status.is-ok,
+.auth-status.is-ok {
+  animation: uxStatusOk 0.45s var(--ux-spring) both;
+}
+
+@keyframes uxStatusOk {
+  0% {
+    transform: scale(0.97);
+  }
+  60% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* Panels / cards lift */
+.app-panel,
+.collab-card,
+.info-card,
+.metric-card,
+.urtc-card,
+.auth-panel,
+.price-card,
+.org-card {
+  transition:
+    transform 0.25s var(--ux-ease),
+    box-shadow 0.25s var(--ux-ease),
+    border-color 0.25s ease;
+}
+
+.app-panel:hover,
+.collab-card:hover,
+.info-card:hover,
+.metric-card:hover,
+.price-card:hover,
+.org-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 36px rgba(6, 22, 14, 0.1);
+}
+
+/* Field tool buttons — stronger interactive affordance */
+.field-tool-btn {
+  transition:
+    transform 0.2s var(--ux-ease),
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease !important;
+}
+
+.field-tool-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(18, 53, 37, 0.12);
+}
+
+.field-tool-btn.is-active {
+  animation: uxToolSelect 0.4s var(--ux-spring) both;
+}
+
+@keyframes uxToolSelect {
+  0% {
+    transform: scale(0.96);
+  }
+  70% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* Tool / tab panels fade when opened */
+.field-tool-panel:not([hidden]),
+.collab-panel:not([hidden]),
+.app-tab-panel:not([hidden]) {
+  animation: uxPanelIn 0.4s var(--ux-ease) both;
+}
+
+@keyframes uxPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* App tabs */
+.app-tab-btn {
+  transition:
+    transform 0.18s var(--ux-ease),
+    background 0.18s ease,
+    color 0.18s ease !important;
+}
+
+.app-tab-btn:hover {
+  transform: translateY(-1px);
+}
+
+.collab-tab {
+  transition:
+    transform 0.18s var(--ux-ease),
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease !important;
+}
+
+.collab-tab:hover {
+  transform: translateY(-2px);
+}
+
+.collab-tab.is-active {
+  animation: uxToolSelect 0.35s var(--ux-spring) both;
+}
+
+/* Field list rows */
+.field-list-item,
+.usage-list li,
+.collab-list article,
+.alert-item {
+  transition:
+    transform 0.18s var(--ux-ease),
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.field-list-item:hover,
+.usage-list li:hover,
+.collab-list article:hover,
+.alert-item:hover {
+  transform: translateX(4px);
+  background: rgba(63, 154, 99, 0.06);
+}
+
+/* Metric count-up flash */
+.ux-count {
+  font-variant-numeric: tabular-nums;
+}
+
+.ux-count.is-ticking {
+  color: #1a4a33;
+}
+
+/* Skeleton shimmer for empty loading shells */
+.ux-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(16, 37, 26, 0.06);
+  border-radius: 12px;
+  min-height: 1.2em;
+}
+
+.ux-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.55),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: uxShimmer 1.2s ease infinite;
+}
+
+@keyframes uxShimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Back to top */
+.ux-top {
+  position: fixed;
+  right: 1.1rem;
+  bottom: 5.5rem;
+  z-index: 45;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: #1a4a33;
+  color: #fff;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(6, 22, 14, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(12px);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s var(--ux-ease);
+}
+
+.ux-top.is-show {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
+.ux-top:hover {
+  background: #276749;
+  transform: translateY(-2px);
+}
+
+/* Auth / marketing atmosphere micro-motion */
+.auth-bg {
+  animation: uxDrift 18s ease-in-out infinite alternate;
+}
+
+@keyframes uxDrift {
+  from {
+    transform: scale(1) translate(0, 0);
+  }
+  to {
+    transform: scale(1.04) translate(-1.5%, 1%);
+  }
+}
+
+.auth-panel {
+  animation: uxAuthIn 0.65s var(--ux-ease) both;
+}
+
+@keyframes uxAuthIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Homepage section polish */
+.section .eyebrow {
+  letter-spacing: 0.16em;
+}
+
+.btn,
+.app-btn-primary,
+.app-btn-ghost,
+.app-btn-danger,
+.nav-cta,
+.collab-btn,
+.auth-submit,
+.auth-google {
+  transition:
+    transform 0.18s var(--ux-ease),
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease !important;
+}
+
+.btn:hover,
+.app-btn-primary:hover,
+.nav-cta:hover,
+.collab-btn:hover,
+.auth-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(18, 53, 37, 0.18);
+}
+
+.btn:active,
+.app-btn-primary:active,
+.nav-cta:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Interactive checklist / switches */
+.check-row {
+  transition: background 0.15s ease, transform 0.15s ease;
+  border-radius: 10px;
+  padding: 0.15rem 0.35rem;
+  margin-left: -0.35rem;
+}
+
+.check-row:hover {
+  background: rgba(63, 154, 99, 0.08);
+}
+
+.check-row:active {
+  transform: scale(0.99);
+}
+
+/* Insight card breath when refreshed */
+.insight-card.ux-pulse {
+  animation: uxPulse 0.7s var(--ux-ease);
+}
+
+@keyframes uxPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(63, 154, 99, 0.35);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(63, 154, 99, 0);
+  }
+  100% {
+    box-shadow: none;
+  }
+}
+
+/* Map shell subtle interactive ring */
+.field-map,
+#fieldMap,
+.leaflet-container {
+  transition: box-shadow 0.3s ease;
+}
+
+.field-map:hover,
+#fieldMap:hover {
+  box-shadow: 0 12px 32px rgba(6, 22, 14, 0.12);
+}
+
+/* Toast host (optional runtime toasts) */
+.ux-toast-host {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  z-index: 90;
+  display: grid;
+  gap: 0.45rem;
+  width: min(28rem, calc(100% - 2rem));
+  pointer-events: none;
+}
+
+.ux-toast {
+  pointer-events: auto;
+  padding: 0.75rem 1rem;
+  border-radius: 14px;
+  background: #0b2417;
+  color: #f4faf6;
+  font-size: 0.92rem;
+  font-weight: 600;
+  box-shadow: 0 16px 40px rgba(6, 22, 14, 0.35);
+  animation: uxToastIn 0.35s var(--ux-spring) both;
+}
+
+.ux-toast.is-out {
+  animation: uxToastOut 0.25s ease forwards;
+}
+
+@keyframes uxToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes uxToastOut {
+  to {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  html.ux-ready body,
+  .ux-reveal,
+  .ux-pressable,
+  .field-tool-btn,
+  .field-tool-panel:not([hidden]),
+  .collab-panel:not([hidden]),
+  .auth-panel,
+  .auth-bg,
+  .ux-top,
+  .ux-skeleton::after,
+  .app-status:not(:empty),
+  .insight-card.ux-pulse {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .ux-reveal {
+    opacity: 1;
+  }
+}

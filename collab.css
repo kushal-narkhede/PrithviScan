@@ -16,12 +16,19 @@
   font-weight: 700;
   font-size: 0.9rem;
   cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.collab-tab:hover {
+  transform: translateY(-2px);
+  border-color: rgba(63, 154, 99, 0.45);
 }
 
 .collab-tab.is-active {
   background: #2f855a;
   border-color: #2f855a;
   color: #fff;
+  box-shadow: 0 8px 18px rgba(47, 133, 90, 0.25);
 }
 
 .collab-panel[hidden] {

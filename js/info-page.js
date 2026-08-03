@@ -104,6 +104,9 @@ function renderDetail(id) {
   }
 
   const best = e.bestFor || [];
+  detailEl.classList.remove("info-detail");
+  void detailEl.offsetWidth;
+  detailEl.classList.add("info-detail");
   detailEl.innerHTML = `
     <div class="info-detail-head">
       <div>

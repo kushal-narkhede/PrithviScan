@@ -129,6 +129,9 @@ document.getElementById("form-crop")?.addEventListener("submit", (e) => {
   const r = estimateCropRevenue({ cropId, acres, yieldQtlPerAcre, region: activeRegion });
   const box = document.getElementById("crop-result");
   box.hidden = false;
+  box.classList.remove("prices-result");
+  void box.offsetWidth;
+  box.classList.add("prices-result");
   const unit = r.unit || (activeRegion === "US" ? r.crop.unit : "qtl");
   const unitPrice = activeRegion === "US" ? r.crop.price : r.crop.mspPerQuintal;
   const priceLabel = activeRegion === "US" ? `$${unitPrice}/${unit}` : `₹${unitPrice}/qtl`;
@@ -152,6 +155,9 @@ document.getElementById("form-fert")?.addEventListener("submit", (e) => {
   const r = estimateFertilizerCost({ fertId, bags, region: activeRegion });
   const box = document.getElementById("fert-result");
   box.hidden = false;
+  box.classList.remove("prices-result");
+  void box.offsetWidth;
+  box.classList.add("prices-result");
   const unit = r.fert.unitLabel || `${formatCurrency(r.fert.bagPrice, activeRegion)} / ${r.fert.bagKg} kg bag`;
   box.innerHTML = `
     <p class="result-label">Fertilizer cost</p>
@@ -173,6 +179,9 @@ document.getElementById("form-machine")?.addEventListener("submit", (e) => {
   const r = estimateMachineCost({ machineId, quantity, region: activeRegion });
   const box = document.getElementById("machine-result");
   box.hidden = false;
+  box.classList.remove("prices-result");
+  void box.offsetWidth;
+  box.classList.add("prices-result");
   box.innerHTML = `
     <p class="result-label">Estimated hire cost</p>
     <p class="result-value">${formatCurrency(r.cost, activeRegion)}</p>

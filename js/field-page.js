@@ -775,6 +775,9 @@ function setStatus(msg, type = "") {
   if (!statusEl) return;
   statusEl.textContent = msg || "";
   statusEl.className = `app-status${type ? ` is-${type}` : ""}`;
+  if (type === "ok" && msg) {
+    window.dispatchEvent(new CustomEvent("ux-toast", { detail: { message: msg, ms: 2200 } }));
+  }
 }
 
 function levelClass(level) {

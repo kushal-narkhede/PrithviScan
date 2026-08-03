@@ -443,12 +443,18 @@
   border: 1px solid rgba(16, 37, 26, 0.08);
   text-decoration: none;
   color: inherit;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .field-card:hover {
   border-color: rgba(63, 154, 99, 0.45);
-  transform: translateY(-1px);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(6, 22, 14, 0.1);
+  background: #f5fbf7;
+}
+
+.field-card:active {
+  transform: translateY(-1px) scale(0.99);
 }
 
 .field-card strong {
@@ -465,6 +471,17 @@
 .empty-state {
   padding: 1.25rem 0.25rem 0.5rem;
   color: #3a5646;
+  animation: emptyPulse 2.8s ease-in-out infinite;
+}
+
+@keyframes emptyPulse {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .empty-state strong {

@@ -111,18 +111,21 @@
   font-size: 0.88rem;
   font-weight: 650;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
 
 .info-chip:hover {
   border-color: rgba(63, 154, 99, 0.45);
   color: #0b2417;
+  transform: translateY(-2px);
 }
 
 .info-chip.is-active {
   background: #1f6b45;
   border-color: #1f6b45;
   color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(31, 107, 69, 0.22);
 }
 
 .info-layout {
@@ -167,18 +170,34 @@
   cursor: pointer;
   color: inherit;
   font: inherit;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, transform 0.15s ease;
 }
 
 .info-item:hover,
 .info-item:focus-visible {
   background: rgba(232, 245, 238, 0.95);
   outline: none;
+  transform: translateX(3px);
 }
 
 .info-item.is-active {
   background: linear-gradient(135deg, #e8f5ee, #dff0e6);
   box-shadow: inset 3px 0 0 #2f855a;
+}
+
+.info-detail {
+  animation: infoDetailIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes infoDetailIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .info-item-cat {

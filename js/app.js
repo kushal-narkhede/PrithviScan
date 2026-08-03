@@ -57,6 +57,9 @@ function setStatus(message, type = "") {
   if (!statusEl) return;
   statusEl.textContent = message || "";
   statusEl.className = `app-status${type ? ` is-${type}` : ""}`;
+  if (type === "ok" && message) {
+    window.dispatchEvent(new CustomEvent("ux-toast", { detail: { message, ms: 2200 } }));
+  }
 }
 
 function setFieldCheckBanner(message, type = "") {

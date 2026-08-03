@@ -352,6 +352,7 @@ ol {
 .hero-media {
   position: absolute;
   inset: 0;
+  will-change: transform;
 }
 
 .hero-video {

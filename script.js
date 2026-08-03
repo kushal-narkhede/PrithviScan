@@ -58,4 +58,34 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!document.hidden) tryPlay();
     });
   }
+
+  // Gentle hero parallax — presence without noise
+  const heroMedia = document.querySelector(".hero-media");
+  const heroContent = document.querySelector(".hero-content");
+  const reduceMotion =
+    typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!reduceMotion && heroMedia && heroContent) {
+    const onHeroScroll = () => {
+      const y = Math.min(window.scrollY, 420);
+      heroMedia.style.transform = `translateY(${y * 0.22}px) scale(${1 + y * 0.00015})`;
+      heroContent.style.transform = `translateY(${y * 0.08}px)`;
+      heroContent.style.opacity = String(Math.max(0.25, 1 - y / 520));
+    };
+    onHeroScroll();
+    window.addEventListener("scroll", onHeroScroll, { passive: true });
+  }
+
+  // CTA magnetic tilt on pointer
+  document.querySelectorAll(".hero-actions .btn").forEach((btn) => {
+    if (reduceMotion) return;
+    btn.addEventListener("pointermove", (e) => {
+      const r = btn.getBoundingClientRect();
+      const dx = (e.clientX - r.left) / r.width - 0.5;
+      const dy = (e.clientY - r.top) / r.height - 0.5;
+      btn.style.transform = `translate(${dx * 4}px, ${dy * 3 - 2}px)`;
+    });
+    btn.addEventListener("pointerleave", () => {
+      btn.style.transform = "";
+    });
+  });
 });
