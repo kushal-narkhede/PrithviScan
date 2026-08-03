@@ -14,8 +14,8 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-    <link rel="stylesheet" href="styles.css?v=fields2" />
-    <link rel="stylesheet" href="app.css?v=fields2" />
+    <link rel="stylesheet" href="styles.css?v=mapfix4" />
+    <link rel="stylesheet" href="app.css?v=mapfix4" />
     <link rel="stylesheet" href="ui-enhance.css?v=ux1" />
   </head>
   <body class="app-body">
@@ -115,11 +115,11 @@
 
         <!-- FIELDS TAB -->
         <section id="fieldsTab" class="app-tab-panel">
-          <div class="fields-layout">
-            <!-- Left: field list (sticky like profile identity) -->
-            <aside class="app-panel fields-sidebar" aria-labelledby="fieldsListTitle">
+          <div class="app-grid">
+            <!-- Field cards -->
+            <div class="app-panel">
               <div class="app-panel-head">
-                <h2 id="fieldsListTitle">Your fields</h2>
+                <h2>Your fields</h2>
                 <span class="app-count" id="fieldCount">0</span>
               </div>
               <p class="app-muted" id="orgFieldsNote" hidden>Organization fields are shared with your team. New fields you add go to the org when you have write access.</p>
@@ -127,41 +127,42 @@
                 <button type="button" class="app-btn-ghost" id="exportCsvBtn">Export CSV</button>
                 <button type="button" class="app-btn-ghost" id="exportGeoBtn">Export GeoJSON</button>
                 <label class="app-btn-ghost bulk-upload">
-                  Import
+                  Import CSV / GeoJSON
                   <input id="importFileInput" type="file" accept=".csv,.json,.geojson,text/csv,application/json" hidden />
                 </label>
               </div>
-              <p class="app-muted bulk-hint">CSV: <code>name,lat,lon,cropType</code></p>
+              <p class="app-muted bulk-hint">CSV columns: <code>name,lat,lon,cropType</code> — or a GeoJSON Point FeatureCollection.</p>
               <div id="fieldsList" class="fields-list">
                 <div class="empty-state">
                   <strong>No fields yet</strong>
                   <p>Add your first field on the map to start scanning Earth intelligence for your farm.</p>
                 </div>
               </div>
-            </aside>
+            </div>
 
-            <!-- Right: map + save form -->
-            <div class="fields-main">
-              <div class="app-panel app-panel-map" id="addFieldPanel">
-                <div class="app-panel-head">
-                  <h2>Place a field</h2>
-                  <button type="button" class="app-btn-ghost" id="useLocationBtn">📍 My location</button>
-                </div>
-                <p class="app-muted map-hint">
-                  Satellite map for India &amp; USA — click cropland to set the field center. Currency and markets follow the pin (₹ MSP in India, $ cash in the US).
-                </p>
-                <div id="fieldMap" class="field-map field-map-wide" role="application" aria-label="Satellite field map"></div>
-                <p id="fieldCheckBanner" class="field-check-banner" role="status" aria-live="polite" hidden></p>
+            <!-- Add field map -->
+            <div class="app-panel app-panel-map" id="addFieldPanel">
+              <div class="app-panel-head">
+                <h2>Place a field</h2>
+                <button type="button" class="app-btn-ghost" id="useLocationBtn">📍 My location</button>
+              </div>
+              <p class="app-muted map-hint">
+                Satellite map for India &amp; USA — click cropland to set the field center. Currency and markets follow the pin (₹ MSP in India, $ cash in the US).
+              </p>
+              <div id="fieldMap" class="field-map" role="application" aria-label="Satellite field map"></div>
+              <p id="fieldCheckBanner" class="field-check-banner" role="status" aria-live="polite" hidden></p>
 
-                <form id="addFieldForm" class="add-field-form fields-add-form">
-                  <label>
-                    Field name
-                    <input id="fieldName" name="name" type="text" required placeholder="North paddock" maxlength="80" />
-                  </label>
-                  <label>
-                    Crop (optional)
-                    <input id="fieldCrop" name="cropType" type="text" placeholder="Wheat, rice, cotton…" maxlength="60" />
-                  </label>
+              <form id="addFieldForm" class="add-field-form">
+                <input type="hidden" id="authMode" name="mode" value="signin" />
+                <label>
+                  Field name
+                  <input id="fieldName" name="name" type="text" required placeholder="North paddock" maxlength="80" />
+                </label>
+                <label>
+                  Crop (optional)
+                  <input id="fieldCrop" name="cropType" type="text" placeholder="Wheat, rice, cotton…" maxlength="60" />
+                </label>
+                <div class="coord-row">
                   <label>
                     Latitude
                     <input id="fieldLat" name="lat" type="number" step="any" required placeholder="12.97" />
@@ -170,9 +171,9 @@
                     Longitude
                     <input id="fieldLon" name="lon" type="number" step="any" required placeholder="77.59" />
                   </label>
-                  <button type="submit" class="app-btn-primary fields-save-btn" id="saveFieldBtn">Save field</button>
-                </form>
-              </div>
+                </div>
+                <button type="submit" class="app-btn-primary" id="saveFieldBtn">Save field</button>
+              </form>
             </div>
           </div>
         </section>

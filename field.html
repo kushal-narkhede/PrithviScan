@@ -13,8 +13,8 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-    <link rel="stylesheet" href="styles.css?v=tmrw2" />
-    <link rel="stylesheet" href="app.css?v=tmrw2" />
+    <link rel="stylesheet" href="styles.css?v=fieldlayout1" />
+    <link rel="stylesheet" href="app.css?v=fieldlayout1" />
     <link rel="stylesheet" href="ui-enhance.css?v=ux1" />
   </head>
   <body class="app-body">
@@ -62,6 +62,9 @@
         <p id="fieldStatus" class="app-status" role="status" aria-live="polite"></p>
         <div class="safety-banner" id="safetyBanner" hidden></div>
 
+        <div class="field-detail-layout">
+          <!-- Left: insight + metrics (sticky like profile) -->
+          <aside class="field-detail-sidebar" aria-label="Field summary">
         <!-- Insight card (action + confidence + provenance) -->
         <div class="insight-card-wrap" id="insightWrap">
           <div class="insight-card insight-info" id="insightCard">
@@ -133,7 +136,10 @@
           <span class="sat-chip" id="satMODIS">MODIS —</span>
           <span class="sat-note" id="satNote"></span>
         </div>
+          </aside>
 
+          <!-- Right: tools + panels -->
+          <div class="field-detail-main">
         <!-- Tool buttons: one job per panel -->
         <nav class="field-tools" id="fieldTools" aria-label="Field tools">
           <p class="field-tools-label">Explore this field</p>
@@ -611,6 +617,8 @@
               <button type="submit" class="app-btn-primary">Add season</button>
             </form>
             <p class="app-muted" id="cropRotationNote"></p>
+          </div>
+        </div>
           </div>
         </div>
       </div>
