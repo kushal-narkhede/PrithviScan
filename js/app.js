@@ -57,8 +57,14 @@ function setStatus(message, type = "") {
   if (!statusEl) return;
   statusEl.textContent = message || "";
   statusEl.className = `app-status${type ? ` is-${type}` : ""}`;
-  if (type === "ok" && message) {
-    window.dispatchEvent(new CustomEvent("ux-toast", { detail: { message, ms: 2200 } }));
+  // Toast only for short success confirmations (skip loading / progress lines)
+  if (
+    type === "ok" &&
+    message &&
+    message.length < 90 &&
+    !/(…|\.\.\.|Loading|Computing|Checking|Getting|Importing|Saving)/i.test(message)
+  ) {
+    window.dispatchEvent(new CustomEvent("ux-toast", { detail: { message, ms: 2000 } }));
   }
 }
 
@@ -370,10 +376,12 @@ async function validateLocation(lat, lon) {
   setStatus("Checking satellite imagery — is this a farm field?");
   setFieldCheckBanner("Checking this location against the field classifier…", "pending");
   if (saveBtn) saveBtn.disabled = true;
+  mapApi?.setMarkerState?.("pending");
 
   try {
     const result = await callClassifyLocation(lat, lon);
     if (result.disabled) {
+      mapApi?.setMarkerState?.("error");
       setFieldCheckBanner(
         "Field check is offline. Try again in a moment, or pick another point.",
         "error"
@@ -383,8 +391,10 @@ async function validateLocation(lat, lon) {
       return false;
     }
     if (result.softFail) {
-      // Imagery fetch failed — allow save with a clear warning
+      // Imagery fetch failed — allow save with a clear warning; still zoom so user can confirm
       lastLocationValid = true;
+      mapApi?.setMarkerState?.("ok");
+      mapApi?.zoomToField?.(lat, lon, 17);
       setFieldCheckBanner(
         result.message || "Could not verify imagery right now. You can save, but pick cropland carefully.",
         "warn"
@@ -395,6 +405,8 @@ async function validateLocation(lat, lon) {
     }
     if (!result.valid) {
       lastLocationValid = false;
+      mapApi?.setMarkerState?.("error");
+      // Do NOT auto-zoom when this is not a field
       const msg =
         result.message ||
         "This location does not look like a farm field (city, water, forest, or bare land). Move the pin to cropland.";
@@ -404,6 +416,8 @@ async function validateLocation(lat, lon) {
       return false;
     }
     lastLocationValid = true;
+    mapApi?.setMarkerState?.("ok");
+    mapApi?.zoomToField?.(lat, lon, 17);
     const pct = Math.round((result.confidence || result.field_probability || 0) * 100);
     const model = result.model ? ` · ${result.model}` : "";
     setFieldCheckBanner(
@@ -415,6 +429,7 @@ async function validateLocation(lat, lon) {
     return true;
   } catch (err) {
     lastLocationValid = false;
+    mapApi?.setMarkerState?.("error");
     setFieldCheckBanner(
       "Could not reach the field classifier. Check your connection and try again.",
       "error"
@@ -531,9 +546,9 @@ useLocationBtn?.addEventListener("click", () => {
     (lat, lon) => {
       latInput.value = lat.toFixed(6);
       lonInput.value = lon.toFixed(6);
-      mapApi?.map.setView([lat, lon], 16);
-      // setMarker triggers onPick → validateLocation
-      mapApi?.setMarker(lat, lon);
+      // Coarse view only — zoom-in happens after field detection succeeds
+      mapApi?.map?.setView([lat, lon], 12);
+      mapApi?.setMarker?.(lat, lon, { state: "pending" });
     },
     () => setStatus("Could not get location. Click the map instead.", "error")
   );

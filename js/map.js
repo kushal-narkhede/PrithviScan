@@ -39,6 +39,23 @@ const SAT_LAYERS = [
 const LABELS_URL =
   "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
 
+/** Destination-style pin with brand mark (no broken Leaflet PNG box). */
+export function fieldPinIcon(state = "pending") {
+  const safe = ["pending", "ok", "error"].includes(state) ? state : "pending";
+  return L.divIcon({
+    className: `ps-map-pin ps-map-pin--${safe}`,
+    html: `
+      <span class="ps-map-pin__bubble" aria-hidden="true">
+        <img class="ps-map-pin__logo" src="assets/logo-mark.png" width="22" height="22" alt="" />
+      </span>
+      <span class="ps-map-pin__tip" aria-hidden="true"></span>
+    `,
+    iconSize: [44, 56],
+    iconAnchor: [22, 54],
+    popupAnchor: [0, -48],
+  });
+}
+
 function showMapError(el, message) {
   let banner = el.querySelector(".field-map-error");
   if (!banner) {
@@ -105,18 +122,6 @@ export function createFieldMap(elementId, options = {}) {
 
   el._psMap = map;
 
-  // Local Leaflet build — pin default marker icons next to leaflet.js
-  try {
-    const iconBase = `${window.location.origin}/vendor/leaflet/images`;
-    L.Icon.Default.mergeOptions({
-      iconUrl: `${iconBase}/marker-icon.png`,
-      iconRetinaUrl: `${iconBase}/marker-icon-2x.png`,
-      shadowUrl: `${iconBase}/marker-shadow.png`,
-    });
-  } catch {
-    /* ignore */
-  }
-
   let layerIndex = 0;
   let satLayer = null;
   let labelsLayer = null;
@@ -137,14 +142,12 @@ export function createFieldMap(elementId, options = {}) {
       maxNativeZoom: conf.maxNativeZoom ?? 19,
       attribution: conf.attribution,
       crossOrigin: true,
-      // Transparent 1x1 if a single tile 404s — avoids pink broken icons
       errorTileUrl:
         "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
     }).addTo(map);
 
     satLayer.on("tileerror", () => {
       errors += 1;
-      // After a few failures, try next provider
       if (errors >= 3 && layerIndex < SAT_LAYERS.length - 1) {
         errors = 0;
         layerIndex += 1;
@@ -155,7 +158,6 @@ export function createFieldMap(elementId, options = {}) {
             el,
             "Satellite tiles blocked — showing street map. You can still drop a pin."
           );
-          // Labels redundant on OSM
           if (labelsLayer) {
             try {
               map.removeLayer(labelsLayer);
@@ -188,25 +190,44 @@ export function createFieldMap(elementId, options = {}) {
   }).addTo(map);
 
   let marker = null;
+  let pinState = "pending";
 
-  function setMarker(lat, lon, { notify = true } = {}) {
+  function setMarker(lat, lon, { notify = true, state = "pending" } = {}) {
+    pinState = state;
+    const icon = fieldPinIcon(pinState);
     if (marker) {
       marker.setLatLng([lat, lon]);
+      marker.setIcon(icon);
     } else {
-      marker = L.marker([lat, lon], { draggable: options.pickable !== false }).addTo(map);
+      marker = L.marker([lat, lon], {
+        draggable: options.pickable !== false,
+        icon,
+        riseOnHover: true,
+        title: "Field pin",
+      }).addTo(map);
       marker.on("dragend", () => {
         const pos = marker.getLatLng();
+        setMarkerState("pending");
         options.onPick?.(pos.lat, pos.lng);
       });
     }
     if (notify) options.onPick?.(lat, lon);
   }
 
+  function setMarkerState(state) {
+    pinState = state;
+    if (marker) marker.setIcon(fieldPinIcon(pinState));
+  }
+
+  /** Zoom in only after a successful field detect (caller decides). */
+  function zoomToField(lat, lon, z = 17) {
+    map.setView([lat, lon], z, { animate: true });
+  }
+
   if (options.lat != null && options.lon != null) {
-    setMarker(options.lat, options.lon, { notify: false });
+    setMarker(options.lat, options.lon, { notify: false, state: "ok" });
     map.setView([options.lat, options.lon], options.detailZoom ?? 16);
   } else if (options.pickable !== false && options.geolocate !== false && navigator.geolocation) {
-    // Prefer the user's country (US or India) when placing a new field
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         if (marker) return;
@@ -219,11 +240,9 @@ export function createFieldMap(elementId, options = {}) {
   }
 
   if (options.pickable !== false) {
+    // Place pin only — do NOT auto-zoom here. Zoom after field is detected.
     map.on("click", (e) => {
-      setMarker(e.latlng.lat, e.latlng.lng);
-      if (map.getZoom() < 16) {
-        map.setView(e.latlng, 17);
-      }
+      setMarker(e.latlng.lat, e.latlng.lng, { state: "pending" });
     });
   }
 
@@ -235,7 +254,6 @@ export function createFieldMap(elementId, options = {}) {
     }
   };
 
-  // Layout can settle after fonts/panels — refresh size a few times
   requestAnimationFrame(resize);
   setTimeout(resize, 80);
   setTimeout(resize, 300);
@@ -247,14 +265,14 @@ export function createFieldMap(elementId, options = {}) {
     ro.observe(el);
   }
 
-  // When tab/panel becomes visible again
   document.addEventListener("visibilitychange", resize);
-
   map.whenReady(resize);
 
   return {
     map,
-    setMarker: (lat, lon) => setMarker(lat, lon, { notify: true }),
+    setMarker: (lat, lon, opts) => setMarker(lat, lon, { notify: true, ...(opts || {}) }),
+    setMarkerState,
+    zoomToField,
     getMarker() {
       if (!marker) return null;
       const p = marker.getLatLng();

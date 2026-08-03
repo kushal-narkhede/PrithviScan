@@ -468,6 +468,88 @@
   color: #3a5646;
 }
 
+/* Destination pin for field placement (replaces broken Leaflet PNG box) */
+.ps-map-pin {
+  background: transparent !important;
+  border: 0 !important;
+  width: 44px !important;
+  height: 56px !important;
+}
+
+.ps-map-pin__bubble {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: #0b2417;
+  border: 3px solid #fff;
+  box-shadow: 0 8px 18px rgba(6, 22, 14, 0.35);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.ps-map-pin__logo {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  display: block;
+  border-radius: 50%;
+}
+
+.ps-map-pin__tip {
+  display: block;
+  width: 0;
+  height: 0;
+  margin: -2px auto 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 14px solid #0b2417;
+  filter: drop-shadow(0 3px 2px rgba(6, 22, 14, 0.25));
+  transition: border-top-color 0.2s ease;
+}
+
+.ps-map-pin--pending .ps-map-pin__bubble {
+  background: #1a4a33;
+  animation: psPinPulse 1.2s ease-in-out infinite;
+}
+
+.ps-map-pin--pending .ps-map-pin__tip {
+  border-top-color: #1a4a33;
+}
+
+.ps-map-pin--ok .ps-map-pin__bubble {
+  background: #2f855a;
+}
+
+.ps-map-pin--ok .ps-map-pin__tip {
+  border-top-color: #2f855a;
+}
+
+.ps-map-pin--error .ps-map-pin__bubble {
+  background: #9b2c2c;
+}
+
+.ps-map-pin--error .ps-map-pin__tip {
+  border-top-color: #9b2c2c;
+}
+
+@keyframes psPinPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ps-map-pin--pending .ps-map-pin__bubble {
+    animation: none;
+  }
+}
+
 .empty-state {
   padding: 1.25rem 0.25rem 0.5rem;
   color: #3a5646;
