@@ -26,6 +26,7 @@ const REVEAL_SELECTORS = [
   ".policy-block",
   ".profile-layout > *",
   ".profile-prefs-card",
+  ".field-detail-layout > *",
 ].join(",");
 
 const PRESS_SELECTORS = [
