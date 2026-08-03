@@ -2,6 +2,8 @@
  * Site-wide interactive UX — auto-runs on every page that imports it.
  */
 
+import { bootPageLoader, bindStatusWatch } from "./ps-loader.js";
+
 const REDUCED =
   typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -255,6 +257,15 @@ export function enhancePage() {
   document.documentElement.dataset.uxEnhanced = "1";
   document.documentElement.classList.add("ux-ready");
 
+  const isApp = Boolean(
+    document.body?.classList?.contains("app-body") ||
+      document.getElementById("appStatus") ||
+      document.getElementById("fieldStatus")
+  );
+  bootPageLoader({
+    message: isApp ? "Loading your farm view…" : "Loading PrithviScan…",
+  });
+
   ensureProgress();
   ensureBackTop();
   markActiveNav();
@@ -264,6 +275,7 @@ export function enhancePage() {
   watchDynamicPanels();
   pulseInsightOnChange();
   animateNewMetrics(document);
+  bindStatusWatch();
 
   window.addEventListener("ux-toast", (e) => {
     const detail = e.detail;
