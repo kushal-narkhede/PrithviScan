@@ -54,6 +54,7 @@
           <button type="button" class="collab-tab is-active" data-panel="friends">Friends</button>
           <button type="button" class="collab-tab" data-panel="chat">Chat</button>
           <button type="button" class="collab-tab" data-panel="share">Share fields</button>
+          <button type="button" class="collab-tab" data-panel="community">Community</button>
         </div>
 
         <!-- Friends -->
@@ -158,12 +159,43 @@
             </div>
           </div>
         </section>
+
+        <!-- Community feed -->
+        <section class="collab-panel" id="panel-community" hidden>
+          <div class="collab-grid">
+            <div class="collab-card">
+              <h2>Ask the community</h2>
+              <p class="app-muted">Safe, moderated posts — share updates or ask for advice. No hate/spam.</p>
+              <form class="collab-form" id="communityForm">
+                <label>
+                  Type
+                  <select id="communityKind">
+                    <option value="question">Question</option>
+                    <option value="update">Field update</option>
+                    <option value="advice">Advice</option>
+                  </select>
+                </label>
+                <label>
+                  Post
+                  <textarea id="communityBody" maxlength="800" required placeholder="How are you managing heat stress this week?"></textarea>
+                </label>
+                <button type="submit">Post</button>
+              </form>
+            </div>
+            <div class="collab-card" style="grid-column: 1 / -1">
+              <h2>Recent posts</h2>
+              <div id="communityFeed" class="collab-list">
+                <div class="collab-empty">No posts yet</div>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     </main>
 
     <script type="module" src="js/a11y.js"></script>
     <script type="module" src="js/tenant.js"></script>
     <script type="module" src="js/nav-auth.js?v=ai1"></script>
-    <script type="module" src="js/collab-page.js?v=nav3"></script>
+    <script type="module" src="js/collab-page.js?v=urtc1"></script>
   </body>
 </html>

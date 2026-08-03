@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Farm finances — PrithviScan</title>
+    <meta name="description" content="Track farm costs, revenue, profit, ROI, loans, and insurance tips." />
+    <link rel="icon" type="image/png" href="assets/favicon.png" />
+    <link rel="stylesheet" href="styles.css?v=urtc1" />
+    <link rel="stylesheet" href="app.css?v=urtc1" />
+  </head>
+  <body class="app-body">
+    <header class="app-top">
+      <div class="app-top-inner">
+        <a class="brand" href="index.html" aria-label="PrithviScan home">
+          <img class="brand-mark" src="assets/logo-mark.png" alt="" width="40" height="40" />
+          <span class="brand-wordmark"><span class="brand-prithvi">Prithvi</span><span class="brand-scan">Scan</span></span>
+        </a>
+        <nav class="app-nav" aria-label="App">
+          <a href="app.html">Fields</a>
+          <a class="is-active" href="finance.html">Finance</a>
+          <a href="prices.html">Prices</a>
+          <a href="org.html">Organization</a>
+          <span data-auth-slot></span>
+        </nav>
+      </div>
+    </header>
+    <main class="app-main">
+      <div class="app-shell">
+        <header class="app-page-head">
+          <div>
+            <p class="app-kicker">Business</p>
+            <h1>Farm financial dashboard</h1>
+            <p class="app-lead">Roll up input costs, estimated revenue, profit, and ROI. Loan &amp; insurance helpers included.</p>
+          </div>
+        </header>
+        <p id="financeStatus" class="app-status" role="status"></p>
+        <div class="app-grid">
+          <section class="app-panel">
+            <h2>P&amp;L snapshot</h2>
+            <div id="financeSummary" class="outlook-stats harvest-stats"></div>
+            <ul id="financeFieldList" class="usage-list"></ul>
+          </section>
+          <section class="app-panel">
+            <h2>Loan calculator</h2>
+            <form id="loanForm" class="field-input-form">
+              <label>Principal <input id="loanPrincipal" type="number" min="0" step="100" value="100000" /></label>
+              <label>Annual interest % <input id="loanRate" type="number" min="0" step="0.1" value="9" /></label>
+              <label>Years <input id="loanYears" type="number" min="1" step="1" value="3" /></label>
+              <button type="submit" class="app-btn-primary">Estimate EMI</button>
+            </form>
+            <p id="loanResult" class="urtc-card" hidden></p>
+            <h2>Insurance tips</h2>
+            <p class="app-muted" id="insuranceTips">Sign in to personalize by region.</p>
+          </section>
+        </div>
+      </div>
+    </main>
+    <script type="module" src="js/nav-auth.js?v=ai1"></script>
+    <script type="module" src="js/finance-page.js?v=urtc1"></script>
+  </body>
+</html>

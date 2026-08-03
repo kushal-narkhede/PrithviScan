@@ -3,7 +3,13 @@ import { getField, deleteField, updateField } from "./fields.js?v=region1";
 import { getDb } from "./firebase-db.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 import { createFieldMap } from "./map.js?v=region1";
-import { callFuseInsight, callFieldTrends, callSatelliteArchive, callFieldHealth } from "./api.js";
+import {
+  callFuseInsight,
+  callFieldTrends,
+  callSatelliteArchive,
+  callFieldHealth,
+  callSnapFieldBoundary,
+} from "./api.js?v=urtc1";
 import {
   healthFromNdvi,
   saveHealthSnapshot,
@@ -20,7 +26,7 @@ import {
 import { applyI18n, t } from "./i18n.js";
 import { cacheFieldOffline } from "./offline-cache.js";
 import { bindSessionPersistence, restoreScroll } from "./session.js";
-import { submitGroundTruth } from "./feedback.js";
+import { submitGroundTruth, compressPhotoToDataUrl } from "./feedback.js";
 import { simulateScenario } from "./scenario.js";
 import { assessInsightRisk, confirmRiskyAction } from "./safety.js";
 import { matchCropGuide, predictHarvest, listGuideOptions } from "./crop-guides.js";
@@ -31,9 +37,27 @@ import {
   listFieldUsages,
   deleteFieldUsage,
 } from "./field-inputs.js";
-import { nearestMarkets, mapsLink, formatDistance } from "./nearby-markets.js";
+import { mapsLink, formatDistance } from "./nearby-markets.js";
+import { marketplaceIntel } from "./marketplace-intel.js";
+import { startVoiceAssistant } from "./voice-assistant.js";
 import { getCropPrices, formatCurrency } from "./market-prices.js";
 import { detectRegion, getRegionMeta, regionBadgeLabel } from "./region.js";
+import { loadUrtcSuite } from "./urtc-suite.js?v=urtc1";
+import {
+  renderSoilMoisture,
+  renderSoilIntel,
+  renderRisks,
+  renderIrrigation,
+  renderYield,
+  renderFertOpt,
+  renderMachinery,
+  renderCropRec,
+  renderCarbon,
+  renderRiskZones,
+  fuelCostEstimate,
+} from "./urtc-field-ui.js?v=urtc1";
+import { createTask } from "./tasks.js";
+import { getUserMeta } from "./org.js";
 import "./a11y.js";
 
 const titleEl  = document.getElementById("fieldTitle");
@@ -122,10 +146,30 @@ function fieldRegion(field = currentField) {
   return detectRegion(Number(field.lat), Number(field.lon));
 }
 
-const TOOL_IDS = ["health", "satellite", "weather", "crop", "inputs", "markets", "tools", "location"];
+const TOOL_IDS = [
+  "health",
+  "satellite",
+  "weather",
+  "soil",
+  "risks",
+  "irrigate",
+  "advisor",
+  "crop",
+  "inputs",
+  "markets",
+  "tools",
+  "location",
+  "drone",
+];
 let latestHealth = null;
 let healthSnapshots = [];
 let healthMapApi = null;
+let latestUrtc = null;
+let riskMapApi = null;
+let boundaryLayer = null;
+let drawPoints = [];
+let drawHandler = null;
+let pendingBoundaryFeature = null;
 
 function ensureDetailMap() {
   if (detailMapApi || !pendingMapField) return;
@@ -139,6 +183,356 @@ function ensureDetailMap() {
   } catch {
     detailMapApi = null;
   }
+}
+
+function ensureRiskMap() {
+  if (!currentField) return;
+  if (!riskMapApi) {
+    try {
+      riskMapApi = createFieldMap("riskMap", {
+        lat: currentField.lat,
+        lon: currentField.lon,
+        pickable: false,
+        detailZoom: 14,
+      });
+    } catch {
+      riskMapApi = null;
+    }
+  }
+  requestAnimationFrame(() => {
+    riskMapApi?.invalidateSize?.() || riskMapApi?.map?.invalidateSize?.();
+    if (latestUrtc?.risks) renderRiskZones(riskMapApi, latestUrtc.risks);
+  });
+}
+
+async function ensureUrtcSuite(force = false) {
+  if (!currentField) return null;
+  if (latestUrtc && !force) {
+    paintUrtcPanels(latestUrtc);
+    return latestUrtc;
+  }
+  setStatus("Computing soil, risk, irrigation & yield suite…");
+  const guide = matchCropGuide(currentField.cropType);
+  const region = fieldRegion(currentField);
+  const budgetEl = document.getElementById("advisorBudget");
+  const stageEl = document.getElementById("advisorStage");
+  if (budgetEl && !budgetEl.dataset.primed) {
+    budgetEl.value = region === "US" ? "250" : "50000";
+    budgetEl.dataset.primed = "1";
+  }
+  const fertKgHa = fieldUsages
+    .filter((u) => u.kind === "fertilizer")
+    .reduce((a, u) => a + (Number(u.qty) || 0) * 10, 0);
+  const hoursLogged = fieldUsages
+    .filter((u) => u.kind === "machine")
+    .reduce((a, u) => a + (Number(u.qty) || 0), 0);
+  try {
+    const suite = await loadUrtcSuite(currentField, {
+      cropId: guide?.mspId || "wheat",
+      cropStage: stageEl?.value || "vegetative",
+      fieldHa: Number(document.getElementById("scenarioHa")?.value) || 1,
+      fertKgHa,
+      hoursLogged,
+      budget: Number(budgetEl?.value) || (region === "US" ? 250 : 50000),
+      ndvi: latestHealth?.ndvi ?? null,
+      durationTypical: guide?.durationDays?.typical || 120,
+      metrics: latestMetrics || {},
+    });
+    latestUrtc = suite;
+    paintUrtcPanels(suite);
+    setStatus(`URTC suite ready (${suite.source || "cloud"}).`, "ok");
+    return suite;
+  } catch (err) {
+    setStatus(err?.message || "Could not compute URTC suite.", "error");
+    return null;
+  }
+}
+
+function paintUrtcPanels(suite) {
+  if (!suite) return;
+  const region = fieldRegion();
+  renderSoilMoisture(document.getElementById("soilMoistureCard"), suite.soilMoisture);
+  renderSoilIntel(document.getElementById("soilIntelCard"), suite.soilIntelligence);
+  const soilProv = document.getElementById("soilProvenance");
+  if (soilProv) {
+    soilProv.textContent = `Generated ${suite.generatedAt || ""} · ${suite.modelVersion || ""}`;
+  }
+  renderRisks(document.getElementById("riskSuiteCard"), suite.risks, {
+    onAction: (riskId, title) => createRiskTask(riskId, title),
+  });
+  const riskProv = document.getElementById("riskProvenance");
+  if (riskProv && suite.risks?.provenance) {
+    riskProv.textContent = `Inputs: ${JSON.stringify(suite.risks.provenance.inputs || {})}`;
+  }
+  renderIrrigation(document.getElementById("irrigationCard"), suite.irrigation, region);
+  const irrBtn = document.getElementById("createIrrigateTaskBtn");
+  if (irrBtn) {
+    irrBtn.hidden = !suite.irrigation?.taskSuggestion;
+  }
+  renderYield(document.getElementById("yieldCard"), suite.yield, region);
+  renderFertOpt(document.getElementById("fertOptCard"), suite.fertilizer, region);
+  renderMachinery(document.getElementById("machineryCard"), suite.machinery, region);
+  renderCropRec(document.getElementById("cropRecCard"), suite.cropRecommendation, region);
+  renderCarbon(document.getElementById("carbonCard"), suite.carbonClimate, region);
+  if (suite.yield?.summary && metaEl && currentField) {
+    const y = suite.yield;
+    metaEl.textContent = `${Number(currentField.lat).toFixed(4)}, ${Number(currentField.lon).toFixed(4)} · ${regionBadgeLabel(region)} · Yield ~${y.expectedKgHa} kg/ha`;
+  }
+}
+
+async function createRiskTask(riskId, title) {
+  if (!currentUser || !currentField) return;
+  const orgId = currentField.orgId || currentMeta?.orgId;
+  if (!orgId) {
+    setStatus("Join an organization to create Action Center tasks.", "error");
+    return;
+  }
+  try {
+    await createTask(
+      orgId,
+      currentUser,
+      {
+        type: riskId === "disease" || riskId === "pest" ? "spray" : "scout",
+        title: `${title} — ${currentField.name || "field"}`,
+        fieldId: currentField.id,
+        fieldName: currentField.name,
+        note: `Auto from risk suite (${riskId})`,
+        dueAt: new Date().toISOString().slice(0, 10),
+      },
+      currentMeta?.orgRole || "scout"
+    );
+    setStatus("Task created in Action Center.", "ok");
+  } catch (err) {
+    setStatus(err?.message || "Could not create task.", "error");
+  }
+}
+
+function renderCropHistoryUI() {
+  const list = document.getElementById("cropHistoryList");
+  const note = document.getElementById("cropRotationNote");
+  if (!list || !currentField) return;
+  const history = Array.isArray(currentField.cropHistory) ? currentField.cropHistory : [];
+  list.innerHTML = history.length
+    ? history
+        .map((h) => `<li><strong>${esc(h.season)}</strong> — ${esc(h.crop)}</li>`)
+        .join("")
+    : `<li class="app-muted">No seasons logged yet.</li>`;
+  if (note) {
+    const last = history[0]?.crop || currentField.cropType || "";
+    const guide = matchCropGuide(last);
+    note.textContent = last
+      ? `Rotation tip: avoid repeating ${last} back-to-back when possible. Typical recovery ${guide?.durationDays?.typical ? "one season fallow or pulse break" : "1 season"} before heavy feeders.`
+      : "Log past seasons to get rotation suggestions.";
+  }
+}
+
+function wireUrtcControls(user) {
+  document.getElementById("refreshUrtcBtn")?.addEventListener("click", () => ensureUrtcSuite(true));
+  document.getElementById("runAdvisorBtn")?.addEventListener("click", () => ensureUrtcSuite(true));
+
+  document.getElementById("createIrrigateTaskBtn")?.addEventListener("click", async () => {
+    const task = latestUrtc?.irrigation?.taskSuggestion;
+    if (!task || !currentField) return;
+    const orgId = currentField.orgId || currentMeta?.orgId;
+    if (!orgId) {
+      setStatus("Join an organization to create irrigate tasks.", "error");
+      return;
+    }
+    try {
+      await createTask(
+        orgId,
+        user,
+        {
+          type: "irrigate",
+          title: task.title,
+          fieldId: currentField.id,
+          fieldName: currentField.name,
+          dueAt: task.dueAt,
+          note: latestUrtc?.irrigation?.summary || "",
+        },
+        currentMeta?.orgRole || "scout"
+      );
+      setStatus("Irrigate task created.", "ok");
+    } catch (err) {
+      setStatus(err?.message || "Could not create task.", "error");
+    }
+  });
+
+  document.getElementById("cropHistoryForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!currentField || !user) return;
+    const season = document.getElementById("cropHistSeason")?.value?.trim();
+    const crop = document.getElementById("cropHistCrop")?.value?.trim();
+    if (!season || !crop) return;
+    const next = [{ season, crop, at: new Date().toISOString() }, ...(currentField.cropHistory || [])].slice(0, 12);
+    try {
+      await updateField(user.uid, currentField.id, { cropHistory: next }, { orgId: currentField.orgId });
+      currentField = { ...currentField, cropHistory: next };
+      renderCropHistoryUI();
+      document.getElementById("cropHistSeason").value = "";
+      document.getElementById("cropHistCrop").value = "";
+      setStatus("Crop history updated.", "ok");
+    } catch (err) {
+      setStatus(err?.message || "Could not save crop history.", "error");
+    }
+  });
+
+  document.getElementById("drawBoundaryBtn")?.addEventListener("click", () => {
+    ensureDetailMap();
+    const map = detailMapApi?.map;
+    if (!map) {
+      setStatus("Open location map first.", "error");
+      return;
+    }
+    drawPoints = [];
+    if (boundaryLayer) {
+      try {
+        map.removeLayer(boundaryLayer);
+      } catch {
+        /* ignore */
+      }
+      boundaryLayer = null;
+    }
+    if (drawHandler) map.off("click", drawHandler);
+    setStatus("Click 3+ points on the map to outline the field, then Snap.", "ok");
+    drawHandler = (ev) => {
+      drawPoints.push([ev.latlng.lng, ev.latlng.lat]);
+      if (boundaryLayer) map.removeLayer(boundaryLayer);
+        if (drawPoints.length >= 2) {
+        const latlngs = drawPoints.map(([lng, lat]) => [lat, lng]);
+        const Leaflet = window.L;
+        if (!Leaflet) return;
+        boundaryLayer = Leaflet.polyline(latlngs, { color: "#276749", weight: 2 }).addTo(map);
+      }
+      document.getElementById("boundaryNote").textContent = `${drawPoints.length} vertex point(s)`;
+    };
+    map.on("click", drawHandler);
+  });
+
+  document.getElementById("snapBoundaryBtn")?.addEventListener("click", async () => {
+    if (!currentField) return;
+    setStatus("Snapping boundary…");
+    try {
+      const polygon = drawPoints.length >= 3 ? [...drawPoints, drawPoints[0]] : null;
+      const res = await callSnapFieldBoundary({
+        lat: currentField.lat,
+        lon: currentField.lon,
+        polygon,
+      });
+      if (!res?.ok || !res.feature) throw new Error(res?.error || "Snap failed");
+      pendingBoundaryFeature = res.feature;
+      ensureDetailMap();
+      const map = detailMapApi?.map;
+      if (map && res.feature.geometry?.coordinates?.[0]) {
+        const Leaflet = window.L;
+        if (!Leaflet) throw new Error("Leaflet failed to load");
+        if (boundaryLayer) map.removeLayer(boundaryLayer);
+        const ring = res.feature.geometry.coordinates[0].map(([lng, lat]) => [lat, lng]);
+        boundaryLayer = Leaflet.polygon(ring, { color: "#2f855a", weight: 2, fillOpacity: 0.15 }).addTo(map);
+        map.fitBounds(boundaryLayer.getBounds(), { padding: [20, 20] });
+      }
+      document.getElementById("saveBoundaryBtn").hidden = false;
+      document.getElementById("boundaryNote").textContent =
+        res.feature.properties?.note || "Boundary snapped (heuristic).";
+      setStatus("Boundary snapped — save to keep it on this field.", "ok");
+    } catch (err) {
+      setStatus(err?.message || "Boundary snap failed.", "error");
+    }
+  });
+
+  document.getElementById("saveBoundaryBtn")?.addEventListener("click", async () => {
+    if (!pendingBoundaryFeature || !currentField || !user) return;
+    try {
+      await updateField(
+        user.uid,
+        currentField.id,
+        { boundary: pendingBoundaryFeature },
+        { orgId: currentField.orgId }
+      );
+      currentField = { ...currentField, boundary: pendingBoundaryFeature };
+      setStatus("Field boundary saved.", "ok");
+    } catch (err) {
+      setStatus(err?.message || "Could not save boundary.", "error");
+    }
+  });
+
+  document.getElementById("droneFileInput")?.addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.getElementById("droneCanvas");
+      const out = document.getElementById("droneResult");
+      if (!canvas || !out) return;
+      canvas.hidden = false;
+      const w = Math.min(640, img.width);
+      const h = Math.round((img.height / img.width) * w);
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      const data = ctx.getImageData(0, 0, w, h);
+      let veg = 0;
+      let warm = 0;
+      for (let i = 0; i < data.data.length; i += 16) {
+        const r = data.data[i];
+        const g = data.data[i + 1];
+        const b = data.data[i + 2];
+        if (g > r + 10 && g > b) {
+          veg += 1;
+          data.data[i] = 20;
+          data.data[i + 1] = Math.min(255, g + 40);
+          data.data[i + 2] = 40;
+        } else if (r > g + 20) {
+          warm += 1;
+          data.data[i] = 220;
+          data.data[i + 1] = 80;
+          data.data[i + 2] = 60;
+        }
+      }
+      ctx.putImageData(data, 0, 0);
+      const samples = Math.floor(data.data.length / 16);
+      const ndviProxy = Number((veg / Math.max(samples, 1)).toFixed(2));
+      const pestProxy = Number((warm / Math.max(samples, 1)).toFixed(2));
+      out.hidden = false;
+      out.innerHTML = `
+        <h3>Simulated drone analytics</h3>
+        <p>Stitching: single-frame simulation. High-res NDVI proxy <strong>${ndviProxy}</strong>. Pest/stress spots proxy <strong>${pestProxy}</strong>.</p>
+        <p class="app-muted">Simulation only — not live drone control. Model drone_sim_v1.</p>`;
+      URL.revokeObjectURL(url);
+      setStatus("Drone simulation complete.", "ok");
+    };
+    img.src = url;
+  });
+
+  // Machinery fuel estimator note under inputs
+  const usageTotal = document.getElementById("usageTotal");
+  if (usageTotal && !document.getElementById("fuelEstimateNote")) {
+    const note = document.createElement("p");
+    note.id = "fuelEstimateNote";
+    note.className = "app-muted";
+    const fuel = fuelCostEstimate({ hours: 2, region: fieldRegion() });
+    note.textContent = `Machinery tip: ${fuel.label}. Schedule maintenance after ~50 hire hours.`;
+    usageTotal.after(note);
+  }
+
+  document.getElementById("voiceAssistBtn")?.addEventListener("click", () => {
+    startVoiceAssistant({
+      onStatus: (msg) => setStatus(msg),
+      onCommand: (cmd) => {
+        if (cmd.action === "openTool") showFieldTool(cmd.tool);
+        else if (cmd.action === "navigate" && cmd.href) window.location.href = cmd.href;
+      },
+    });
+  });
+
+  document.getElementById("fbPhoto")?.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    const note = document.getElementById("fbPhotoNote");
+    if (note) note.textContent = file ? `Selected: ${file.name}` : "";
+  });
 }
 
 function showFieldTool(toolId, { updateHash = true } = {}) {
@@ -167,6 +561,7 @@ function showFieldTool(toolId, { updateHash = true } = {}) {
 
   if (next === "location") {
     ensureDetailMap();
+    renderCropHistoryUI();
     requestAnimationFrame(() => {
       detailMapApi?.map?.invalidateSize?.();
       setTimeout(() => detailMapApi?.map?.invalidateSize?.(), 120);
@@ -177,6 +572,12 @@ function showFieldTool(toolId, { updateHash = true } = {}) {
     loadFieldHealth();
     requestAnimationFrame(() => {
       healthMapApi?.map?.invalidateSize?.();
+    });
+  }
+
+  if (next === "soil" || next === "risks" || next === "irrigate" || next === "advisor") {
+    ensureUrtcSuite().then(() => {
+      if (next === "risks") ensureRiskMap();
     });
   }
 
@@ -366,6 +767,7 @@ const historyTrack = document.getElementById("historyTrack");
 
 let currentField = null;
 let currentUser = null;
+let currentMeta = null;
 let archiveData = null;
 let selectedGranuleId = null;
 
@@ -717,35 +1119,38 @@ function renderNearbyMarkets(field, guide) {
   const region = fieldRegion(field);
   const meta = getRegionMeta(region);
   const hint = guide?.name?.split(/\s+/)[0] || field?.cropType || "";
-  const markets = nearestMarkets(Number(field.lat), Number(field.lon), {
-    limit: 6,
-    cropHint: hint.toLowerCase(),
+  const intel = marketplaceIntel(Number(field.lat), Number(field.lon), {
     region,
+    cropHint: hint.toLowerCase(),
   });
+  const markets = intel.buyers || [];
   if (!markets.length) {
     marketList.innerHTML = `<p class="app-muted">Could not rank markets for this location.</p>`;
     return;
   }
-  marketList.innerHTML = markets
-    .map((m, i) => {
-      const dist = formatDistance(m.km, region);
-      return `
+  marketList.innerHTML =
+    `<p class="app-muted"><strong>Sell timing:</strong> ${esc(intel.sellTiming)} · <strong>Price:</strong> ${esc(intel.priceTrend)}</p>` +
+    markets
+      .map((m, i) => {
+        const dist = m.distanceLabel || formatDistance(m.km, region);
+        return `
         <article class="market-card reveal-up" style="animation-delay:${i * 50}ms">
           <div>
             <h3>${esc(m.name)}</h3>
             <p>${esc(m.place)} · ${esc(m.type)}</p>
             <p class="market-goods">${esc(m.goods)}</p>
+            <p class="app-muted">Transport est. ${esc(formatCurrency(m.transportCost, region))} (${esc(intel.transportNote)})</p>
           </div>
           <div class="market-side">
             <strong>~${esc(dist)}</strong>
             <a href="${esc(mapsLink(m.lat, m.lon, m.name))}" target="_blank" rel="noopener noreferrer">Directions</a>
           </div>
         </article>`;
-    })
-    .join("");
+      })
+      .join("");
 
   if (marketMspNote) {
-    const crops = getCropPrices(region);
+    const crops = getCropPrices(region === "US" ? "US" : "IN");
     const crop = guide?.mspId ? crops.find((c) => c.id === guide.mspId) : null;
     if (region === "US") {
       marketMspNote.innerHTML = crop
@@ -755,7 +1160,7 @@ function renderNearbyMarkets(field, guide) {
       marketMspNote.innerHTML = `Reference MSP for <strong>${esc(crop.name)}</strong>: ${formatCurrency(crop.mspPerQuintal, "IN")} / quintal (${esc(crop.season)}). Compare with local ${esc(meta.marketLabel)} offers. <a href="prices.html?region=IN">Open price calculator</a>`;
     } else {
       marketMspNote.textContent =
-        "No national MSP row for this crop — use local vegetable/trader rates and the price calculator for input costs.";
+        `${meta.name} marketplace intel — confirm local ${meta.marketLabel} rates before selling.`;
     }
   }
 }
@@ -1332,6 +1737,7 @@ document.addEventListener("DOMContentLoaded", () => {
   watchAuth(async (user) => {
     if (!user) { window.location.href = "auth.html"; return; }
     currentUser = user;
+    currentMeta = await getUserMeta(user.uid).catch(() => null);
 
     try {
       const field = await getField(user.uid, fieldId, { orgId: orgIdFromUrl() });
@@ -1433,18 +1839,31 @@ document.addEventListener("DOMContentLoaded", () => {
         if (btn) btn.disabled = true;
         setStatus("Saving ground-truth feedback…");
         try {
+          const photoFile = document.getElementById("fbPhoto")?.files?.[0] || null;
+          const photoKind = document.getElementById("fbPhotoKind")?.value || "";
+          const photoDataUrl = photoFile ? await compressPhotoToDataUrl(photoFile) : null;
           await submitGroundTruth(user.uid, fieldId, {
-            kind: "ground_truth",
+            kind: photoKind || "ground_truth",
             soilMoisture: document.getElementById("fbMoisture")?.value,
             yieldKgHa: document.getElementById("fbYield")?.value,
             irrigated: document.getElementById("fbIrrigated")?.checked,
             notes: document.getElementById("fbNotes")?.value,
             consentShareForCalibration: document.getElementById("fbConsent")?.checked,
+            photoKind: photoKind || null,
+            photoDataUrl,
+            photoName: photoFile?.name || null,
             lat: field.lat,
             lon: field.lon,
           });
           feedbackForm.reset();
-          setStatus("Thanks — feedback saved for local calibration.", "ok");
+          const pn = document.getElementById("fbPhotoNote");
+          if (pn) pn.textContent = "";
+          setStatus(
+            photoDataUrl
+              ? "Thanks — feedback + photo label saved for local calibration."
+              : "Thanks — feedback saved for local calibration.",
+            "ok"
+          );
         } catch (err) {
           setStatus(err?.message || "Could not save feedback.", "error");
         } finally {
@@ -1539,6 +1958,7 @@ document.addEventListener("DOMContentLoaded", () => {
             cacheFieldOffline(field, result.insight, latestHealth);
             setStatus("Insight updated.", "ok");
             loadTrends();
+            ensureUrtcSuite(true);
           } else if (result.disabled) {
             setStatus("NASA insight needs Cloud Functions (Blaze upgrade).", "error");
           } else if (result.error === "Rate limited") {
@@ -1552,6 +1972,8 @@ document.addEventListener("DOMContentLoaded", () => {
           refreshBtn.disabled = false;
         }
       });
+
+      wireUrtcControls(user);
 
       deleteBtn?.addEventListener("click", async () => {
         if (!confirm(`Delete "${field.name}"? This cannot be undone.`)) return;

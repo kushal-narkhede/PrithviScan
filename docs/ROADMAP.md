@@ -1,186 +1,154 @@
-# PrithviScan — Suggested features after current sitemap
+# PrithviScan — URTC feature roadmap (sequenced waves)
 
 **Live site:** https://prithviscan.web.app  
 **Current inventory:** [`FEATURES.md`](../FEATURES.md)  
-**Audience:** PM / engineering handoff  
-**Updated:** 2026-08-02
+**Audience:** PM / engineering / URTC reviewers  
+**Updated:** 2026-08-03
 
-This document lists **practical next features** after what is already shipped. It merges ag-intelligence priorities (NDVI, alerts, VRA, offline) with weather/decision products (nowcasting, ET, spray windows) and maps them onto PrithviScan’s current stack (static app + Firestore + paused Cloud Functions + local ML/Ollama).
-
----
-
-## 0. Already built (do not re-scope)
-
-| Capability | Status | Notes for roadmap |
-|------------|--------|-------------------|
-| Homepage, auth, profile | Live | Org/individual signup |
-| Fields CRUD + Leaflet map | Live | India-centered; CSV/GeoJSON I/O |
-| Field detail tools | Live | What-if ROI (heuristic), feedback, print report |
-| Price calculator | Live | GoI MSP, fertilizer bags, CHC hire |
-| Info hub | Live | Fertilizers, soils, crops, machines, maintenance |
-| Organizations | Live | Owner invites members by email |
-| Collaborate | Live | Friends, chat, field share |
-| Ask AI widget | Live (client) | Ollama local + Gemini/OpenRouter ready |
-| NASA fusion / alerts APIs | **Live** | Blaze Functions + `EARTHDATA_TOKEN` in Secret Manager |
-| Ask AI `aiChat` API | **Live** | Set real `GEMINI_API_KEY` / `OPENROUTER_API_KEY` when ready |
-| EuroSAT classifier | Export → deploy | Run `ml\\export_model_for_functions.bat` then deploy `classifyLocation` |
-
-**Blaze enablement (done):** Functions deployed; `FUNCTIONS_ENABLED = true`.
-
-**Wave 0–2 pilot readiness (shipped on branch):** org-shared fields + RBAC, phone OTP, alert outbox fan-out, bootstrap RF classifier JSON, INR what-if, NDVI health map + change scrub + prescription CSV, Hindi i18n + offline SW, Action Center tasks, DPDP export/delete. Harden SMS/WhatsApp with provider keys and replace bootstrap RF with EuroSAT export when available.
+This roadmap **replaces** earlier scattered L1–L6 / Release A–D notes. Work extends existing field tools, fusion Functions, and org/markets systems — not 22 greenfield products.
 
 ---
 
-## 1. High priority — core value & retention
+## 0. Already shipped — do not re-scope
 
-| # | Feature | Why it matters | Implementation notes (PrithviScan) | Builds on |
-|---|---------|----------------|--------------------------------------|-----------|
-| H1 | **Automated Field Health Index (NDVI/EVI)** | Instant visual stress map; “wow” moment on field open | Ingest HLS/Sentinel (or Earthdata CMR already stubbed); compute NDVI tiles server-side; Leaflet heatmap / raster overlay on `field.html` + `/app` | `fieldEarthSummary`, CMR helpers, map layer |
-| H2 | **Change detection / time-series** | Trends beat single snapshots | Store dated imagery/index snapshots under `users/{uid}/fields/{id}/snapshots`; swipe or scrub timeline; flag ΔNDVI > threshold | Existing snapshots subcollection pattern |
-| H3 | **Actionable alerts (threshold + push/email/SMS)** | Insight → action; drives retention | User thresholds (NDVI drop, moisture, heat); extend paused `getAlerts`; add FCM push; email via provider; SMS later (Twilio) | Alerts UI already on `/app`; quiet hours prefs live |
-| H4 | **Field-level prescriptions (VRA maps)** | Links insight to seed/fertilizer/pesticide | Generate zone polygons + rates; export GeoTIFF / CSV / GeoJSON from field page; store `prescriptions/{id}` | Import-export + org workflows |
-| H5 | **Mobile offline mode + sync** | Critical in low-connectivity farms | Service worker: cache app shell, last map tiles, last insight; queue field/photo uploads; sync on reconnect | Static hosting friendly; start with “read-last-insight offline” |
-
-**High-priority acceptance criteria (shared)**
-- Works for an org with multiple fields  
-- Provenance on every product (source, timestamp, model/version)  
-- Respects org membership rules already in Firestore  
+| Capability | Status | Reuse |
+|------------|--------|--------|
+| Field inputs, CHC hire, what-if irrigate/fert, Action Center, NDVI VRA | Live / Partial | Field tools |
+| NASA POWER + MODIS/SMAP/HLS archive + `fuseFieldInsight` | Live | Fusion Functions |
+| Collaborate, org multi-field RBAC, prices + nearby markets, scenario ROI | Live / Partial | Org / markets |
+| Country packs IN/US (+ BR/KE/NG/ID) | Live | [`js/region.js`](../js/region.js) |
+| Profile DPDP export/delete + consent | Live | [`js/privacy-data.js`](../js/privacy-data.js) |
+| Ask AI widget + `aiChat` | Live | Agronomist via RAG — not a new chatbot |
 
 ---
 
-## 2. Medium priority — differentiators & workflow
+## Wave dependency order
 
-| # | Feature | Why it matters | Implementation notes |
-|---|---------|----------------|----------------------|
-| M1 | **Multi-sensor fusion** | Better accuracy than single source | Fuse satellite + optional drone upload + IoT soil moisture + POWER weather; confidence-weighted fusion in Functions | Extend `fuseFieldInsight` |
-| M2 | **What-if ROI simulator (stronger)** | Planning decisions with money attached | Upgrade current heuristic scenario UI: fertilizer dose, irrigation mm, price from MSP calculator; sensitivity sliders + ₹ impact | `js/scenario.js` + `/prices` rates |
-| M3 | **Automated scouting checklist + photo tagging** | Ground truth loop | Upload photo → geotag + time; lightweight classifier (reuse EuroSAT / pest head); checklist per crop template | Feedback collection already exists |
-| M4 | **Task & crew management** | Orgs need ops, not just maps | Assign spray/scout/harvest jobs to org members; map pin + checklist + done state | `/org` membership + Collaborate |
-| M5 | **Machinery / ISOBUS exports** | Close the loop to applicators | Export prescription as ISOXML / shapefile / CSV “ready for terminal”; document Agrirouter later | Depends on H4 |
-
----
-
-## 3. Weather & ag decision products (strategic layer)
-
-These are “Tomorrow.io–class” capabilities. Sequence after H1–H3 unless a weather partnership lands first.
-
-| # | Feature | Notes |
-|---|---------|-------|
-| W1 | **Hyperlocal multi-timescale forecasts** | Hourly 0–72h field-scale first (POWER + downscaling); minute-level nowcasts only with radar partner |
-| W2 | **Nowcast + event detection** | Frost, heavy rain, high wind, hail probability; group by field/crop/task; reuse quiet hours |
-| W3 | **Irrigation / ET engine** | Crop-stage ET, soil deficit, pump runtime suggestion |
-| W4 | **Spray drift & wetness windows** | Wind + humidity + leaf wetness → safe spray times |
-| W5 | **Frost mitigation planner** | Risk windows + mitigation actions + rough cost |
-
-**Pitch line:** *Turn satellite and field data into immediate, actionable prescriptions — spot stress early, assign work, and export variable-rate maps for direct application.*
-
----
-
-## 4. Lower priority — advanced analytics & long-term value
-
-| # | Feature | Notes |
-|---|---------|-------|
-| L1 | Yield forecasting (ML + intervals) | Historical yield + weather + NDVI; show confidence bands |
-| L2 | Disease/pest early-warning | Regional risk from weather + imagery + reports |
-| L3 | Soil health dashboard | Lab CSV upload; pH / OM / compaction over time |
-| L4 | Carbon / sustainability reports | Sequestration + fertilizer emissions; export for buyers |
-| L5 | On-demand drone tasking | Trigger flight for high-risk fields; auto-ingest |
-| L6 | Third-party data marketplace | Stations, labs, pest reports, prices |
-| L7 | Edge inference / tractor runtime | ONNX small models offline (after VRA + offline sync) |
-| L8 | Enterprise SLAs + tiered APIs | After Partner API is live on Blaze |
+```mermaid
+flowchart LR
+  subgraph waveA [Wave A Science Core]
+    SoilMoist[Soil moisture 7d]
+    Stress[Pest disease heat water]
+    Irrig[Irrigation planner]
+    Yield[Yield harvest profit]
+  end
+  subgraph waveB [Wave B Ops Advisor]
+    Fert[Fertilizer optimizer]
+    Mach[Machinery ops]
+    Rec[Crop recommender]
+  end
+  subgraph waveC [Wave C Spatial Sensors]
+    Bound[Boundary snap]
+    Fusion[Sentinel Landsat SAR]
+    CropHist[Crop history]
+  end
+  subgraph waveD [Wave D Trust Money Global]
+    Finance[Financial dashboard]
+    Carbon[Carbon climate]
+    Privacy[Privacy dashboard]
+    Packs[Country packs]
+  end
+  subgraph waveE [Wave E Experience]
+    Community[Community posts]
+    Market[Marketplace intel]
+    VoiceImage[Voice and photo AI]
+    Drone[Drone sim NDVI]
+  end
+  waveA --> waveB --> waveC --> waveD --> waveE
+```
 
 ---
 
-## 5. UX / product polish (parallel track — smaller slices)
+## Wave A — Science core (URTC primary demo) — **Shipped**
 
-| # | Feature | Notes |
-|---|---------|-------|
-| U1 | Guided org/field onboarding 2.0 | Boundary drawing + sample NDVI walkthrough (beyond current tour) |
-| U2 | Custom dashboards & saved views | Pin fields, metrics, date ranges |
-| U3 | Role-based access + audit logs | owner / agronomist / scout / viewer (extend org roles) |
-| U4 | Crop/region templates | Preloaded thresholds for wheat, paddy, maize, … |
-| U5 | In-app decision guides | Short NDVI/moisture guides (extend `/info`) |
-| U6 | Action center | Prioritized tasks with one-click export + crew assign |
-| U7 | Collaborative annotations | Pins + photos on field (extend Collaborate) |
+**Acceptance:** Open a field → 7-day moisture, 4 risk scores with actions, irrigation recommendation, yield/profit range, all with source timestamps.
 
----
-
-## 6. Data, privacy, trust (non-negotiable constraints)
-
-| Rule | Requirement |
-|------|-------------|
-| Training vs production | User data for model training only with **opt-in** + anonymization (prefs already started) |
-| Per-org partitioning | Enforce via Firestore rules (orgs exist; tighten field sharing next) |
-| Export provenance | Every export includes source, sensor, timestamp, model version |
-| Compliance | GDPR/CCPA-minded retention; region-specific ag data rules as you expand |
+| ID | Feature | Implementation |
+|----|---------|----------------|
+| A1 | Soil moisture forecast (7-day) | `soilMoistureForecast` → Soil intelligence panel |
+| A2 | Pest / disease / heat / water early warning | `riskSuite` + risk map zones → Action Center |
+| A3 | Smart irrigation planner | `irrigationPlan` + create irrigate task |
+| A4 | Yield + harvest + profit | `yieldPrediction` with confidence interval |
 
 ---
 
-## 7. Suggested release sequence (no calendar estimates)
+## Wave B — Ops advisor — **Shipped**
 
-Phasing by **dependency and value**, not weeks.
-
-### Release A — “See stress, get alerted”
-**Scope:** H1 NDVI/EVI overlay · H2 basic time-series · H3 threshold alerts (in-app + email; push if feasible) · U1 onboarding polish · Blaze Functions live  
-**Depends on:** Earthdata/HLS (or Sentinel) pipeline, snapshot storage, alert prefs  
-**Exit criteria:** User opens a field → sees health map → gets alert when index drops  
-
-### Release B — “Act and assign”
-**Scope:** H4 prescription export · M4 tasks/crew · M3 photo scouting · H5 offline read-cache · M2 stronger ROI tied to `/prices`  
-**Depends on:** Release A indices stable  
-**Exit criteria:** Org owner exports a VRA CSV/GeoJSON and assigns a spray task  
-
-### Release C — “Decide with weather + machines”
-**Scope:** W1–W4 (hourly + ET + spray/frost windows) · M1 multi-sensor fusion · M5 ISOBUS/ISOXML · L1 yield forecast MVP  
-**Depends on:** Weather partner or POWER downscaling; prescription schema frozen  
-**Exit criteria:** Field page shows spray window + irrigation suggestion with provenance  
-
-### Release D — “Platform & enterprise”
-**Scope:** L2–L4, L6 marketplace, L7 edge, L8 APIs/SLAs, U2–U3 roles/audit, monetization tiers  
-**Depends on:** Stable A–C product surface and billing decision  
+| ID | Feature | Implementation |
+|----|---------|----------------|
+| B1 | Fertilizer optimization | `fertilizerOptimize` + prescription path |
+| B2 | Machinery optimization | `machineryOptimize` (fuel, schedule, maintenance, breakdown risk) |
+| B3 | AI crop recommendation | `recommendCrops` panel |
+| B4 | Soil NPK + degradation + carbon score | `soilIntelligence` (honest uncertainty) |
 
 ---
 
-## 8. KPIs to track
+## Wave C — Spatial & sensors — **Shipped**
 
-| KPI | Why |
-|-----|-----|
-| % fields with ≥1 health index in last 14 days | Core engagement |
-| Alert precision / opt-out rate | Avoid fatigue |
-| VRA export rate per active org | Action loop |
-| Offline session → successful sync | Connectivity resilience |
-| Forecast skill vs baseline (when W1 ships) | Weather product quality |
-| Org seat activation (invited → active) | Org product fit |
-| Ask AI → resolved without support | Self-serve deflection |
+| ID | Feature | Implementation |
+|----|---------|----------------|
+| C1 | Field boundary snap | Draw → `snapFieldBoundary` → GeoJSON on field doc |
+| C2 | Multi-sensor fusion expand | Archive: HLS S2, HLS Landsat, Sentinel-1 SAR; Planet slot reserved |
+| C3 | Crop classification history | Seasonal log + rotation tip |
 
 ---
 
-## 9. Engineering checklist (parity targets)
+## Wave D — Trust, money, global packs — **Shipped**
 
-Use as a backlog hygiene list, not a promise of scope:
-
-- [ ] Low-latency field index tiles + caching  
-- [ ] Historical snapshots + change thresholds  
-- [ ] Alert engine with quiet hours / escalation (prefs exist)  
-- [ ] VRA exports (GeoTIFF/CSV/ISOXML path)  
-- [ ] Offline shell + queued writes  
-- [ ] Provenance on every insight/export  
-- [ ] Org RBAC beyond owner/member  
-- [ ] Model registry + drift checks (extend `ml/MODEL_OPS.md`)  
-- [ ] Partner/enterprise API after Blaze (`docs/PARTNER_API.md`)  
-- [ ] SDKs/webhooks only after streaming alerts exist  
+| ID | Feature | Implementation |
+|----|---------|----------------|
+| D1 | Farm financial dashboard | `/finance` rollup + loan calculator |
+| D2 | Carbon credit estimator + climate resilience | `carbonAndClimate` on advisor panel |
+| D3 | Privacy dashboard upgrade | Consent / anonymize / export audit on `/profile` |
+| D4 | Country intelligence packs | IN, US, BR, KE, NG, ID |
 
 ---
 
-## 10. What to do next (immediate engineering order)
+## Wave E — Experience multipliers — **Shipped**
 
-1. **Unblock Blaze + deploy Functions** — otherwise H1–H3 stay mockups.  
-2. **Ship H1 NDVI overlay** on one field (India tile path).  
-3. **Wire H3 alerts** into existing Alerts tab + email.  
-4. **H2 timeline** from stored snapshots.  
-5. **H4 CSV prescription** export (ISOBUS later).  
-6. Keep Ask AI / Prices / Info as education rails beside the map products.
+| # | Build as |
+|---|----------|
+| 11 Social | Community feed on Collaborate (moderated) |
+| 12 Marketplace | Informational intel on nearby markets |
+| 17 AI Agronomist | RAG over crop-guides + info-data in same widget |
+| 18 Voice | Web Speech → field tools |
+| 19 Image GT | Photo + disease/deficiency/pest labels on feedback |
+| 20 Drone sim | Upload → simulated NDVI + pest spots |
 
 ---
 
-*When a feature ships, move it into [`FEATURES.md`](../FEATURES.md) and tick the checklist here.*
+## URTC demo script
+
+1. Place IN or US field → region currency appears.  
+2. Open field → Soil moisture 7-day + Risk Suite map.  
+3. Accept irrigation + spray/scout recommendations into Action Center.  
+4. See yield/profit prediction with confidence.  
+5. Run crop recommender / fertilizer / machinery optimizer.  
+6. Export prescription + privacy export.  
+7. Boundary snap + Landsat/SAR layer + carbon/resilience scores.  
+8. Community post · Voice · Photo GT · Drone sim · AI Agronomist.
+
+---
+
+## Engineering rules (all waves)
+
+- One new field tool button per major product (analysis-on-top UX).  
+- Every model output: `source` / `generatedAt` / `modelVersion` / `confidence`.  
+- Region-aware money via `formatMoney` / market catalogs.  
+- Prefer Cloud Functions for Earth data; keep UI static hosting.  
+- Prefer provenance + confidence bands over fake precision.  
+- Update FEATURES/ROADMAP after each wave; do **not** list unfinished items as Live.
+
+---
+
+## Next hardening (not new products)
+
+1. Real Planet key only if free academic tier confirmed.  
+2. Labeled yield dataset → replace heuristic yield bands with trained model.  
+3. Lab soil CSV upload beside NPK proxy.  
+4. Nested farm groups under orgs only if multi-farm orgs need containers.  
+5. Harden SMS/WhatsApp alert providers; EuroSAT classifier export into Functions.
+
+---
+
+*When a feature ships, move it into [`FEATURES.md`](../FEATURES.md) and keep wave tables honest.*

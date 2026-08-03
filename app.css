@@ -235,6 +235,95 @@
   font-size: 0.92rem;
 }
 
+/* URTC suite panels */
+.urtc-card {
+  margin: 0.85rem 0;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(16, 37, 26, 0.1);
+}
+.urtc-card h3 {
+  margin: 0 0 0.45rem;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.15rem;
+}
+.urtc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.urtc-table th,
+.urtc-table td {
+  padding: 0.35rem 0.4rem;
+  border-bottom: 1px solid rgba(16, 37, 26, 0.08);
+  text-align: left;
+}
+.risk-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.risk-card {
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(16, 37, 26, 0.1);
+  background: #fff;
+}
+.risk-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.risk-card h3 { margin: 0; font-size: 1rem; }
+.risk-card.is-action { border-color: rgba(197, 48, 48, 0.35); background: #fff5f5; }
+.risk-card.is-watch { border-color: rgba(214, 158, 46, 0.4); background: #fffaf0; }
+.risk-pill {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.risk-pill.is-ok { background: #e6f4ea; color: #1f6b45; }
+.risk-pill.is-watch { background: #feebc8; color: #9c4221; }
+.risk-pill.is-dry { background: #fed7d7; color: #9b2c2c; }
+.urtc-inline {
+  display: inline-grid;
+  gap: 0.25rem;
+  margin: 0 0.75rem 0.75rem 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+.drone-canvas {
+  width: 100%;
+  max-width: 640px;
+  margin-top: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(16, 37, 26, 0.12);
+}
+.boundary-tools {
+  margin-top: 0.85rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.fusion-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.85rem;
+}
+.sat-chip-muted {
+  opacity: 0.55;
+}
+@media (max-width: 720px) {
+  .risk-grid { grid-template-columns: 1fr; }
+}
+
 .field-map {
   width: 100%;
   height: min(52vh, 420px);

@@ -290,5 +290,17 @@ service cloud.firestore {
             || resource.data.emailLower == authEmailLower());
       allow delete: if signedIn() && resource.data.fromUid == request.auth.uid;
     }
+
+    // Moderated farmer community feed
+    match /communityPosts/{postId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && request.resource.data.body.size() <= 800;
+      allow update, delete: if signedIn()
+        && resource.data.authorUid == request.auth.uid;
+    }
   }
 }

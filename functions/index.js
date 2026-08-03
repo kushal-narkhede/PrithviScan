@@ -9,6 +9,7 @@ const { getAuth } = require("firebase-admin/auth");
 const { analyzePowerBundle } = require("./lib/trends");
 const { classifyLatLon } = require("./lib/vision");
 const { runAiChat } = require("./lib/ai-chat");
+const { buildUrtcSuite, snapBoundary } = require("./lib/urtc-models");
 
 setGlobalOptions({ region: "us-central1", invoker: "public" });
 
@@ -750,6 +751,16 @@ const SAT_PRODUCTS = {
     label: "HLS (Sentinel-2)",
     description: "Higher-resolution harmonized surface reflectance",
   },
+  landsat: {
+    shortName: "HLSL30",
+    label: "HLS (Landsat)",
+    description: "Landsat-harmonized surface reflectance for crop structure",
+  },
+  sar: {
+    shortName: "SENTINEL-1_DUAL_POL_GRD_HIGH_RES",
+    label: "Sentinel-1 SAR GRD",
+    description: "C-band SAR — cloudy-region moisture / structure proxy",
+  },
 };
 
 function pickBrowseUrl(entry) {
@@ -1221,6 +1232,157 @@ exports.processAlertOutbox = onRequest(
       if (err.status === 401) return jsonRes(res, 401, { error: "Unauthenticated" });
       console.error("processAlertOutbox error", err);
       jsonRes(res, 500, { ok: false, error: err.message });
+    }
+  }
+);
+
+// ---------- Function: fieldUrtcSuite (Wave A/B science pack) ----------
+exports.fieldUrtcSuite = onRequest(
+  { cors: true, timeoutSeconds: 90 },
+  async (req, res) => {
+    try {
+      await verifyIdToken(req);
+      const lat = Number(req.query.lat ?? req.body?.lat);
+      const lon = Number(req.query.lon ?? req.body?.lon);
+      const fieldId = String(req.query.fieldId || req.body?.fieldId || "");
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        return jsonRes(res, 400, { error: "lat and lon required" });
+      }
+
+      const regionRaw = String(req.query.region || req.body?.region || "IN").toUpperCase();
+      const region = ["IN", "US", "BR", "KE", "NG", "ID"].includes(regionRaw) ? regionRaw : "IN";
+      const cropType = String(req.query.cropType || req.body?.cropType || "");
+      const cropId = String(req.query.cropId || req.body?.cropId || "wheat");
+      const cropStage = String(req.query.cropStage || req.body?.cropStage || "vegetative");
+      const fieldHa = Math.max(0.1, Number(req.query.fieldHa || req.body?.fieldHa) || 1);
+      const fertKgHa = Math.max(0, Number(req.query.fertKgHa || req.body?.fertKgHa) || 0);
+      const hoursLogged = Math.max(0, Number(req.query.hoursLogged || req.body?.hoursLogged) || 0);
+      const budget = Math.max(0, Number(req.query.budget || req.body?.budget) || (region === "US" ? 250 : 50000));
+      const sownAt = req.query.sownAt || req.body?.sownAt || null;
+      const ndvi = req.query.ndvi != null || req.body?.ndvi != null
+        ? Number(req.query.ndvi ?? req.body?.ndvi)
+        : null;
+      const durationTypical = Number(req.query.durationTypical || req.body?.durationTypical) || 120;
+      const pricePerKg = req.query.pricePerKg != null || req.body?.pricePerKg != null
+        ? Number(req.query.pricePerKg ?? req.body?.pricePerKg)
+        : null;
+
+      // Prefer fresh POWER 30-day for suite inputs
+      let power = null;
+      const days = 30;
+      const endDate = new Date();
+      const startDate = new Date(endDate - days * 86400000);
+      const fmt = (d) => d.toISOString().slice(0, 10).replace(/-/g, "");
+      const powerUrl = new URL("https://power.larc.nasa.gov/api/temporal/daily/point");
+      powerUrl.searchParams.set("parameters", POWER_PARAMS);
+      powerUrl.searchParams.set("community", "AG");
+      powerUrl.searchParams.set("longitude", String(lon));
+      powerUrl.searchParams.set("latitude", String(lat));
+      powerUrl.searchParams.set("start", fmt(startDate));
+      powerUrl.searchParams.set("end", fmt(endDate));
+      powerUrl.searchParams.set("format", "JSON");
+      const powerRes = await fetch(powerUrl.toString());
+      if (powerRes.ok) {
+        const raw = await powerRes.json();
+        const props = raw?.properties?.parameter || {};
+        power = {
+          rainfall: props.PRECTOTCORR || {},
+          temp: props.T2M || {},
+          et: props.EVPTRNS || {},
+          humidity: props.RH2M || {},
+          solar: props.ALLSKY_SFC_SW_DWN || {},
+        };
+      }
+
+      let series = null;
+      let forecasts = null;
+      let metrics = {
+        totalRain_mm: null,
+        totalET_mm: null,
+        maxTemp_c: null,
+        avgTemp_c: null,
+        avgHumidity_pct: null,
+      };
+
+      if (power) {
+        const analysis = analyzePowerBundle(power, 7);
+        series = analysis.series;
+        forecasts = analysis.forecasts;
+        const sum = (arr) => (arr || []).reduce((a, p) => a + (Number(p.value) || 0), 0);
+        const vals = (arr) => (arr || []).map((p) => Number(p.value)).filter(Number.isFinite);
+        const rainArr = (series.rainfall || []).slice(-7);
+        const etArr = (series.et || []).slice(-7);
+        const tempArr = vals((series.temp || []).slice(-7));
+        const humArr = vals((series.humidity || []).slice(-7));
+        metrics = {
+          totalRain_mm: Number(sum(rainArr).toFixed(1)),
+          totalET_mm: Number(sum(etArr).toFixed(1)),
+          maxTemp_c: tempArr.length ? Number(Math.max(...tempArr).toFixed(1)) : null,
+          avgTemp_c: tempArr.length ? Number((tempArr.reduce((a, b) => a + b, 0) / tempArr.length).toFixed(1)) : null,
+          avgHumidity_pct: humArr.length ? Number((humArr.reduce((a, b) => a + b, 0) / humArr.length).toFixed(1)) : null,
+        };
+      }
+
+      const suite = buildUrtcSuite({
+        series,
+        forecasts,
+        metrics,
+        cropType,
+        cropId,
+        cropStage,
+        region,
+        fieldHa,
+        fertKgHa,
+        hoursLogged,
+        budget,
+        sownAt,
+        ndvi: Number.isFinite(ndvi) ? ndvi : null,
+        durationTypical,
+        pricePerKg: Number.isFinite(pricePerKg) ? pricePerKg : null,
+        practices: Array.isArray(req.body?.practices) ? req.body.practices : [],
+      });
+
+      jsonRes(res, 200, {
+        ...suite,
+        fieldId: fieldId || null,
+        lat,
+        lon,
+        metrics,
+      });
+    } catch (err) {
+      if (err.status === 401) return jsonRes(res, 401, { error: "Unauthenticated" });
+      console.error("fieldUrtcSuite error", err);
+      jsonRes(res, 500, { error: err.message || "Unexpected error" });
+    }
+  }
+);
+
+// ---------- Function: snapFieldBoundary (Wave C heuristic) ----------
+exports.snapFieldBoundary = onRequest(
+  { cors: true, timeoutSeconds: 30 },
+  async (req, res) => {
+    try {
+      await verifyIdToken(req);
+      const body = req.method === "POST" ? req.body || {} : req.query;
+      const lat = Number(body.lat);
+      const lon = Number(body.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        return jsonRes(res, 400, { error: "lat and lon required" });
+      }
+      let polygon = body.polygon || null;
+      if (typeof polygon === "string") {
+        try {
+          polygon = JSON.parse(polygon);
+        } catch {
+          polygon = null;
+        }
+      }
+      const feature = snapBoundary(lat, lon, polygon);
+      jsonRes(res, 200, { ok: true, feature });
+    } catch (err) {
+      if (err.status === 401) return jsonRes(res, 401, { error: "Unauthenticated" });
+      console.error("snapFieldBoundary error", err);
+      jsonRes(res, 500, { error: err.message || "Unexpected error" });
     }
   }
 );

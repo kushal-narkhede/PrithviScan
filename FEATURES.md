@@ -3,15 +3,17 @@
 **Live site:** https://prithviscan.web.app  
 **Firebase project:** `prithviscan`  
 **Repo branch:** `cursor/homepage-hero-ffb2`  
-**Updated:** 2026-08-02
+**Updated:** 2026-08-03
 
 **Status key**
 | Status | Meaning |
 |--------|---------|
-| **Live** | On the deployed site now (Spark plan) |
+| **Live** | On the deployed site now |
 | **Paused** | Coded; needs Firebase **Blaze** + Cloud Functions deploy |
 | **Local** | Runs on your PC (Ollama / Python ML); not hosted by Firebase |
 | **Planned** | Roadmap only — not built |
+
+Product sequencing follows the **URTC waves** in [`docs/ROADMAP.md`](docs/ROADMAP.md). Unfinished items are not marked Live.
 
 ---
 
@@ -22,16 +24,24 @@
 | Marketing homepage (canopy hero) | Live | `/` |
 | Auth (email + Google) | Live | `/auth` |
 | Org / individual signup | Live | `/auth` (create account) |
-| My profile + prefs | Live | `/profile` |
+| My profile + prefs + privacy dashboard | Live | `/profile` |
 | Farmer dashboard (fields + map) | Live | `/app` |
 | Field detail + tools | Live | `/field?id=…` |
+| **URTC suite** (soil / risks / irrigate / yield / fert / machinery / crop / carbon) | Live | Field tools + `fieldUrtcSuite` |
+| Multi-sensor archive (MODIS, SMAP, HLS S2/Landsat, S1 SAR) | Live | Field → Satellite |
+| Boundary snap + crop history | Live | Field → Location |
+| Farm finance dashboard | Live | `/finance` |
 | Price calculator (MSP / fertilizer / CHC) | Live | `/prices` |
 | Info hub (fertilizers, soils, crops, machines, maintenance) | Live | `/info` |
+| Country packs IN / US / BR / KE / NG / ID | Live | `js/region.js` |
 | Organizations (owner adds members) | Live | `/org` |
-| Collaborate (friends, chat, field share) | Live | `/collab` |
-| Ask AI floating chatbot | Live (client) | Bottom-right on **all pages** |
+| Collaborate + community posts | Live | `/collab` |
+| AI Agronomist (RAG over guides + info hub) | Live (client) | Bottom-right on **all pages** |
 | Ask AI → Ollama | Local | Needs CORS / proxy on your PC |
 | Ask AI → Gemini / OpenRouter | Live (ready) | Settings → paste API key |
+| Voice assistant (Web Speech → field tools) | Live | Field → Voice |
+| Photo ground-truth labels | Live | Field → What-if & feedback |
+| Drone sim NDVI / pest spots | Live | Field → Drone sim |
 | Partners + privacy pages | Live | `/partners`, `/privacy` |
 | Onboarding + demo field | Live | First visit on `/app` |
 | CSV / GeoJSON import-export | Live | `/app` |
@@ -328,34 +338,59 @@ Do **not** upload the EuroSAT dataset into the repo.
 
 ---
 
-## 17. What you can try right now
+## 17. URTC science & ops suite — Live
 
-1. https://prithviscan.web.app — homepage  
-2. Create account as **Organization** → add teammates on `/org`  
-3. `/app` — add fields on the map; import/export CSV  
-4. `/prices` — MSP crop returns, fertilizer bags, machine hire  
-5. `/info` — search tractor, urea, clay soil  
-6. `/collab` — friend + chat  
-7. **Ask AI** bubble (bottom-right) — Ollama locally with CORS, or Gemini/OpenRouter keys  
-8. Open a field → what-if ROI, feedback, print report  
+**Files:** `functions/lib/urtc-models.js`, `js/urtc-*.js`, `field.html`, `finance.html`, `js/community.js`, `js/ai-agronomist.js`
+
+| Wave | Capability | Detail |
+|------|------------|--------|
+| A | Soil moisture 7-day | Deficit forecast + irrigate-by cue |
+| A | Risk suite | Pest / disease / heat / water scores → Action Center tasks |
+| A | Irrigation planner | When / mm / cost / yield impact |
+| A | Yield + profit | Transparent score + confidence band on field header |
+| B | Fertilizer optimizer | Stage + logs → product / qty / ROI |
+| B | Machinery ops | Hire + fuel + maintenance reminder + breakdown risk |
+| B | Crop recommender | Water / budget / markets ranking |
+| B | Soil NPK / degradation / carbon | Proxy indices with uncertainty disclaimer |
+| C | Boundary snap | Draw → heuristic veg-edge snap → GeoJSON on field |
+| C | Multi-sensor archive | MODIS, SMAP, HLS S2, HLS Landsat, Sentinel-1 SAR (+ Planet slot) |
+| C | Crop history | Seasonal labels + rotation tip |
+| D | Finance dashboard | Cost / revenue / ROI rollup + loan calculator |
+| D | Carbon + climate resilience | Indicative credits + drought/flood/heat/market dims |
+| D | Privacy dashboard | Consent, anonymize, export audit on `/profile` |
+| D | Country packs | IN, US, BR, KE, NG, ID via `region.js` |
+| E | Community | Moderated posts/Q&A on Collaborate |
+| E | Marketplace intel | Sell timing + transport km×rate near markets |
+| E | AI Agronomist | Same widget + RAG over crop guides / info hub |
+| E | Voice | Web Speech → open weather / soil / irrigate / inputs |
+| E | Photo GT | Disease / deficiency / pest labels + compressed photo |
+| E | Drone sim | Upload → simulated NDVI + pest spots (labeled simulation) |
+
+Every model output carries `modelVersion`, `confidence`, and provenance timestamps.
 
 ---
 
-## 18. Follow-ups after Blaze enablement
+## 18. What you can try right now (URTC demo script)
+
+1. https://prithviscan.web.app — homepage  
+2. Place an IN or US field → region currency appears  
+3. Open field → Soil intelligence + Pest & stress risks  
+4. Accept irrigation / scout recommendations into Action Center  
+5. Yield & advisor → fert, machinery, crop pick, carbon scores  
+6. Satellite → Landsat / SAR products; Location → boundary snap + crop history  
+7. `/finance` · `/profile` privacy · `/collab` Community · Voice + photo feedback · Drone sim  
+8. AI Agronomist bubble (bottom-right) with RAG context  
+
+---
+
+## 19. Follow-ups
 
 - Replace placeholder `GEMINI_API_KEY` / `OPENROUTER_API_KEY` with real keys  
 - Upload trained EuroSAT model into Functions vision path  
-- Partner API live endpoints / docs polish  
+- Optional Planet academic key into fusion provider slot  
+- Full ML yield models once labeled harvests exist  
 - Upgrade Functions runtime from Node 20 before Oct 2026 decommission  
 
 ---
 
-## 19. Planned (not built)
-
-SMS/WhatsApp alerts, offline mode, multi-language pack, referral program, full partner portal, advanced disease models, marketplace listings — see older roadmap sections in git history if needed.
-
----
-
-**Next features (prioritized):** see [`docs/ROADMAP.md`](docs/ROADMAP.md).
-
-*This sheet reflects the product as deployed on Spark hosting. Flip `FUNCTIONS_ENABLED` and deploy Functions after upgrading to Blaze.*
+**Sequenced backlog:** see [`docs/ROADMAP.md`](docs/ROADMAP.md).

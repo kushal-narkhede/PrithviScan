@@ -18,6 +18,7 @@ import {
   listSharesByMe,
   getProfile,
 } from "./collab.js";
+import { listCommunityPosts, createCommunityPost } from "./community.js";
 
 const statusEl = document.getElementById("collabStatus");
 let currentUser = null;
@@ -47,6 +48,28 @@ function switchPanel(name) {
   document.querySelectorAll(".collab-panel").forEach((p) => {
     p.hidden = p.id !== `panel-${name}`;
   });
+  if (name === "community") refreshCommunity();
+}
+
+async function refreshCommunity() {
+  const feed = document.getElementById("communityFeed");
+  if (!feed) return;
+  try {
+    const posts = await listCommunityPosts(40);
+    feed.innerHTML = posts.length
+      ? posts
+          .map(
+            (p) => `<article class="collab-list-item">
+          <strong>${esc(p.authorName || "Farmer")}</strong>
+          <span class="app-muted">${esc(p.kind || "update")}</span>
+          <p>${esc(p.body)}</p>
+        </article>`
+          )
+          .join("")
+      : `<div class="collab-empty">No posts yet — be the first.</div>`;
+  } catch {
+    feed.innerHTML = `<div class="collab-empty">Could not load community (check Firestore rules for communityPosts).</div>`;
+  }
 }
 
 document.querySelectorAll(".collab-tab").forEach((btn) => {
@@ -339,6 +362,22 @@ document.getElementById("shareForm")?.addEventListener("submit", async (e) => {
     await refreshShares();
   } catch (err) {
     setStatus(err.message || "Could not share field.", "error");
+  }
+});
+
+document.getElementById("communityForm")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentUser) return;
+  try {
+    await createCommunityPost(currentUser, {
+      kind: document.getElementById("communityKind")?.value,
+      body: document.getElementById("communityBody")?.value,
+    });
+    document.getElementById("communityBody").value = "";
+    await refreshCommunity();
+    setStatus("Posted to the community.", "ok");
+  } catch (err) {
+    setStatus(err?.message || "Could not post.", "error");
   }
 });
 

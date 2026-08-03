@@ -76,6 +76,16 @@ export async function callProcessAlertOutbox() {
   return apiFetch("processAlertOutbox");
 }
 
+/** URTC science suite — soil moisture, risks, irrigation, yield, soil intel, crop pick */
+export async function callFieldUrtcSuite(params = {}) {
+  return apiFetch("fieldUrtcSuite", params);
+}
+
+/** Heuristic field boundary snap */
+export async function callSnapFieldBoundary({ lat, lon, polygon } = {}) {
+  return apiPost("snapFieldBoundary", { lat, lon, polygon });
+}
+
 /** POST helper for chat / larger bodies */
 async function apiPost(path, body = {}) {
   if (!FUNCTIONS_ENABLED) {

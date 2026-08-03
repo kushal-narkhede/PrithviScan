@@ -5,6 +5,7 @@
 import { loadAiConfig, saveAiConfig, AI_PROVIDERS } from "./ai-config.js";
 import { completeChat, providerLabel } from "./ai/client.js";
 import { diagnoseOllama } from "./ai/providers/ollama.js";
+import { AGRONOMIST_SYSTEM, buildAgronomistContext } from "./ai-agronomist.js";
 
 const HISTORY_KEY = "prithviscan.ai.history.v1";
 const OPEN_KEY = "prithviscan.ai.widgetOpen";
@@ -67,7 +68,7 @@ function mount() {
     <div class="ps-ai-panel" id="psAiPanel" role="dialog" aria-label="Ask AI chat" hidden>
       <div class="ps-ai-head">
         <div>
-          <strong>Ask AI</strong>
+          <strong>AI Agronomist</strong>
           <span id="psAiPill">Ollama</span>
         </div>
         <div class="ps-ai-head-actions">
@@ -277,8 +278,10 @@ function mount() {
     abortCtrl?.abort();
     abortCtrl = new AbortController();
 
+    const rag = buildAgronomistContext(text);
+    const systemContent = `${AGRONOMIST_SYSTEM}\n\n${config.systemPrompt || ""}\n\n${rag}`.trim();
     const messages = [
-      { role: "system", content: config.systemPrompt },
+      { role: "system", content: systemContent },
       ...history.filter((m) => m.role === "user" || m.role === "assistant"),
     ];
 
@@ -287,7 +290,11 @@ function mount() {
       history.push({ role: "assistant", content: result.text });
       saveHistory(history);
       renderMessages();
-      setStatus(`${providerLabel(result.provider)}${result.model ? ` · ${result.model}` : ""}`);
+      setStatus(
+        `${providerLabel(result.provider)}${result.model ? ` · ${result.model}` : ""}${
+          rag.includes("Retrieved") ? " · RAG" : ""
+        }`
+      );
     } catch (err) {
       if (err?.name === "AbortError") return;
       const div = document.createElement("div");

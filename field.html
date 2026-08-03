@@ -29,6 +29,7 @@
           <a href="index.html">Home</a>
           <a href="app.html">Fields</a>
           <a href="prices.html">Prices</a>
+          <a href="finance.html">Finance</a>
           <a href="org.html">Organization</a>
           <a href="info.html">Info</a>
           <a href="collab.html">Collaborate</a>
@@ -51,6 +52,7 @@
             <p class="app-lead" id="fieldMeta"></p>
           </div>
           <div class="field-actions-row">
+            <button type="button" class="app-btn-ghost" id="voiceAssistBtn" title="Voice commands">Voice</button>
             <button type="button" class="app-btn-ghost" id="printReportBtn">Print / save report</button>
             <button type="button" class="app-btn-primary" id="refreshBtn">↻ Refresh insights</button>
           </div>
@@ -147,6 +149,22 @@
               <span class="field-tool-title" data-i18n="tool.weather">Weather</span>
               <span class="field-tool-desc" data-i18n="tool.weather.desc">Rain, temp &amp; outlook</span>
             </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="soil" aria-controls="soilPanel">
+              <span class="field-tool-title">Soil intelligence</span>
+              <span class="field-tool-desc">Moisture 7-day · NPK · carbon</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="risks" aria-controls="risksPanel">
+              <span class="field-tool-title">Pest &amp; stress risks</span>
+              <span class="field-tool-desc">Disease · heat · water · pest</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="irrigate" aria-controls="irrigatePanel">
+              <span class="field-tool-title">Irrigation planner</span>
+              <span class="field-tool-desc">When · how much · cost</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="advisor" aria-controls="advisorPanel">
+              <span class="field-tool-title">Yield &amp; advisor</span>
+              <span class="field-tool-desc">Yield · fert · crop pick</span>
+            </button>
             <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="crop" aria-controls="cropGuidePanel">
               <span class="field-tool-title">Crop &amp; harvest</span>
               <span class="field-tool-desc">Season, ferts &amp; timing</span>
@@ -165,7 +183,11 @@
             </button>
             <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="location" aria-controls="locationPanel">
               <span class="field-tool-title">Location</span>
-              <span class="field-tool-desc">Map &amp; field facts</span>
+              <span class="field-tool-desc">Map · boundary snap</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="drone" aria-controls="dronePanel">
+              <span class="field-tool-title">Drone sim</span>
+              <span class="field-tool-desc">Upload · NDVI · pests</span>
             </button>
           </div>
         </nav>
@@ -213,9 +235,18 @@
             <button type="button" class="app-btn-ghost" id="loadSatArchiveBtn">Load archive</button>
           </div>
           <p class="app-muted">
-            Browse NASA granules over this field — MODIS vegetation, SMAP moisture, and HLS (Sentinel-2).
-            Pick a date to open the official browse preview and track change over time.
+            Multi-sensor archive: MODIS, SMAP, HLS Sentinel-2, HLS Landsat-9, and Sentinel-1 SAR (cloudy-region structure / moisture proxy).
+            Planet slots stay reserved until a free academic key is available.
           </p>
+          <div class="fusion-strip" id="fusionStrip" aria-label="Fusion providers">
+            <span class="sat-chip">POWER weather</span>
+            <span class="sat-chip">MODIS</span>
+            <span class="sat-chip">SMAP</span>
+            <span class="sat-chip">Sentinel-2 HLS</span>
+            <span class="sat-chip">Landsat HLS</span>
+            <span class="sat-chip">Sentinel-1 SAR</span>
+            <span class="sat-chip sat-chip-muted">Planet (slot)</span>
+          </div>
           <div class="sat-archive-controls">
             <label>
               Mission / product
@@ -224,6 +255,8 @@
                 <option value="modis_aqua">MODIS Aqua VI (MYD13Q1)</option>
                 <option value="smap">SMAP soil moisture</option>
                 <option value="hls">HLS Sentinel-2 (HLSS30)</option>
+                <option value="landsat">HLS Landsat (HLSL30)</option>
+                <option value="sar">Sentinel-1 SAR (GRD)</option>
               </select>
             </label>
             <label>
@@ -444,6 +477,21 @@
                 Yield (kg/ha)
                 <input id="fbYield" type="number" min="0" step="10" placeholder="optional" />
               </label>
+              <label>
+                Photo label (image GT)
+                <select id="fbPhotoKind">
+                  <option value="">No photo label</option>
+                  <option value="disease">Disease</option>
+                  <option value="deficiency">Nutrient deficiency</option>
+                  <option value="pest">Pest damage</option>
+                  <option value="healthy">Looks healthy</option>
+                </select>
+              </label>
+              <label class="app-btn-ghost bulk-upload">
+                Upload field photo
+                <input id="fbPhoto" type="file" accept="image/*" hidden />
+              </label>
+              <p class="app-muted" id="fbPhotoNote"></p>
               <label class="check-row">
                 <input id="fbIrrigated" type="checkbox" />
                 I irrigated recently
@@ -461,11 +509,100 @@
           </section>
         </div>
 
-        <!-- Map -->
+        <!-- Soil intelligence -->
+        <section class="app-panel field-tool-panel" id="soilPanel" data-tool-panel="soil" hidden>
+          <div class="app-panel-head">
+            <h2>Soil intelligence</h2>
+            <button type="button" class="app-btn-ghost" id="refreshUrtcBtn">Refresh suite</button>
+          </div>
+          <p class="app-muted">7-day moisture outlook, NPK proxy indices, degradation risk, and soil carbon score — with provenance for reviewers.</p>
+          <div id="soilMoistureCard" class="urtc-card"></div>
+          <div id="soilIntelCard" class="urtc-card"></div>
+          <p class="app-muted" id="soilProvenance"></p>
+        </section>
+
+        <!-- Risk suite -->
+        <section class="app-panel field-tool-panel" id="risksPanel" data-tool-panel="risks" hidden>
+          <div class="app-panel-head">
+            <h2>Pest &amp; stress early warning</h2>
+          </div>
+          <p class="app-muted">Severity scores from weather + crop + vegetation stress. Create Action Center tasks from recommendations when you have an org.</p>
+          <div id="riskSuiteCard" class="urtc-card"></div>
+          <div id="riskMap" class="field-map field-map-detail" role="application" aria-label="Risk zones map"></div>
+          <p class="app-muted" id="riskProvenance"></p>
+        </section>
+
+        <!-- Irrigation planner -->
+        <section class="app-panel field-tool-panel" id="irrigatePanel" data-tool-panel="irrigate" hidden>
+          <div class="app-panel-head">
+            <h2>Smart irrigation planner</h2>
+          </div>
+          <div id="irrigationCard" class="urtc-card"></div>
+          <button type="button" class="app-btn-primary" id="createIrrigateTaskBtn" hidden>Create irrigate task</button>
+        </section>
+
+        <!-- Yield + advisor -->
+        <section class="app-panel field-tool-panel" id="advisorPanel" data-tool-panel="advisor" hidden>
+          <div class="app-panel-head">
+            <h2>Yield, fertilizer &amp; crop advisor</h2>
+          </div>
+          <label class="urtc-inline">
+            Budget
+            <input id="advisorBudget" type="number" min="0" step="100" value="50000" />
+          </label>
+          <label class="urtc-inline">
+            Crop stage
+            <select id="advisorStage">
+              <option value="emergence">Emergence</option>
+              <option value="vegetative" selected>Vegetative</option>
+              <option value="flowering">Flowering</option>
+              <option value="grain">Grain fill</option>
+            </select>
+          </label>
+          <button type="button" class="app-btn-ghost" id="runAdvisorBtn">Update advisor</button>
+          <div id="yieldCard" class="urtc-card"></div>
+          <div id="fertOptCard" class="urtc-card"></div>
+          <div id="machineryCard" class="urtc-card"></div>
+          <div id="cropRecCard" class="urtc-card"></div>
+          <div id="carbonCard" class="urtc-card"></div>
+        </section>
+
+        <!-- Drone simulation -->
+        <section class="app-panel field-tool-panel" id="dronePanel" data-tool-panel="drone" hidden>
+          <div class="app-panel-head">
+            <h2>Drone integration (simulation)</h2>
+          </div>
+          <p class="app-muted">Upload a field photo or orthomosaic tile. We simulate stitching + high-res NDVI + pest spots — not live drone control.</p>
+          <label class="app-btn-ghost bulk-upload">
+            Upload drone / field image
+            <input id="droneFileInput" type="file" accept="image/*" hidden />
+          </label>
+          <div id="droneResult" class="urtc-card" hidden></div>
+          <canvas id="droneCanvas" class="drone-canvas" hidden></canvas>
+        </section>
+
+        <!-- Map + boundary -->
         <div class="app-panel field-map-panel field-tool-panel" id="locationPanel" data-tool-panel="location" hidden>
-          <h2>Location</h2>
+          <h2>Location &amp; boundary</h2>
           <div id="detailMap" class="field-map field-map-detail" role="application" aria-label="Field location map"></div>
           <dl class="field-facts" id="fieldFacts"></dl>
+          <div class="boundary-tools">
+            <p class="app-muted">Draw a rough shape (or use the default box), then snap to a vegetation-edge proxy.</p>
+            <button type="button" class="app-btn-ghost" id="drawBoundaryBtn">Start draw</button>
+            <button type="button" class="app-btn-primary" id="snapBoundaryBtn">AI snap boundary</button>
+            <button type="button" class="app-btn-ghost" id="saveBoundaryBtn" hidden>Save boundary</button>
+          </div>
+          <p class="app-muted" id="boundaryNote"></p>
+          <div id="cropHistoryCard" class="urtc-card">
+            <h3>Crop history &amp; rotation</h3>
+            <ul id="cropHistoryList"></ul>
+            <form id="cropHistoryForm" class="field-input-form">
+              <label>Season / year <input id="cropHistSeason" type="text" placeholder="2025 kharif / 2025" required maxlength="40" /></label>
+              <label>Crop <input id="cropHistCrop" type="text" placeholder="Wheat" required maxlength="60" /></label>
+              <button type="submit" class="app-btn-primary">Add season</button>
+            </form>
+            <p class="app-muted" id="cropRotationNote"></p>
+          </div>
         </div>
       </div>
     </main>
@@ -473,7 +610,7 @@
     <script src="vendor/leaflet/leaflet.js"></script>
     <script type="module" src="js/tenant.js"></script>
     <script type="module" src="js/nav-auth.js?v=ai1"></script>
-    <script type="module" src="js/field-page.js?v=region1"></script>
+    <script type="module" src="js/field-page.js?v=urtc1"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("sw.js").catch(() => {});

@@ -116,15 +116,23 @@
           </section>
 
           <section class="profile-card profile-card-wide">
-            <h3 class="profile-prefs-title">Your data (DPDP)</h3>
+            <h3 class="profile-prefs-title">Privacy &amp; consent dashboard</h3>
             <p class="profile-prefs-note">
               Export a copy of your fields and alerts, or delete your personal account data.
               Organization-owned fields stay with the org.
             </p>
+            <div class="profile-alert-grid">
+              <label class="check-row"><input type="checkbox" id="prefConsentAnalytics" /> Allow anonymized analytics</label>
+              <label class="check-row"><input type="checkbox" id="prefConsentTraining" /> Opt-in model training on my fields</label>
+              <label class="check-row"><input type="checkbox" id="prefAnonymizeFields" /> Anonymize field names in exports</label>
+            </div>
             <div class="profile-btn-row">
+              <button type="button" class="auth-google" id="savePrivacyBtn">Save privacy prefs</button>
               <button type="button" class="auth-google" id="exportDataBtn">Download my data (JSON)</button>
+              <button type="button" class="auth-google" id="exportLogBtn">Download export log</button>
               <button type="button" class="profile-signout" id="deleteAccountBtn">Delete my account</button>
             </div>
+            <p class="profile-prefs-note" id="privacyLogNote">Export events are stored locally in this browser.</p>
           </section>
         </div>
       </div>

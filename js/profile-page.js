@@ -13,7 +13,14 @@ import {
   loadAlertPrefsFromCloud,
 } from "./alert-prefs.js";
 import { getLocale, setLocale } from "./i18n.js";
-import { exportAccountBundle, downloadJson, deleteAccountData } from "./privacy-data.js";
+import {
+  exportAccountBundle,
+  downloadJson,
+  deleteAccountData,
+  loadPrivacyPrefs,
+  savePrivacyPrefs,
+  readExportLog,
+} from "./privacy-data.js";
 import { callProcessAlertOutbox } from "./api.js";
 import {
   doc,
@@ -142,16 +149,52 @@ function bindLocalPrefs() {
     }
   });
 
+  function fillPrivacyForm() {
+    const p = loadPrivacyPrefs();
+    const a = document.getElementById("prefConsentAnalytics");
+    const t = document.getElementById("prefConsentTraining");
+    const an = document.getElementById("prefAnonymizeFields");
+    if (a) a.checked = Boolean(p.consentAnalytics);
+    if (t) t.checked = Boolean(p.consentTraining);
+    if (an) an.checked = Boolean(p.anonymizeFields);
+    const note = document.getElementById("privacyLogNote");
+    if (note) {
+      const log = readExportLog();
+      note.textContent = log.length
+        ? `Last export: ${log[0].at} (${log.length} event(s) in this browser).`
+        : "Export events are stored locally in this browser.";
+    }
+  }
+  fillPrivacyForm();
+
+  document.getElementById("savePrivacyBtn")?.addEventListener("click", () => {
+    savePrivacyPrefs({
+      consentAnalytics: document.getElementById("prefConsentAnalytics")?.checked,
+      consentTraining: document.getElementById("prefConsentTraining")?.checked,
+      anonymizeFields: document.getElementById("prefAnonymizeFields")?.checked,
+    });
+    setStatus("Privacy preferences saved.", "ok");
+  });
+
   document.getElementById("exportDataBtn")?.addEventListener("click", async () => {
     if (!currentUser) return;
     try {
       setStatus("Preparing your data export…");
-      const bundle = await exportAccountBundle(currentUser.uid);
+      const prefs = loadPrivacyPrefs();
+      const bundle = await exportAccountBundle(currentUser.uid, {
+        anonymize: Boolean(prefs.anonymizeFields),
+      });
       downloadJson(`prithviscan-export-${currentUser.uid.slice(0, 6)}.json`, bundle);
+      fillPrivacyForm();
       setStatus("Data export downloaded.", "ok");
     } catch (err) {
       setStatus(err?.message || "Export failed.", "error");
     }
+  });
+
+  document.getElementById("exportLogBtn")?.addEventListener("click", () => {
+    downloadJson("prithviscan-export-log.json", { events: readExportLog() });
+    setStatus("Export log downloaded.", "ok");
   });
 
   document.getElementById("deleteAccountBtn")?.addEventListener("click", async () => {

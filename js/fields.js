@@ -125,7 +125,8 @@ function buildPayload(uid, data, { orgId = null } = {}) {
   if (payload.lat < -90 || payload.lat > 90 || payload.lon < -180 || payload.lon > 180) {
     throw new Error("Coordinates out of range.");
   }
-  if (payload.region !== "US" && payload.region !== "IN") {
+  const allowed = new Set(["IN", "US", "BR", "KE", "NG", "ID"]);
+  if (!allowed.has(payload.region)) {
     payload.region = detectRegion(payload.lat, payload.lon);
   }
   return payload;

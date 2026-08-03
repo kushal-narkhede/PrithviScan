@@ -16,7 +16,37 @@ import { getUserMeta, getOrganization } from "./org.js";
 import { deleteUser } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
 import { getFirebaseAuth } from "./auth.js";
 
-export async function exportAccountBundle(uid) {
+const PRIVACY_KEY = "prithvi_privacy_prefs";
+const EXPORT_LOG_KEY = "prithvi_export_log";
+
+export function loadPrivacyPrefs() {
+  try {
+    return JSON.parse(localStorage.getItem(PRIVACY_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+export function savePrivacyPrefs(prefs) {
+  localStorage.setItem(PRIVACY_KEY, JSON.stringify(prefs || {}));
+  return prefs;
+}
+
+export function appendExportLog(entry) {
+  const log = readExportLog();
+  log.unshift({ ...entry, at: new Date().toISOString() });
+  localStorage.setItem(EXPORT_LOG_KEY, JSON.stringify(log.slice(0, 50)));
+}
+
+export function readExportLog() {
+  try {
+    return JSON.parse(localStorage.getItem(EXPORT_LOG_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+export async function exportAccountBundle(uid, { anonymize = false } = {}) {
   const meta = await getUserMeta(uid);
   const fields = await listFields(uid);
   const alertsSnap = await getDocs(
@@ -26,27 +56,31 @@ export async function exportAccountBundle(uid) {
   let org = null;
   if (meta?.orgId) org = await getOrganization(meta.orgId);
 
-  return {
+  const bundle = {
     exportedAt: new Date().toISOString(),
-    userId: uid,
-    meta,
+    userId: anonymize ? "redacted" : uid,
+    meta: anonymize ? { orgId: meta?.orgId || null, orgRole: meta?.orgRole || null } : meta,
     organization: org
       ? { id: org.id, name: org.name, role: meta?.orgRole, memberCount: org.memberIds?.length }
       : null,
-    fields: fields.map((f) => ({
+    fields: fields.map((f, i) => ({
       id: f.id,
-      name: f.name,
-      lat: f.lat,
-      lon: f.lon,
+      name: anonymize ? `Field ${i + 1}` : f.name,
+      lat: anonymize ? Number(f.lat.toFixed(1)) : f.lat,
+      lon: anonymize ? Number(f.lon.toFixed(1)) : f.lon,
       cropType: f.cropType,
       sownAt: f.sownAt || null,
       orgId: f.orgId || null,
+      region: f.region || null,
       lastInsight: f.lastInsight || null,
       healthNdvi: f.healthNdvi ?? null,
     })),
-    alerts,
+    alerts: anonymize ? alerts.map((a) => ({ id: a.id, level: a.level, createdAt: a.createdAt })) : alerts,
+    privacyPrefs: loadPrivacyPrefs(),
     note: "Personal data export for your records. Organization-owned fields remain with the org.",
   };
+  appendExportLog({ type: "account_export", anonymize: Boolean(anonymize), fieldCount: fields.length });
+  return bundle;
 }
 
 export function downloadJson(filename, obj) {
