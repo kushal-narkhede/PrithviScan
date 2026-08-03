@@ -49,7 +49,7 @@ Product sequencing follows the **URTC waves** in [`docs/ROADMAP.md`](docs/ROADMA
 | Printable field report | Live | Field page |
 | Accessibility + alert quiet hours | Live | Profile settings |
 | NASA fusion / alerts / trends APIs | **Live** | Blaze Functions deployed |
-| **Tomorrow.io hyperlocal weather** | Live (needs key) | Field → Weather · `TOMORROW_API_KEY` |
+| **Tomorrow.io hyperlocal weather** | Live (needs key) | Field → Weather: full layers (temp, wind, precip types, UV, ET, GDD, heat stress) + advisories |
 | Cloud Function `aiChat` (server keys) | **Live** | Secrets in Secret Manager (set real Gemini/OpenRouter keys) |
 | Trained EuroSAT classifier in prod | Ready to load | Export joblib → JSON on your PC, then deploy `classifyLocation` |
 
@@ -325,7 +325,7 @@ Do **not** upload the EuroSAT dataset into the repo.
 | Auth Email + Google | Live (must be enabled in Console) |
 | HTML cache | `must-revalidate` (faster nav updates) |
 | Cloud Functions | **Live** (Blaze) |
-| Secrets | `EARTHDATA_TOKEN`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY` in Secret Manager |
+| Secrets | `EARTHDATA_TOKEN`, `TOMORROW_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY` in Secret Manager |
 
 ---
 

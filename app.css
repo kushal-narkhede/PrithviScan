@@ -676,8 +676,48 @@
 .tmrw-banner p {
   margin: 0.35rem 0 0;
 }
-.tmrw-prov {
+.tmrw-stats {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+.tmrw-block {
   margin-top: 0.85rem;
+}
+.tmrw-note {
+  margin: 0.5rem 0 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  background: #fffaf0;
+  border: 1px solid rgba(214, 158, 46, 0.35);
+  color: #7b341e;
+  font-size: 0.9rem;
+}
+.tmrw-fields {
+  margin-top: 1rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(16, 37, 26, 0.1);
+}
+.tmrw-fields summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #1a4a33;
+}
+.tmrw-field-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.25rem 0.75rem;
+  margin: 0.65rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.82rem;
+}
+.tmrw-field-list code {
+  font-size: 0.78rem;
+  color: #276749;
+}
+.tmrw-hour {
+  min-width: 118px;
 }
 @media (max-width: 720px) {
   .tmrw-now {

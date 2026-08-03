@@ -10,7 +10,7 @@ import {
   callFieldHealth,
   callSnapFieldBoundary,
   callFieldTomorrowWeather,
-} from "./api.js?v=tmrw1";
+} from "./api.js?v=tmrw2";
 import {
   healthFromNdvi,
   saveHealthSnapshot,
@@ -57,7 +57,7 @@ import {
   renderRiskZones,
   fuelCostEstimate,
 } from "./urtc-field-ui.js?v=urtc1";
-import { renderTomorrowWeather } from "./tomorrow-weather.js?v=tmrw1";
+import { renderTomorrowWeather } from "./tomorrow-weather.js?v=tmrw2";
 import { createTask } from "./tasks.js";
 import { getUserMeta } from "./org.js";
 import "./a11y.js";
