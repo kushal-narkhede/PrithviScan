@@ -86,24 +86,37 @@
   margin: 0 auto;
 }
 
-/* Field detail page — profile-style side-by-side */
+/* Field detail page — wide shell, stats above, expanded INFO */
 .app-shell.field-detail-shell,
 .field-detail-shell {
-  width: min(1200px, calc(100% - 2rem));
+  width: min(1560px, calc(100% - 1.25rem));
+}
+
+.field-stats-bar {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1.1rem;
+}
+
+.field-stats-bar .metrics-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin-bottom: 0;
+}
+
+.field-stats-bar .satellite-row {
+  margin-bottom: 0;
 }
 
 .field-detail-layout {
   display: grid;
-  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
-  gap: 1rem 1.2rem;
+  grid-template-columns: minmax(440px, 1fr) minmax(0, 1.2fr);
+  gap: 1rem 1.35rem;
   align-items: start;
 }
 
 .field-detail-sidebar {
   position: sticky;
   top: 5rem;
-  max-height: calc(100svh - 5.5rem);
-  overflow: auto;
   display: grid;
   gap: 0.85rem;
   align-content: start;
@@ -114,13 +127,8 @@
   margin-bottom: 0;
 }
 
-.field-detail-sidebar .metrics-grid {
-  grid-template-columns: 1fr 1fr;
-  margin-bottom: 0;
-}
-
-.field-detail-sidebar .satellite-row {
-  margin-bottom: 0;
+.field-detail-sidebar .insight-card {
+  min-height: 0;
 }
 
 .field-detail-main {
@@ -134,14 +142,27 @@
   margin-top: 0;
 }
 
+@media (max-width: 1280px) {
+  .field-stats-bar .metrics-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .field-detail-layout {
+    grid-template-columns: minmax(360px, 0.95fr) minmax(0, 1.2fr);
+  }
+}
+
 @media (max-width: 980px) {
   .field-detail-layout {
     grid-template-columns: 1fr;
   }
   .field-detail-sidebar {
     position: static;
-    max-height: none;
-    overflow: visible;
+  }
+  .field-stats-bar .metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

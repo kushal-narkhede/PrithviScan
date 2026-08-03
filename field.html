@@ -13,8 +13,8 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-    <link rel="stylesheet" href="styles.css?v=fieldlayout2" />
-    <link rel="stylesheet" href="app.css?v=fieldlayout2" />
+    <link rel="stylesheet" href="styles.css?v=fieldlayout3" />
+    <link rel="stylesheet" href="app.css?v=fieldlayout3" />
     <link rel="stylesheet" href="ui-enhance.css?v=ux1" />
   </head>
   <body class="app-body">
@@ -62,10 +62,51 @@
         <p id="fieldStatus" class="app-status" role="status" aria-live="polite"></p>
         <div class="safety-banner" id="safetyBanner" hidden></div>
 
+        <!-- Stats row above INFO + tools -->
+        <div class="field-stats-bar">
+          <div class="metrics-grid" id="metricsGrid" hidden>
+            <div class="metric-card">
+              <span class="metric-label">Rainfall (7d)</span>
+              <span class="metric-value" id="mRain">—</span>
+              <span class="metric-unit">mm</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Avg Temp</span>
+              <span class="metric-value" id="mTemp">—</span>
+              <span class="metric-unit">°C</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Max Temp</span>
+              <span class="metric-value" id="mTempMax">—</span>
+              <span class="metric-unit">°C</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Humidity</span>
+              <span class="metric-value" id="mHumidity">—</span>
+              <span class="metric-unit">%</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">ET demand (7d)</span>
+              <span class="metric-value" id="mET">—</span>
+              <span class="metric-unit">mm</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Solar radiation</span>
+              <span class="metric-value" id="mSolar">—</span>
+              <span class="metric-unit">kWh/m²/d</span>
+            </div>
+          </div>
+          <div class="satellite-row" id="satelliteRow" hidden>
+            <span class="sat-label">Satellite data</span>
+            <span class="sat-chip" id="satSMAP">SMAP —</span>
+            <span class="sat-chip" id="satMODIS">MODIS —</span>
+            <span class="sat-note" id="satNote"></span>
+          </div>
+        </div>
+
         <div class="field-detail-layout">
-          <!-- Left: insight + metrics (sticky like profile) -->
+          <!-- Left: expanded INFO -->
           <aside class="field-detail-sidebar" aria-label="Field summary">
-        <!-- Insight card (action + confidence + provenance) -->
         <div class="insight-card-wrap" id="insightWrap">
           <div class="insight-card insight-info" id="insightCard">
             <p class="insight-level" id="insightLevel">—</p>
@@ -93,48 +134,6 @@
             <p class="insight-provenance" id="insightProvenance" hidden></p>
             <p class="insight-age" id="insightAge"></p>
           </div>
-        </div>
-
-        <!-- Metrics grid -->
-        <div class="metrics-grid" id="metricsGrid" hidden>
-          <div class="metric-card">
-            <span class="metric-label">Rainfall (7d)</span>
-            <span class="metric-value" id="mRain">—</span>
-            <span class="metric-unit">mm</span>
-          </div>
-          <div class="metric-card">
-            <span class="metric-label">Avg Temp</span>
-            <span class="metric-value" id="mTemp">—</span>
-            <span class="metric-unit">°C</span>
-          </div>
-          <div class="metric-card">
-            <span class="metric-label">Max Temp</span>
-            <span class="metric-value" id="mTempMax">—</span>
-            <span class="metric-unit">°C</span>
-          </div>
-          <div class="metric-card">
-            <span class="metric-label">Humidity</span>
-            <span class="metric-value" id="mHumidity">—</span>
-            <span class="metric-unit">%</span>
-          </div>
-          <div class="metric-card">
-            <span class="metric-label">ET demand (7d)</span>
-            <span class="metric-value" id="mET">—</span>
-            <span class="metric-unit">mm</span>
-          </div>
-          <div class="metric-card">
-            <span class="metric-label">Solar radiation</span>
-            <span class="metric-value" id="mSolar">—</span>
-            <span class="metric-unit">kWh/m²/d</span>
-          </div>
-        </div>
-
-        <!-- Satellite status (summary stays with analysis) -->
-        <div class="satellite-row" id="satelliteRow" hidden>
-          <span class="sat-label">Satellite data</span>
-          <span class="sat-chip" id="satSMAP">SMAP —</span>
-          <span class="sat-chip" id="satMODIS">MODIS —</span>
-          <span class="sat-note" id="satNote"></span>
         </div>
           </aside>
 
