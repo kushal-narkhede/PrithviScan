@@ -54,7 +54,13 @@
       }
     ],
     "cleanUrls": true,
-    "trailingSlash": false
+    "trailingSlash": false,
+    "redirects": [
+      { "source": "/org", "destination": "/social.html#org", "type": 301 },
+      { "source": "/org.html", "destination": "/social.html#org", "type": 301 },
+      { "source": "/collab", "destination": "/social.html#community", "type": 301 },
+      { "source": "/collab.html", "destination": "/social.html#community", "type": 301 }
+    ]
   },
   "firestore": {
     "rules": "firestore.rules",

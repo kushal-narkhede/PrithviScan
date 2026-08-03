@@ -33,7 +33,7 @@ function closeAllMenus() {
 
 function isAppPage() {
   const path = window.location.pathname.replace(/\/$/, "");
-  return /\/(app|field|collab|prices|org|info|ai)(\.html)?$/i.test(path);
+  return /\/(app|field|collab|prices|org|info|ai|social|finance)(\.html)?$/i.test(path);
 }
 
 function escapeHtml(v) {
@@ -95,11 +95,7 @@ function renderAuthControls(user) {
         </button>
         <div class="nav-menu" role="menu" hidden>
           <p class="nav-menu-name">${name}</p>
-          <a href="index.html" role="menuitem">Home</a>
           <a href="profile.html" role="menuitem">My profile</a>
-          <a href="org.html" role="menuitem">Organization</a>
-          <a href="prices.html" role="menuitem">Price calculator</a>
-          <a href="collab.html" role="menuitem">Collaborate</a>
           <a href="profile.html#profilePrefs" role="menuitem">Settings</a>
           <button type="button" data-signout role="menuitem">Sign out</button>
         </div>

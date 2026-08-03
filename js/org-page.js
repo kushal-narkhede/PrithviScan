@@ -12,7 +12,6 @@ import {
   setOrgMemberRole,
 } from "./org.js";
 import { roleLabel } from "./org-roles.js";
-import "./nav-auth.js";
 
 const gate = document.getElementById("orgGate");
 const content = document.getElementById("orgContent");

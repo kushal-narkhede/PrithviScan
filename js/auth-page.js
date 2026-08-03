@@ -83,7 +83,7 @@ async function afterAuth(user, { isNewSignup = false, accountType, orgName } = {
   }
   setStatus("Signed in — opening your app…", "ok");
   const goOrg = isNewSignup && accountType === "organization";
-  window.location.href = goOrg ? "org.html" : "app.html";
+  window.location.href = goOrg ? "social.html#org" : "app.html";
 }
 
 form?.addEventListener("submit", async (event) => {

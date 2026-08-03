@@ -1,5 +1,5 @@
 /* PrithviScan offline shell — network-first for JS/HTML so map fixes ship immediately */
-const CACHE = "prithviscan-shell-v4";
+const CACHE = "prithviscan-shell-v5";
 const SHELL = [
   "/",
   "/index.html",
@@ -7,7 +7,7 @@ const SHELL = [
   "/field.html",
   "/auth.html",
   "/profile.html",
-  "/org.html",
+  "/social.html",
   "/styles.css",
   "/app.css",
   "/auth.css",
