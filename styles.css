@@ -200,9 +200,9 @@ ol {
 }
 
 .nav-app {
-  background: #2f855a;
+  background: #1f6b45;
   color: #fff !important;
-  box-shadow: 0 6px 16px rgba(47, 133, 90, 0.28);
+  box-shadow: 0 6px 16px rgba(31, 107, 69, 0.28);
 }
 
 .nav-app:hover {
@@ -451,12 +451,13 @@ ol {
 }
 
 .btn-primary {
-  background: var(--leaf-400);
-  color: var(--forest-950);
+  background: var(--forest-800);
+  color: var(--white);
 }
 
 .btn-primary:hover {
-  background: var(--leaf-300);
+  background: var(--forest-700);
+  color: var(--white);
 }
 
 .btn-ghost {

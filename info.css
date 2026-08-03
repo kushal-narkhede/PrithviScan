@@ -440,9 +440,9 @@
 
 .matcher-soil.is-active,
 .matcher-soil:hover {
-  background: #62c084;
-  border-color: #62c084;
-  color: #06160e;
+  background: #1f6b45;
+  border-color: #1f6b45;
+  color: #ffffff;
 }
 
 .matcher-result {

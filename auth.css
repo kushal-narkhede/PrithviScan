@@ -372,12 +372,13 @@
 .auth-primary {
   margin-top: 0.2rem;
   border: 0;
-  background: #3f9a63;
-  color: #06160e;
+  background: #1f6b45;
+  color: #ffffff;
 }
 
 .auth-primary:hover {
-  background: #62c084;
+  background: #276749;
+  color: #ffffff;
   transform: translateY(-1px);
 }
 

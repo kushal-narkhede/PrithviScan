@@ -226,12 +226,13 @@
 }
 
 .app-btn-primary {
-  background: #3f9a63;
-  color: #06160e;
+  background: #1f6b45;
+  color: #ffffff;
 }
 
 .app-btn-primary:hover {
-  background: #62c084;
+  background: #276749;
+  color: #ffffff;
 }
 
 .app-btn-primary:disabled {
@@ -1122,10 +1123,14 @@
   background: #f4faf6;
 }
 .field-tool-btn.is-active {
-  background: #2f855a;
-  border-color: #2f855a;
+  background: #1f6b45;
+  border-color: #1f6b45;
   color: #fff;
-  box-shadow: 0 8px 18px rgba(47, 133, 90, 0.22);
+  box-shadow: 0 8px 18px rgba(31, 107, 69, 0.28);
+}
+.field-tool-btn.is-active .field-tool-title,
+.field-tool-btn.is-active .field-tool-desc {
+  color: #ffffff;
 }
 .field-tool-title {
   font-size: 0.95rem;
@@ -1506,6 +1511,7 @@
 }
 .app-btn-primary {
   background: var(--tenant-primary, #1f6b45);
+  color: #ffffff;
 }
 .continue-kicker {
   color: var(--tenant-primary, #276749);
