@@ -11,6 +11,7 @@ const { classifyLatLon } = require("./lib/vision");
 const { runAiChat } = require("./lib/ai-chat");
 const { buildUrtcSuite, snapBoundary } = require("./lib/urtc-models");
 const { buildTomorrowFieldWeather } = require("./lib/tomorrow");
+const { buildIndiaFieldPack, indiaStatus } = require("./lib/india-layers");
 
 setGlobalOptions({ region: "us-central1", invoker: "public" });
 
@@ -20,6 +21,23 @@ const earthdataToken = defineSecret("EARTHDATA_TOKEN");
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
 const openrouterApiKey = defineSecret("OPENROUTER_API_KEY");
 const tomorrowApiKey = defineSecret("TOMORROW_API_KEY");
+const bhuvanApiToken = defineSecret("BHUVAN_API_TOKEN");
+const bhoonidhiToken = defineSecret("BHOONIDHI_TOKEN");
+const bhoonidhiUser = defineSecret("BHOONIDHI_USER");
+const bhoonidhiPassword = defineSecret("BHOONIDHI_PASSWORD");
+const imdApiKey = defineSecret("IMD_API_KEY");
+const dataGovInApiKey = defineSecret("DATA_GOV_IN_API_KEY");
+
+function indiaSecretsFromEnv() {
+  return {
+    bhuvanToken: bhuvanApiToken.value(),
+    bhoonidhiToken: bhoonidhiToken.value(),
+    bhoonidhiUser: bhoonidhiUser.value(),
+    bhoonidhiPass: bhoonidhiPassword.value(),
+    imdKey: imdApiKey.value(),
+    dataGovKey: dataGovInApiKey.value(),
+  };
+}
 
 // ---------- helpers ----------
 
@@ -1422,6 +1440,70 @@ exports.cmrSearch = onRequest(
     } catch (err) {
       if (err.status === 401) return jsonRes(res, 401, { error: "Unauthenticated" });
       jsonRes(res, 500, { error: err.message });
+    }
+  }
+);
+
+// ---------- Function: indiaLayersStatus ----------
+exports.indiaLayersStatus = onRequest(
+  {
+    secrets: [bhuvanApiToken, bhoonidhiToken, bhoonidhiUser, bhoonidhiPassword, imdApiKey, dataGovInApiKey],
+    cors: true,
+    invoker: "public",
+  },
+  (req, res) => {
+    jsonRes(res, 200, indiaStatus(indiaSecretsFromEnv()));
+  }
+);
+
+// ---------- Function: fieldIndiaPack (Bhuvan / Bhoonidhi / IMD / Agmarknet) ----------
+exports.fieldIndiaPack = onRequest(
+  {
+    secrets: [bhuvanApiToken, bhoonidhiToken, bhoonidhiUser, bhoonidhiPassword, imdApiKey, dataGovInApiKey],
+    cors: true,
+    timeoutSeconds: 90,
+  },
+  async (req, res) => {
+    try {
+      await verifyIdToken(req);
+      const lat = Number(req.query.lat ?? req.body?.lat);
+      const lon = Number(req.query.lon ?? req.body?.lon);
+      const fieldId = String(req.query.fieldId || req.body?.fieldId || "");
+      const cropType = String(req.query.cropType || req.body?.cropType || "");
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        return jsonRes(res, 400, { error: "lat and lon required" });
+      }
+      // India bbox soft-check (still allow nearby border fields)
+      if (lat < 5 || lat > 38 || lon < 66 || lon > 98) {
+        return jsonRes(res, 200, {
+          ok: false,
+          region: "OUTSIDE_IN",
+          error: "India localization pack applies to fields in / near India.",
+          lat,
+          lon,
+        });
+      }
+
+      const rlKey = `india:${fieldId || `${lat.toFixed(2)},${lon.toFixed(2)}`}`;
+      const last = rateMap.get(rlKey) || 0;
+      const now = Date.now();
+      const INDIA_RATE_MS = 2 * 60 * 1000;
+      if (now - last < INDIA_RATE_MS) {
+        const wait = Math.ceil((INDIA_RATE_MS - now + last) / 1000);
+        return jsonRes(res, 429, {
+          ok: false,
+          error: `India pack rate limit — try again in ~${wait}s`,
+          retryAfterSec: wait,
+        });
+      }
+      rateMap.set(rlKey, now);
+
+      const pack = await buildIndiaFieldPack(lat, lon, indiaSecretsFromEnv(), { cropType });
+      jsonRes(res, 200, { ...pack, fieldId: fieldId || null });
+    } catch (err) {
+      if (err.status === 401) return jsonRes(res, 401, { error: "Unauthenticated" });
+      console.error("fieldIndiaPack error", err);
+      jsonRes(res, 502, { ok: false, error: err.message || "India pack failed" });
     }
   }
 );

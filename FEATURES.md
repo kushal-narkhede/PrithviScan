@@ -34,6 +34,7 @@ Product sequencing follows the **URTC waves** in [`docs/ROADMAP.md`](docs/ROADMA
 | Price calculator (MSP / fertilizer / CHC) | Live | `/prices` |
 | Info hub (fertilizers, soils, crops, machines, maintenance) | Live | `/info` |
 | Country packs IN / US / BR / KE / NG / ID | Live | `js/region.js` |
+| **India layers** (Bhuvan / Bhoonidhi / IMD / Agmarknet) | Live* | Field → India layers · keys in `docs/INDIA_DATA.md` |
 | Organizations (owner adds members) | Live | `/org` |
 | Collaborate + community posts | Live | `/collab` |
 | AI Agronomist (RAG over guides + info hub) | Live (client) | Bottom-right on **all pages** |

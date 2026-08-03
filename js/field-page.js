@@ -11,6 +11,7 @@ import {
   callSnapFieldBoundary,
   callFieldTomorrowWeather,
 } from "./api.js?v=tmrw2";
+import { loadIndiaPackForField, attachBhuvanOverlays, renderIndiaPack } from "./india-layers.js?v=india1";
 import {
   healthFromNdvi,
   saveHealthSnapshot,
@@ -162,11 +163,14 @@ const TOOL_IDS = [
   "crop",
   "inputs",
   "markets",
+  "india",
   "tools",
   "location",
   "drone",
 ];
 let latestHealth = null;
+let latestIndiaPack = null;
+let bhuvanOverlaysAttached = false;
 let healthSnapshots = [];
 let healthMapApi = null;
 let latestUrtc = null;
@@ -185,9 +189,90 @@ function ensureDetailMap() {
       pickable: false,
       detailZoom: 14,
     });
+    maybeAttachBhuvan(detailMapApi?.map);
   } catch {
     detailMapApi = null;
   }
+}
+
+function maybeAttachBhuvan(map) {
+  if (!map || bhuvanOverlaysAttached) return;
+  const region = currentField ? fieldRegion(currentField) : detectRegion(pendingMapField?.lat, pendingMapField?.lon);
+  if (region !== "IN") return;
+  attachBhuvanOverlays(map, latestIndiaPack?.wms || undefined);
+  bhuvanOverlaysAttached = true;
+}
+
+async function loadIndiaLocalization({ force = false } = {}) {
+  if (!currentField) return null;
+  const host = document.getElementById("indiaPackHost");
+  const status = document.getElementById("indiaPackStatus");
+  const region = fieldRegion(currentField);
+  if (region !== "IN") {
+    if (host) {
+      host.innerHTML = `<p class="app-muted">India layers appear for fields detected in India.</p>`;
+    }
+    return null;
+  }
+  if (latestIndiaPack && !force) {
+    renderIndiaPack(host, latestIndiaPack);
+    paintLiveMandi(latestIndiaPack);
+    return latestIndiaPack;
+  }
+  if (status) status.textContent = "Loading Bhuvan / Bhoonidhi / IMD / Agmarknet…";
+  window.PsLoader?.syncFromStatus?.("Loading India layers…");
+  try {
+    const pack = await loadIndiaPackForField({
+      lat: Number(currentField.lat),
+      lon: Number(currentField.lon),
+      fieldId: currentField.id,
+      cropType: currentField.cropType || "",
+      host,
+    });
+    latestIndiaPack = pack;
+    paintLiveMandi(pack);
+    maybeAttachBhuvan(detailMapApi?.map);
+    if (status) {
+      const live = Object.values(pack?.providers || {}).filter((p) => p?.configured).length;
+      status.textContent = pack?.ok
+        ? `India pack ready · ${live}/4 provider keys configured.`
+        : pack?.error || "India pack unavailable.";
+      status.className = pack?.ok ? "app-status is-ok" : "app-status is-error";
+    }
+    window.PsLoader?.syncFromStatus?.(status?.textContent || "", pack?.ok ? "ok" : "error");
+    return pack;
+  } catch (err) {
+    if (status) {
+      status.textContent = err?.message || "Could not load India layers.";
+      status.className = "app-status is-error";
+    }
+    window.PsLoader?.syncFromStatus?.(status?.textContent || "", "error");
+    return null;
+  }
+}
+
+function paintLiveMandi(pack) {
+  const box = document.getElementById("liveMandiBox");
+  const list = document.getElementById("liveMandiList");
+  if (!box || !list) return;
+  const rows = pack?.agmarknet?.rows || [];
+  if (!rows.length) {
+    box.hidden = true;
+    list.innerHTML = "";
+    return;
+  }
+  box.hidden = false;
+  list.innerHTML = rows
+    .slice(0, 8)
+    .map(
+      (r) => `<div class="india-mandi-row">
+        <strong>${esc(r.market || "Mandi")}</strong>
+        <span>${esc(r.commodity || "")}</span>
+        <span>Modal <strong>${r.modal != null ? `₹${r.modal}` : "—"}</strong>/qtl</span>
+        <span class="app-muted">${esc(r.arrivalDate || "")}</span>
+      </div>`
+    )
+    .join("");
 }
 
 function ensureRiskMap() {
@@ -594,6 +679,10 @@ function showFieldTool(toolId, { updateHash = true } = {}) {
     });
   }
 
+  if (next === "india" || next === "markets") {
+    loadIndiaLocalization({ force: next === "india" && !latestIndiaPack });
+  }
+
   if (next) {
     const panel = document.querySelector(`[data-tool-panel="${next}"]`);
     panel?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -621,6 +710,9 @@ function bindFieldTools() {
   });
 
   document.getElementById("loadHealthBtn")?.addEventListener("click", () => loadFieldHealth({ force: true }));
+  document.getElementById("refreshIndiaPackBtn")?.addEventListener("click", () =>
+    loadIndiaLocalization({ force: true })
+  );
   document.getElementById("exportRxCsvBtn")?.addEventListener("click", () => exportPrescription("csv"));
   document.getElementById("exportRxGeoBtn")?.addEventListener("click", () => exportPrescription("geojson"));
   document.getElementById("healthScrubRange")?.addEventListener("input", (e) => {

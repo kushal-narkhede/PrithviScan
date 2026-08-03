@@ -13,8 +13,8 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-    <link rel="stylesheet" href="styles.css?v=fieldlayout3" />
-    <link rel="stylesheet" href="app.css?v=fieldlayout3" />
+    <link rel="stylesheet" href="styles.css?v=india1" />
+    <link rel="stylesheet" href="app.css?v=india1" />
     <link rel="stylesheet" href="ui-enhance.css?v=ux2" />
   </head>
   <body class="app-body">
@@ -182,6 +182,10 @@
             <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="markets" aria-controls="nearbyMarketsPanel">
               <span class="field-tool-title">Markets</span>
               <span class="field-tool-desc">Nearby places to sell</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="india" aria-controls="indiaPackPanel">
+              <span class="field-tool-title">India layers</span>
+              <span class="field-tool-desc">Bhuvan · Bhoonidhi · IMD · mandi</span>
             </button>
             <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="tools" aria-controls="toolsPanel">
               <span class="field-tool-title">What-if &amp; feedback</span>
@@ -441,6 +445,23 @@
           <p class="app-muted">Nearby yards for this field’s country — India APMC/mandis or US elevators/wholesale. Confirm today’s rates and transport before selling.</p>
           <div class="market-list" id="marketList"></div>
           <p class="app-muted" id="marketMspNote"></p>
+          <div id="liveMandiBox" class="urtc-card" hidden>
+            <h3>Live Agmarknet (today)</h3>
+            <div id="liveMandiList"></div>
+          </div>
+        </section>
+
+        <section class="app-panel field-tool-panel" id="indiaPackPanel" data-tool-panel="india" hidden>
+          <div class="app-panel-head">
+            <h2>India localization</h2>
+            <button type="button" class="app-btn-ghost" id="refreshIndiaPackBtn">↻ Refresh India layers</button>
+          </div>
+          <p class="app-muted">
+            Bhuvan place &amp; LULC, Bhoonidhi/ISRO scenes, IMD advisories, Agmarknet mandi prices, agro-climatic soil context, and scheme tips.
+            NASA + Tomorrow.io remain the global weather/EO stack.
+          </p>
+          <p id="indiaPackStatus" class="app-status" role="status" aria-live="polite"></p>
+          <div id="indiaPackHost"></div>
         </section>
 
         <div class="field-tool-panel" id="toolsPanel" data-tool-panel="tools" hidden>
@@ -626,7 +647,7 @@
     <script src="vendor/leaflet/leaflet.js"></script>
     <script type="module" src="js/tenant.js"></script>
     <script type="module" src="js/nav-auth.js?v=ai1"></script>
-    <script type="module" src="js/field-page.js?v=tmrw2"></script>
+    <script type="module" src="js/field-page.js?v=india1"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("sw.js").catch(() => {});

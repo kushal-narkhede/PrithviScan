@@ -2132,6 +2132,84 @@ html.a11y-simple h2 {
   to { opacity: 1; transform: none; }
 }
 
+/* ---- India localization pack ---- */
+.india-provider-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.85rem;
+}
+
+.sat-chip.is-ok {
+  background: #e8f5ee;
+  color: #1f6b45;
+  border: 1px solid rgba(31, 107, 69, 0.25);
+}
+
+.sat-chip.is-warn {
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid rgba(154, 52, 18, 0.22);
+}
+
+.india-pack .urtc-card {
+  margin-bottom: 0.75rem;
+}
+
+.india-json {
+  margin: 0;
+  max-height: 14rem;
+  overflow: auto;
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  background: #f4faf6;
+  border: 1px solid rgba(16, 37, 26, 0.08);
+  font-size: 0.78rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.india-table-wrap {
+  overflow-x: auto;
+}
+
+.india-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.india-table th,
+.india-table td {
+  text-align: left;
+  padding: 0.55rem 0.45rem;
+  border-bottom: 1px solid rgba(16, 37, 26, 0.08);
+  vertical-align: top;
+}
+
+.india-scene-list,
+.india-scheme-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.india-mandi-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr auto auto;
+  gap: 0.45rem 0.75rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid rgba(16, 37, 26, 0.07);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 720px) {
+  .india-mandi-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 860px) {
   .app-grid { grid-template-columns: 1fr; }
