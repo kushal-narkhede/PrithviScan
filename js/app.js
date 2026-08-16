@@ -57,7 +57,6 @@ function setStatus(message, type = "") {
   if (!statusEl) return;
   statusEl.textContent = message || "";
   statusEl.className = `app-status${type ? ` is-${type}` : ""}`;
-  window.PsLoader?.syncFromStatus?.(message || "", type);
   // Toast only for short success confirmations (skip loading / progress lines)
   if (
     type === "ok" &&

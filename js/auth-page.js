@@ -32,7 +32,6 @@ function setStatus(message, type = "") {
   if (!statusEl) return;
   statusEl.textContent = message || "";
   statusEl.className = `auth-msg${type ? ` is-${type}` : ""}`;
-  window.PsLoader?.syncFromStatus?.(message || "", type);
 }
 
 function syncOrgNameVisibility() {

@@ -68,7 +68,6 @@ function setStatus(message, type = "") {
   if (!el) return;
   el.textContent = message || "";
   el.className = `auth-msg${type ? ` is-${type}` : ""}`;
-  window.PsLoader?.syncFromStatus?.(message || "", type);
 }
 
 function fillProfile(user) {

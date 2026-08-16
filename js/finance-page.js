@@ -13,7 +13,6 @@ function setStatus(msg, type = "") {
   if (!statusEl) return;
   statusEl.textContent = msg || "";
   statusEl.className = `app-status${type ? ` is-${type}` : ""}`;
-  window.PsLoader?.syncFromStatus?.(msg || "", type);
 }
 
 function emi(principal, annualPct, years) {

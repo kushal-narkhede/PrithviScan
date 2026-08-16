@@ -42,14 +42,12 @@ function setInviteStatus(msg, type = "") {
   if (!inviteStatus) return;
   inviteStatus.textContent = msg || "";
   inviteStatus.className = `org-status${type ? ` is-${type}` : ""}`;
-  window.PsLoader?.syncFromStatus?.(msg || "", type);
 }
 
 function setCreateStatus(msg, type = "") {
   if (!createStatus) return;
   createStatus.textContent = msg || "";
   createStatus.className = `org-status${type ? ` is-${type}` : ""}`;
-  window.PsLoader?.syncFromStatus?.(msg || "", type);
 }
 
 async function refresh() {

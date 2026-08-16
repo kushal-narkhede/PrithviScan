@@ -220,7 +220,6 @@ async function loadIndiaLocalization({ force = false } = {}) {
     return latestIndiaPack;
   }
   if (status) status.textContent = "Loading Bhuvan / Bhoonidhi / IMD / Agmarknet…";
-  window.PsLoader?.syncFromStatus?.("Loading India layers…");
   try {
     const pack = await loadIndiaPackForField({
       lat: Number(currentField.lat),
@@ -239,14 +238,12 @@ async function loadIndiaLocalization({ force = false } = {}) {
         : pack?.error || "India pack unavailable.";
       status.className = pack?.ok ? "app-status is-ok" : "app-status is-error";
     }
-    window.PsLoader?.syncFromStatus?.(status?.textContent || "", pack?.ok ? "ok" : "error");
     return pack;
   } catch (err) {
     if (status) {
       status.textContent = err?.message || "Could not load India layers.";
       status.className = "app-status is-error";
     }
-    window.PsLoader?.syncFromStatus?.(status?.textContent || "", "error");
     return null;
   }
 }
@@ -873,7 +870,6 @@ function setStatus(msg, type = "") {
   if (!statusEl) return;
   statusEl.textContent = msg || "";
   statusEl.className = `app-status${type ? ` is-${type}` : ""}`;
-  window.PsLoader?.syncFromStatus?.(msg || "", type);
   if (
     type === "ok" &&
     msg &&
