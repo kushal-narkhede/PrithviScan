@@ -1,6 +1,6 @@
 import { watchAuth, isFirebaseConfigured } from "./auth.js";
 import { listFields, createField, createFieldsBulk, getField } from "./fields.js?v=region1";
-import { createFieldMap, useBrowserLocation } from "./map.js?v=region1";
+import { createFieldMap, useBrowserLocation } from "./map.js?v=india1";
 import { detectRegion, regionBadgeLabel } from "./region.js";
 import { callGetAlerts, callMarkAlertRead, callClassifyLocation, callProcessAlertOutbox } from "./api.js";
 import { loadLastSession, saveLastSession } from "./session.js";

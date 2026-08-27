@@ -179,7 +179,7 @@ export function preferredMapView(lat, lon) {
     const region = detectRegion(lat, lon);
     return { center: [lat, lon], zoom: 14, region };
   }
-  return { center: REGIONS.IN.center, zoom: 3, region: null, fitDual: true };
+  return { center: REGIONS.IN.center, zoom: REGIONS.IN.zoom, region: "IN", fitDual: false };
 }
 
 export const COUNTRY_PACK_IDS = Object.keys(REGIONS);

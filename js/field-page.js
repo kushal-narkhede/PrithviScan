@@ -2,7 +2,7 @@ import { watchAuth, isFirebaseConfigured } from "./auth.js";
 import { getField, deleteField, updateField } from "./fields.js?v=region1";
 import { getDb } from "./firebase-db.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
-import { createFieldMap } from "./map.js?v=region1";
+import { createFieldMap } from "./map.js?v=india1";
 import {
   callFuseInsight,
   callFieldTrends,

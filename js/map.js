@@ -3,13 +3,9 @@
  * Esri World Imagery — same provider family as classifyLocation imagery.
  */
 
-/** Dual-country default: India + USA both in view until user zooms/picks */
-const DEFAULT_CENTER = [28, -20];
-const DEFAULT_ZOOM = 3;
-const DUAL_BOUNDS = [
-  [8, -125],
-  [49, 97],
-];
+/** Default view: India until user picks a field or uses My location */
+const DEFAULT_CENTER = [20.5937, 78.9629];
+const DEFAULT_ZOOM = 5;
 
 /** Primary + fallback tile endpoints (satellite first, OSM last) */
 const SAT_LAYERS = [
@@ -112,9 +108,15 @@ export function createFieldMap(elementId, options = {}) {
     worldCopyJump: true,
   }).setView(center, zoom);
 
-  if (options.fitDual !== false && options.lat == null && options.lon == null && !options.center) {
+  if (options.fitDual === true && options.lat == null && options.lon == null && !options.center) {
     try {
-      map.fitBounds(DUAL_BOUNDS, { padding: [24, 24], maxZoom: 4 });
+      map.fitBounds(
+        [
+          [6.5, 68.0],
+          [37.6, 97.5],
+        ],
+        { padding: [24, 24], maxZoom: 6 }
+      );
     } catch {
       /* keep setView */
     }
@@ -227,7 +229,11 @@ export function createFieldMap(elementId, options = {}) {
   if (options.lat != null && options.lon != null) {
     setMarker(options.lat, options.lon, { notify: false, state: "ok" });
     map.setView([options.lat, options.lon], options.detailZoom ?? 16);
-  } else if (options.pickable !== false && options.geolocate !== false && navigator.geolocation) {
+  } else if (
+    options.pickable !== false &&
+    options.geolocate === true &&
+    navigator.geolocation
+  ) {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         if (marker) return;
