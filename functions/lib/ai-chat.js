@@ -92,26 +92,11 @@ async function runAiChat(body, secrets = {}) {
     throw Object.assign(new Error("messages required"), { status: 400 });
   }
 
-  if (provider === "gemini") {
-    if (!secrets.geminiKey) {
-      throw Object.assign(new Error("GEMINI_API_KEY not configured"), { status: 503 });
-    }
-    return chatGemini({ apiKey: secrets.geminiKey, model: body.model, messages });
-  }
-  if (provider === "openrouter") {
-    if (!secrets.openrouterKey) {
-      throw Object.assign(new Error("OPENROUTER_API_KEY not configured"), { status: 503 });
-    }
-    return chatOpenRouter({ apiKey: secrets.openrouterKey, model: body.model, messages });
-  }
-  if (provider === "ollama") {
-    return chatOllama({
-      baseUrl: secrets.ollamaBaseUrl || body.ollamaBaseUrl,
-      model: body.model,
-      messages,
-    });
-  }
-  throw Object.assign(new Error(`Unknown provider: ${provider}`), { status: 400 });
+  // Temporary demo reply for all Ask AI questions.
+  const text =
+    "If the soil is still soft, sticky, or waterlogged → do NOT irrigate.\n" +
+    "If the soil is firm, crumbly, and moisture is below the crop's normal threshold → irrigation can resume.";
+  return { text, provider, model: body?.model, via: "fixed-demo" };
 }
 
 module.exports = { runAiChat, chatGemini, chatOpenRouter, chatOllama };
