@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>My Profile — PrithviScan</title>
+    <meta name="description" content="Manage your PrithviScan account." />
+    <link rel="icon" type="image/png" href="assets/favicon.png?v=icon2" />
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=icon2" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=icon2" />
+    <link rel="stylesheet" href="auth.css?v=icon2" />
+      <link rel="stylesheet" href="ui-enhance.css?v=nolottie1" />
+  </head>
+  <body class="auth-page profile-page">
+    <div class="auth-bg" aria-hidden="true"></div>
+
+    <header class="auth-top">
+      <a class="auth-logo" href="index.html" aria-label="PrithviScan home">
+        <img class="auth-logo-mark" src="assets/logo-mark.png?v=icon2" alt="" width="36" height="36" />
+        <span>
+          <span class="auth-logo-prithvi">Prithvi</span><span class="auth-logo-scan">Scan</span>
+        </span>
+      </a>
+      <nav class="profile-top-nav" aria-label="Quick links">
+        <a class="auth-back" href="app.html">Fields</a>
+        <a class="auth-back" href="social.html">Social</a>
+        <a class="auth-back" href="index.html">Home</a>
+      </nav>
+    </header>
+
+    <main class="profile-wrap">
+      <header class="profile-page-head">
+        <div>
+          <p class="auth-kicker">Account</p>
+          <h1 id="profileTitle" class="auth-heading">My Profile</h1>
+          <p class="auth-sub">Account, alerts, language, and your data — side by side.</p>
+        </div>
+        <p id="profileStatus" class="auth-msg profile-status-inline" role="status" aria-live="polite"></p>
+      </header>
+
+      <div class="profile-layout" id="profilePrefs">
+        <!-- Left: identity -->
+        <aside class="profile-card profile-identity" aria-labelledby="profileName">
+          <div class="profile-avatar" id="profileAvatar" aria-hidden="true">U</div>
+          <h2 class="profile-name" id="profileName">Loading…</h2>
+          <p class="profile-email" id="profileEmail"></p>
+
+          <dl class="profile-meta">
+            <div>
+              <dt>Signed in with</dt>
+              <dd id="profileProvider">—</dd>
+            </div>
+            <div>
+              <dt>Member since</dt>
+              <dd id="profileCreated">—</dd>
+            </div>
+          </dl>
+
+          <div class="profile-actions">
+            <a class="auth-primary profile-home" href="app.html">Open my fields</a>
+            <a class="auth-google profile-home" href="index.html">Go to homepage</a>
+            <button id="signOutBtn" class="profile-signout" type="button">Sign out</button>
+          </div>
+        </aside>
+
+        <!-- Right: settings grid -->
+        <div class="profile-settings">
+          <section class="profile-card">
+            <h3 class="profile-prefs-title" id="settings">Accessibility</h3>
+            <label class="check-row"><input type="checkbox" id="prefLargeText" /> Larger text</label>
+            <label class="check-row"><input type="checkbox" id="prefContrast" /> High contrast</label>
+            <label class="check-row"><input type="checkbox" id="prefSimple" /> Simplified mode (fewer words)</label>
+          </section>
+
+          <section class="profile-card">
+            <h3 class="profile-prefs-title">Language &amp; sharing</h3>
+            <label class="profile-field">
+              Language
+              <select id="prefLocale">
+                <option value="en">English</option>
+                <option value="hi">हिन्दी (Hindi)</option>
+              </select>
+            </label>
+            <label class="check-row">
+              <input type="checkbox" id="prefAggregateOptIn" />
+              Opt in to anonymized aggregated insights
+            </label>
+            <p class="profile-prefs-note">
+              <a href="privacy.html">Data ownership</a> · <a href="partners.html">Local partners</a>
+            </p>
+          </section>
+
+          <section class="profile-card profile-card-wide">
+            <h3 class="profile-prefs-title">Alerts</h3>
+            <div class="profile-alert-grid">
+              <label class="check-row"><input type="checkbox" id="prefCriticalOnly" /> Critical alerts only</label>
+              <label class="check-row"><input type="checkbox" id="prefQuietHours" /> Quiet hours (21:00–07:00)</label>
+              <label class="check-row"><input type="checkbox" id="prefPush" checked /> Push notifications</label>
+              <label class="check-row"><input type="checkbox" id="prefEmailAlert" checked /> Email delivery</label>
+              <label class="check-row"><input type="checkbox" id="prefSms" /> SMS (needs phone)</label>
+              <label class="check-row"><input type="checkbox" id="prefWhatsapp" /> WhatsApp (needs phone)</label>
+            </div>
+            <label class="profile-field">
+              Alert phone (+91…)
+              <input id="prefAlertPhone" type="tel" placeholder="+9198XXXXXXXX" />
+            </label>
+            <div class="profile-btn-row">
+              <button type="button" class="auth-google" id="prefSnoozeBtn">Snooze 6 hours</button>
+              <button type="button" class="auth-primary" id="prefSyncAlertsBtn">Save alert prefs</button>
+            </div>
+          </section>
+
+          <section class="profile-card profile-card-wide">
+            <h3 class="profile-prefs-title">Privacy &amp; consent dashboard</h3>
+            <p class="profile-prefs-note">
+              Export a copy of your fields and alerts, or delete your personal account data.
+              Organization-owned fields stay with the org.
+            </p>
+            <div class="profile-alert-grid">
+              <label class="check-row"><input type="checkbox" id="prefConsentAnalytics" /> Allow anonymized analytics</label>
+              <label class="check-row"><input type="checkbox" id="prefConsentTraining" /> Opt-in model training on my fields</label>
+              <label class="check-row"><input type="checkbox" id="prefAnonymizeFields" /> Anonymize field names in exports</label>
+            </div>
+            <div class="profile-btn-row">
+              <button type="button" class="auth-google" id="savePrivacyBtn">Save privacy prefs</button>
+              <button type="button" class="auth-google" id="exportDataBtn">Download my data (JSON)</button>
+              <button type="button" class="auth-google" id="exportLogBtn">Download export log</button>
+              <button type="button" class="profile-signout" id="deleteAccountBtn">Delete my account</button>
+            </div>
+            <p class="profile-prefs-note" id="privacyLogNote">Export events are stored locally in this browser.</p>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <script type="module" src="js/a11y.js"></script>
+    <script type="module" src="js/tenant.js"></script>
+    <script type="module" src="js/nav-auth.js?v=social1"></script>
+    <script type="module" src="js/profile-page.js?v=profile2"></script>
+      <script type="module" src="js/ui-enhance.js?v=nolottie1"></script>
+  </body>
+</html>

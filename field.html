@@ -1,0 +1,657 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Field — PrithviScan</title>
+    <link rel="icon" type="image/png" href="assets/favicon.png?v=icon2" />
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=icon2" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
+    <link rel="stylesheet" href="styles.css?v=icon2" />
+    <link rel="stylesheet" href="app.css?v=icon2" />
+    <link rel="stylesheet" href="ui-enhance.css?v=nolottie1" />
+  </head>
+  <body class="app-body">
+    <header class="app-top">
+      <div class="app-top-inner">
+        <a class="brand" href="index.html" aria-label="PrithviScan home">
+          <img class="brand-mark" src="assets/logo-mark.png?v=icon2" alt="" width="40" height="40" />
+          <span class="brand-wordmark">
+            <span class="brand-prithvi">Prithvi</span><span class="brand-scan">Scan</span>
+          </span>
+        </a>
+        <nav class="app-nav" aria-label="App">
+          <a href="index.html">Home</a>
+          <a href="app.html">Fields</a>
+          <a href="prices.html">Prices</a>
+          <a href="finance.html">Finance</a>
+          <a href="social.html">Social</a>
+          <a href="info.html">Info</a>
+          <span data-auth-slot></span>
+        </nav>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <div class="app-shell field-detail-shell">
+        <div class="field-top-row">
+          <a class="app-back" href="app.html">← All fields</a>
+          <button type="button" class="app-btn-danger" id="deleteFieldBtn">Delete field</button>
+        </div>
+
+        <header class="app-page-head">
+          <div>
+            <p class="app-kicker">Field detail</p>
+            <h1 id="fieldTitle">Loading…</h1>
+            <p class="app-lead" id="fieldMeta"></p>
+          </div>
+          <div class="field-actions-row">
+            <button type="button" class="app-btn-ghost" id="voiceAssistBtn" title="Voice commands">Voice</button>
+            <button type="button" class="app-btn-ghost" id="printReportBtn">Print / save report</button>
+            <button type="button" class="app-btn-primary" id="refreshBtn">↻ Refresh insights</button>
+          </div>
+        </header>
+
+        <p id="fieldStatus" class="app-status" role="status" aria-live="polite"></p>
+        <div class="safety-banner" id="safetyBanner" hidden></div>
+
+        <!-- Stats row above INFO + tools -->
+        <div class="field-stats-bar">
+          <div class="metrics-grid" id="metricsGrid" hidden>
+            <div class="metric-card">
+              <span class="metric-label">Rainfall (7d)</span>
+              <span class="metric-value" id="mRain">—</span>
+              <span class="metric-unit">mm</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Avg Temp</span>
+              <span class="metric-value" id="mTemp">—</span>
+              <span class="metric-unit">°C</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Max Temp</span>
+              <span class="metric-value" id="mTempMax">—</span>
+              <span class="metric-unit">°C</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Humidity</span>
+              <span class="metric-value" id="mHumidity">—</span>
+              <span class="metric-unit">%</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">ET demand (7d)</span>
+              <span class="metric-value" id="mET">—</span>
+              <span class="metric-unit">mm</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Solar radiation</span>
+              <span class="metric-value" id="mSolar">—</span>
+              <span class="metric-unit">kWh/m²/d</span>
+            </div>
+          </div>
+          <div class="satellite-row" id="satelliteRow" hidden>
+            <span class="sat-label">Satellite data</span>
+            <span class="sat-chip" id="satSMAP">SMAP —</span>
+            <span class="sat-chip" id="satMODIS">MODIS —</span>
+            <span class="sat-note" id="satNote"></span>
+          </div>
+        </div>
+
+        <div class="field-detail-layout">
+          <!-- Left: expanded INFO -->
+          <aside class="field-detail-sidebar" aria-label="Field summary">
+        <div class="insight-card-wrap" id="insightWrap">
+          <div class="insight-card insight-info" id="insightCard">
+            <p class="insight-level" id="insightLevel">—</p>
+            <h2 class="insight-title" id="insightTitle">Loading insight…</h2>
+            <p class="insight-action-line" id="insightAction" hidden></p>
+            <p class="insight-message" id="insightMessage"></p>
+            <div class="insight-confidence" id="insightConfidenceWrap" hidden>
+              <div class="insight-confidence-head">
+                <span>Confidence</span>
+                <strong id="insightConfidenceLabel">—</strong>
+              </div>
+              <div class="insight-confidence-bar" aria-hidden="true">
+                <span id="insightConfidenceFill"></span>
+              </div>
+            </div>
+            <p class="insight-why" id="insightWhy" hidden></p>
+            <ul class="insight-factors" id="insightFactors"></ul>
+            <div class="insight-evidence" id="insightEvidence" hidden></div>
+            <div class="insight-rules" id="insightRules" hidden></div>
+            <label class="sensitivity-row" id="sensitivityRow">
+              <span>Rule sensitivity</span>
+              <input type="range" id="sensitivitySlider" min="0.7" max="1.3" step="0.05" value="1" />
+              <strong id="sensitivityValue">1.0×</strong>
+            </label>
+            <p class="insight-provenance" id="insightProvenance" hidden></p>
+            <p class="insight-age" id="insightAge"></p>
+          </div>
+        </div>
+          </aside>
+
+          <!-- Right: tools + panels -->
+          <div class="field-detail-main">
+        <!-- Tool buttons: one job per panel -->
+        <nav class="field-tools" id="fieldTools" aria-label="Field tools">
+          <p class="field-tools-label">Explore this field</p>
+          <div class="field-tools-grid" role="tablist">
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="health" aria-controls="healthPanel" data-i18n-title="tool.health">
+              <span class="field-tool-title" data-i18n="tool.health">Field health</span>
+              <span class="field-tool-desc" data-i18n="tool.health.desc">NDVI stress map</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="satellite" aria-controls="satArchivePanel">
+              <span class="field-tool-title" data-i18n="tool.satellite">Satellite imagery</span>
+              <span class="field-tool-desc" data-i18n="tool.satellite.desc">MODIS, SMAP &amp; HLS scenes</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="weather" aria-controls="trendsPanel">
+              <span class="field-tool-title" data-i18n="tool.weather">Weather</span>
+              <span class="field-tool-desc" data-i18n="tool.weather.desc">Rain, temp &amp; outlook</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="soil" aria-controls="soilPanel">
+              <span class="field-tool-title">Soil intelligence</span>
+              <span class="field-tool-desc">Moisture 7-day · NPK · carbon</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="risks" aria-controls="risksPanel">
+              <span class="field-tool-title">Pest &amp; stress risks</span>
+              <span class="field-tool-desc">Disease · heat · water · pest</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="irrigate" aria-controls="irrigatePanel">
+              <span class="field-tool-title">Irrigation planner</span>
+              <span class="field-tool-desc">When · how much · cost</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="advisor" aria-controls="advisorPanel">
+              <span class="field-tool-title">Yield &amp; advisor</span>
+              <span class="field-tool-desc">Yield · fert · crop pick</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="crop" aria-controls="cropGuidePanel">
+              <span class="field-tool-title">Crop &amp; harvest</span>
+              <span class="field-tool-desc">Season, ferts &amp; timing</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="inputs" aria-controls="fieldInputsPanel">
+              <span class="field-tool-title">Inputs log</span>
+              <span class="field-tool-desc">Fertilizers &amp; machines</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="markets" aria-controls="nearbyMarketsPanel">
+              <span class="field-tool-title">Markets</span>
+              <span class="field-tool-desc">Nearby places to sell</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="india" aria-controls="indiaPackPanel">
+              <span class="field-tool-title">India layers</span>
+              <span class="field-tool-desc">Bhuvan · Bhoonidhi · IMD · mandi</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="tools" aria-controls="toolsPanel">
+              <span class="field-tool-title">What-if &amp; feedback</span>
+              <span class="field-tool-desc">Scenarios &amp; ground truth</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="location" aria-controls="locationPanel">
+              <span class="field-tool-title">Location</span>
+              <span class="field-tool-desc">Map · boundary snap</span>
+            </button>
+            <button type="button" class="field-tool-btn" role="tab" aria-selected="false" data-tool="drone" aria-controls="dronePanel">
+              <span class="field-tool-title">Drone sim</span>
+              <span class="field-tool-desc">Upload · NDVI · pests</span>
+            </button>
+          </div>
+        </nav>
+
+        <p class="field-tool-hint" id="fieldToolHint" data-i18n="tools.hint">Pick a button above to open satellite imagery, weather, crop plan, and more. Your analysis stays here at the top.</p>
+
+        <!-- Field health NDVI -->
+        <section class="app-panel field-tool-panel" id="healthPanel" data-tool-panel="health" hidden>
+          <div class="app-panel-head">
+            <h2>Field health map</h2>
+            <button type="button" class="app-btn-ghost" id="loadHealthBtn">Refresh health</button>
+          </div>
+          <p class="app-muted">Vegetation index proxy from satellite RGB over this pin — green healthy, amber watch, red stress. Scrub past snapshots to spot change.</p>
+          <div class="health-card" id="healthCard">
+            <p class="outlook-kicker">Current index</p>
+            <h3 id="healthTitle">—</h3>
+            <p id="healthMessage"></p>
+            <div class="outlook-stats harvest-stats">
+              <div><span>NDVI proxy</span><strong id="healthNdvi">—</strong></div>
+              <div><span>EVI proxy</span><strong id="healthEvi">—</strong></div>
+              <div><span>Veg cover</span><strong id="healthVeg">—</strong></div>
+              <div><span>Source</span><strong id="healthSource">—</strong></div>
+            </div>
+            <div id="healthMap" class="field-map field-map-detail health-map" role="application" aria-label="Field health map"></div>
+            <p class="app-muted" id="healthChange"></p>
+            <div class="health-scrub" id="healthScrub" hidden>
+              <label>
+                Compare snapshots
+                <input type="range" id="healthScrubRange" min="0" max="1" step="1" value="0" />
+              </label>
+              <p id="healthScrubLabel"></p>
+            </div>
+            <div class="health-actions">
+              <button type="button" class="app-btn-primary" id="exportRxCsvBtn">Export prescription CSV</button>
+              <button type="button" class="app-btn-ghost" id="exportRxGeoBtn">Export GeoJSON</button>
+            </div>
+            <p class="app-muted" id="healthProvenance"></p>
+          </div>
+        </section>
+
+        <!-- Satellite archive: MODIS / SMAP / HLS browse + history -->
+        <section class="app-panel sat-archive-panel field-tool-panel" id="satArchivePanel" data-tool-panel="satellite" hidden>
+          <div class="app-panel-head">
+            <h2>Satellite imagery &amp; past scenes</h2>
+            <button type="button" class="app-btn-ghost" id="loadSatArchiveBtn">Load archive</button>
+          </div>
+          <p class="app-muted">
+            Multi-sensor archive: MODIS, SMAP, HLS Sentinel-2, HLS Landsat-9, and Sentinel-1 SAR (cloudy-region structure / moisture proxy).
+            Planet slots stay reserved until a free academic key is available.
+          </p>
+          <div class="fusion-strip" id="fusionStrip" aria-label="Fusion providers">
+            <span class="sat-chip">POWER weather</span>
+            <span class="sat-chip">MODIS</span>
+            <span class="sat-chip">SMAP</span>
+            <span class="sat-chip">Sentinel-2 HLS</span>
+            <span class="sat-chip">Landsat HLS</span>
+            <span class="sat-chip">Sentinel-1 SAR</span>
+            <span class="sat-chip sat-chip-muted">Planet (slot)</span>
+          </div>
+          <div class="sat-archive-controls">
+            <label>
+              Mission / product
+              <select id="satProductSelect">
+                <option value="modis_terra">MODIS Terra VI (MOD13Q1)</option>
+                <option value="modis_aqua">MODIS Aqua VI (MYD13Q1)</option>
+                <option value="smap">SMAP soil moisture</option>
+                <option value="hls">HLS Sentinel-2 (HLSS30)</option>
+                <option value="landsat">HLS Landsat (HLSL30)</option>
+                <option value="sar">Sentinel-1 SAR (GRD)</option>
+              </select>
+            </label>
+            <label>
+              Lookback
+              <select id="satDaysSelect">
+                <option value="30">Last 30 days</option>
+                <option value="90" selected>Last 90 days</option>
+                <option value="180">Last 180 days</option>
+                <option value="365">Last year</option>
+              </select>
+            </label>
+          </div>
+          <div class="sat-catalog" id="satCatalog" hidden></div>
+          <div class="sat-archive-layout">
+            <div class="sat-granule-list" id="satGranuleList" aria-label="Granule dates"></div>
+            <div class="sat-browse-pane">
+              <div class="sat-browse-empty" id="satBrowseEmpty">
+                Load the archive, then select a date to view satellite browse imagery.
+              </div>
+              <figure class="sat-browse-figure" id="satBrowseFigure" hidden>
+                <img id="satBrowseImg" alt="NASA satellite browse preview" />
+                <figcaption id="satBrowseCaption"></figcaption>
+                <p class="sat-browse-links" id="satBrowseLinks"></p>
+              </figure>
+            </div>
+          </div>
+          <p class="sat-archive-status" id="satArchiveStatus" role="status"></p>
+        </section>
+
+        <!-- Trends + forecast -->
+        <section class="app-panel trends-panel field-tool-panel" id="trendsPanel" data-tool-panel="weather" hidden>
+          <div class="app-panel-head">
+            <h2>Weather past → trend → next week</h2>
+            <div class="field-actions-row">
+              <button type="button" class="app-btn-ghost" id="loadTomorrowBtn">Refresh Tomorrow.io</button>
+              <button type="button" class="app-btn-ghost" id="loadTrendsBtn">Load NASA trends</button>
+            </div>
+          </div>
+          <p class="app-muted">
+            Hyperlocal forecast from Tomorrow.io (hourly, daily, spray/frost/heat advisories), plus NASA POWER history charts for this field.
+          </p>
+
+          <div id="tomorrowWeatherCard" class="tmrw-card" hidden></div>
+          <p id="tomorrowWeatherStatus" class="app-muted" role="status"></p>
+
+          <div class="outlook-card outlook-stable reveal-up" id="outlookCard" hidden>
+            <p class="outlook-kicker">Where this is heading (NASA POWER)</p>
+            <h3 id="outlookTitle">—</h3>
+            <p id="outlookMessage"></p>
+            <div class="outlook-stats">
+              <div><span>Predicted rain</span><strong id="predRain">—</strong></div>
+              <div><span>Predicted ET</span><strong id="predET">—</strong></div>
+            </div>
+          </div>
+
+          <div class="trend-explanations" id="trendExplanations"></div>
+
+          <div class="chart-block">
+            <div class="chart-legend">
+              <span class="leg past">Past rainfall</span>
+              <span class="leg future">Forecast</span>
+            </div>
+            <div class="chart-wrap" data-chart="rain">
+              <svg id="rainChart" class="trend-chart" viewBox="0 0 360 150" role="img" aria-label="Rainfall trend chart"></svg>
+              <div class="chart-tooltip" id="rainChartTip" hidden role="tooltip"></div>
+            </div>
+          </div>
+          <div class="chart-block">
+            <div class="chart-legend">
+              <span class="leg past">Past temperature</span>
+              <span class="leg future">Forecast</span>
+            </div>
+            <div class="chart-wrap" data-chart="temp">
+              <svg id="tempChart" class="trend-chart" viewBox="0 0 360 150" role="img" aria-label="Temperature trend chart"></svg>
+              <div class="chart-tooltip" id="tempChartTip" hidden role="tooltip"></div>
+            </div>
+          </div>
+
+          <div class="history-strip" id="historyStrip" hidden>
+            <h3>Recent field snapshots</h3>
+            <div class="history-track" id="historyTrack"></div>
+          </div>
+        </section>
+
+        <!-- Crop guide + harvest -->
+        <section class="app-panel crop-guide-panel field-tool-panel" id="cropGuidePanel" data-tool-panel="crop" hidden>
+          <div class="app-panel-head">
+            <h2>Crop guide &amp; harvest plan</h2>
+            <a class="app-btn-ghost" id="cropInfoLink" href="info.html" hidden>Full crop info</a>
+          </div>
+          <p class="app-muted">
+            Season, fertilizers, machines, and a harvest-date estimate for this field’s crop.
+            Set the sowing date to predict when harvest is due.
+          </p>
+
+          <form id="cropPlanForm" class="crop-plan-form">
+            <label>
+              Crop on this field
+              <input id="fieldCropInput" type="text" maxlength="60" list="cropGuideList" placeholder="e.g. Wheat, Paddy, Cotton" />
+              <datalist id="cropGuideList"></datalist>
+            </label>
+            <label>
+              Sowing date
+              <input id="fieldSownAt" type="date" />
+            </label>
+            <button type="submit" class="app-btn-primary">Save crop plan</button>
+          </form>
+
+          <div class="crop-guide-body" id="cropGuideBody">
+            <p class="app-muted" id="cropGuideEmpty">Add a crop name above to see season, fertilizers, and cultivation length.</p>
+          </div>
+
+          <div class="harvest-card" id="harvestCard" hidden>
+            <p class="outlook-kicker">Harvest prediction</p>
+            <h3 id="harvestTitle">—</h3>
+            <p id="harvestMessage"></p>
+            <div class="harvest-progress" aria-hidden="true">
+              <div class="harvest-progress-fill" id="harvestProgressFill"></div>
+            </div>
+            <div class="outlook-stats harvest-stats">
+              <div><span>Days since sown</span><strong id="harvestElapsed">—</strong></div>
+              <div><span>Expected harvest</span><strong id="harvestExpected">—</strong></div>
+              <div><span>Window</span><strong id="harvestWindow">—</strong></div>
+              <div><span>Stage</span><strong id="harvestStage">—</strong></div>
+            </div>
+            <p class="app-muted" id="harvestNote"></p>
+          </div>
+        </section>
+
+        <section class="app-panel field-tool-panel" id="fieldInputsPanel" data-tool-panel="inputs" hidden>
+          <div class="app-panel-head">
+            <h2>Fertilizers &amp; machines used</h2>
+            <a class="app-btn-ghost" href="prices.html">Price calculator</a>
+          </div>
+          <p class="app-muted">Log bags of fertilizer or machine hire on this field. Costs use notified / CHC reference rates.</p>
+          <form id="fieldInputForm" class="field-input-form">
+            <label>
+              Type
+              <select id="inputKind">
+                <option value="fertilizer">Fertilizer</option>
+                <option value="machine">Machine / hire</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <label id="inputItemLabel">
+              Item
+              <select id="inputItem"></select>
+            </label>
+            <label id="inputOtherNameLabel" hidden>
+              Name
+              <input id="inputOtherName" type="text" maxlength="80" placeholder="e.g. Neem cake" />
+            </label>
+            <label>
+              Quantity
+              <input id="inputQty" type="number" min="0.1" step="0.1" value="1" />
+            </label>
+            <label>
+              Date applied
+              <input id="inputAppliedAt" type="date" />
+            </label>
+            <label class="span-2">
+              Notes
+              <input id="inputNotes" type="text" maxlength="200" placeholder="Optional" />
+            </label>
+            <button type="submit" class="app-btn-primary">Add to field</button>
+          </form>
+          <ul class="usage-list" id="usageList"></ul>
+          <p class="app-muted" id="usageEmpty">No inputs logged yet.</p>
+          <p class="usage-total" id="usageTotal" hidden></p>
+        </section>
+
+        <section class="app-panel field-tool-panel" id="nearbyMarketsPanel" data-tool-panel="markets" hidden>
+          <div class="app-panel-head">
+            <h2>Nearby markets to sell</h2>
+          </div>
+          <p class="app-muted">Nearby yards for this field’s country — India APMC/mandis or US elevators/wholesale. Confirm today’s rates and transport before selling.</p>
+          <div class="market-list" id="marketList"></div>
+          <p class="app-muted" id="marketMspNote"></p>
+          <div id="liveMandiBox" class="urtc-card" hidden>
+            <h3>Live Agmarknet (today)</h3>
+            <div id="liveMandiList"></div>
+          </div>
+        </section>
+
+        <section class="app-panel field-tool-panel" id="indiaPackPanel" data-tool-panel="india" hidden>
+          <div class="app-panel-head">
+            <h2>India localization</h2>
+            <button type="button" class="app-btn-ghost" id="refreshIndiaPackBtn">↻ Refresh India layers</button>
+          </div>
+          <p class="app-muted">
+            Bhuvan place &amp; LULC, Bhoonidhi/ISRO scenes, IMD advisories, Agmarknet mandi prices, agro-climatic soil context, and scheme tips.
+            NASA + Tomorrow.io remain the global weather/EO stack.
+          </p>
+          <p id="indiaPackStatus" class="app-status" role="status" aria-live="polite"></p>
+          <div id="indiaPackHost"></div>
+        </section>
+
+        <div class="field-tool-panel" id="toolsPanel" data-tool-panel="tools" hidden>
+          <!-- What-if scenarios (3.5) -->
+          <section class="app-panel" id="scenarioPanel">
+            <div class="app-panel-head">
+              <h2>What-if scenarios</h2>
+            </div>
+            <p class="app-muted">Compare irrigate now vs later, and optional fertilizer — illustrative water, cost, and yield tradeoffs.</p>
+            <form id="scenarioForm" class="scenario-form">
+              <label>
+                Irrigation
+                <select id="scenarioIrrigate">
+                  <option value="none">No irrigation</option>
+                  <option value="now" selected>Irrigate now</option>
+                  <option value="later">Irrigate later</option>
+                </select>
+              </label>
+              <label>
+                Irrigation depth (mm)
+                <input id="scenarioMm" type="number" min="0" max="80" step="1" value="20" />
+              </label>
+              <label>
+                Fertilizer (kg/ha)
+                <input id="scenarioFert" type="number" min="0" max="300" step="5" value="0" />
+              </label>
+              <label>
+                Field size (ha)
+                <input id="scenarioHa" type="number" min="0.1" max="500" step="0.1" value="1" />
+              </label>
+              <button type="submit" class="app-btn-primary">Run scenario</button>
+            </form>
+            <div class="scenario-result" id="scenarioResult" hidden></div>
+          </section>
+
+          <!-- Ground-truth feedback (3.3) -->
+          <section class="app-panel" id="feedbackPanel">
+            <div class="app-panel-head">
+              <h2>Help improve recommendations</h2>
+            </div>
+            <p class="app-muted">Share soil moisture or yield observations. Used only to calibrate models for your region (with your consent).</p>
+            <form id="feedbackForm" class="feedback-form">
+              <label>
+                Soil moisture (%)
+                <input id="fbMoisture" type="number" min="0" max="100" step="1" placeholder="e.g. 28" />
+              </label>
+              <label>
+                Yield (kg/ha)
+                <input id="fbYield" type="number" min="0" step="10" placeholder="optional" />
+              </label>
+              <label>
+                Photo label (image GT)
+                <select id="fbPhotoKind">
+                  <option value="">No photo label</option>
+                  <option value="disease">Disease</option>
+                  <option value="deficiency">Nutrient deficiency</option>
+                  <option value="pest">Pest damage</option>
+                  <option value="healthy">Looks healthy</option>
+                </select>
+              </label>
+              <label class="app-btn-ghost bulk-upload">
+                Upload field photo
+                <input id="fbPhoto" type="file" accept="image/*" hidden />
+              </label>
+              <p class="app-muted" id="fbPhotoNote"></p>
+              <label class="check-row">
+                <input id="fbIrrigated" type="checkbox" />
+                I irrigated recently
+              </label>
+              <label>
+                Notes
+                <textarea id="fbNotes" rows="2" maxlength="1000" placeholder="Optional ground observations"></textarea>
+              </label>
+              <label class="check-row">
+                <input id="fbConsent" type="checkbox" required />
+                I consent to use this for local model calibration
+              </label>
+              <button type="submit" class="app-btn-primary">Submit feedback</button>
+            </form>
+          </section>
+        </div>
+
+        <!-- Soil intelligence -->
+        <section class="app-panel field-tool-panel" id="soilPanel" data-tool-panel="soil" hidden>
+          <div class="app-panel-head">
+            <h2>Soil intelligence</h2>
+            <button type="button" class="app-btn-ghost" id="refreshUrtcBtn">Refresh suite</button>
+          </div>
+          <p class="app-muted">7-day moisture outlook, NPK proxy indices, degradation risk, and soil carbon score — with provenance for reviewers.</p>
+          <div id="soilMoistureCard" class="urtc-card"></div>
+          <div id="soilIntelCard" class="urtc-card"></div>
+          <p class="app-muted" id="soilProvenance"></p>
+        </section>
+
+        <!-- Risk suite -->
+        <section class="app-panel field-tool-panel" id="risksPanel" data-tool-panel="risks" hidden>
+          <div class="app-panel-head">
+            <h2>Pest &amp; stress early warning</h2>
+          </div>
+          <p class="app-muted">Severity scores from weather + crop + vegetation stress. Create Action Center tasks from recommendations when you have an org.</p>
+          <div id="riskSuiteCard" class="urtc-card"></div>
+          <div id="riskMap" class="field-map field-map-detail" role="application" aria-label="Risk zones map"></div>
+          <p class="app-muted" id="riskProvenance"></p>
+        </section>
+
+        <!-- Irrigation planner -->
+        <section class="app-panel field-tool-panel" id="irrigatePanel" data-tool-panel="irrigate" hidden>
+          <div class="app-panel-head">
+            <h2>Smart irrigation planner</h2>
+          </div>
+          <div id="irrigationCard" class="urtc-card"></div>
+          <button type="button" class="app-btn-primary" id="createIrrigateTaskBtn" hidden>Create irrigate task</button>
+        </section>
+
+        <!-- Yield + advisor -->
+        <section class="app-panel field-tool-panel" id="advisorPanel" data-tool-panel="advisor" hidden>
+          <div class="app-panel-head">
+            <h2>Yield, fertilizer &amp; crop advisor</h2>
+          </div>
+          <label class="urtc-inline">
+            Budget
+            <input id="advisorBudget" type="number" min="0" step="100" value="50000" />
+          </label>
+          <label class="urtc-inline">
+            Crop stage
+            <select id="advisorStage">
+              <option value="emergence">Emergence</option>
+              <option value="vegetative" selected>Vegetative</option>
+              <option value="flowering">Flowering</option>
+              <option value="grain">Grain fill</option>
+            </select>
+          </label>
+          <button type="button" class="app-btn-ghost" id="runAdvisorBtn">Update advisor</button>
+          <div id="yieldCard" class="urtc-card"></div>
+          <div id="fertOptCard" class="urtc-card"></div>
+          <div id="machineryCard" class="urtc-card"></div>
+          <div id="cropRecCard" class="urtc-card"></div>
+          <div id="carbonCard" class="urtc-card"></div>
+        </section>
+
+        <!-- Drone simulation -->
+        <section class="app-panel field-tool-panel" id="dronePanel" data-tool-panel="drone" hidden>
+          <div class="app-panel-head">
+            <h2>Drone integration (simulation)</h2>
+          </div>
+          <p class="app-muted">Upload a field photo or orthomosaic tile. We simulate stitching + high-res NDVI + pest spots — not live drone control.</p>
+          <label class="app-btn-ghost bulk-upload">
+            Upload drone / field image
+            <input id="droneFileInput" type="file" accept="image/*" hidden />
+          </label>
+          <div id="droneResult" class="urtc-card" hidden></div>
+          <canvas id="droneCanvas" class="drone-canvas" hidden></canvas>
+        </section>
+
+        <!-- Map + boundary -->
+        <div class="app-panel field-map-panel field-tool-panel" id="locationPanel" data-tool-panel="location" hidden>
+          <h2>Location &amp; boundary</h2>
+          <div id="detailMap" class="field-map field-map-detail" role="application" aria-label="Field location map"></div>
+          <dl class="field-facts" id="fieldFacts"></dl>
+          <div class="boundary-tools">
+            <p class="app-muted">Draw a rough shape (or use the default box), then snap to a vegetation-edge proxy.</p>
+            <button type="button" class="app-btn-ghost" id="drawBoundaryBtn">Start draw</button>
+            <button type="button" class="app-btn-primary" id="snapBoundaryBtn">AI snap boundary</button>
+            <button type="button" class="app-btn-ghost" id="saveBoundaryBtn" hidden>Save boundary</button>
+          </div>
+          <p class="app-muted" id="boundaryNote"></p>
+          <div id="cropHistoryCard" class="urtc-card">
+            <h3>Crop history &amp; rotation</h3>
+            <ul id="cropHistoryList"></ul>
+            <form id="cropHistoryForm" class="field-input-form">
+              <label>Season / year <input id="cropHistSeason" type="text" placeholder="2025 kharif / 2025" required maxlength="40" /></label>
+              <label>Crop <input id="cropHistCrop" type="text" placeholder="Wheat" required maxlength="60" /></label>
+              <button type="submit" class="app-btn-primary">Add season</button>
+            </form>
+            <p class="app-muted" id="cropRotationNote"></p>
+          </div>
+        </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script src="vendor/leaflet/leaflet.js"></script>
+    <script type="module" src="js/tenant.js"></script>
+    <script type="module" src="js/nav-auth.js?v=social1"></script>
+    <script type="module" src="js/field-page.js?v=india1"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("sw.js").catch(() => {});
+      }
+    </script>
+      <script type="module" src="js/ui-enhance.js?v=nolottie1"></script>
+  </body>
+</html>

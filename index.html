@@ -3,53 +3,250 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>PrithviScan — Basic Site</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>PrithviScan — Earth Intelligence for Farmers</title>
+    <meta
+      name="description"
+      content="PrithviScan fuses NASA satellite data into field-level agricultural intelligence — crop stress, irrigation, and actionable recommendations."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" type="image/png" href="assets/favicon.png?v=icon2" />
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=icon2" />
+    <link rel="stylesheet" href="styles.css?v=icon2" />
+      <link rel="stylesheet" href="ui-enhance.css?v=nolottie1" />
   </head>
   <body>
-    <header class="site-header">
-      <div class="container">
-        <h1 class="logo">PrithviScan</h1>
-        <nav class="nav">
-          <a href="#">Home</a>
-          <a href="#features">Features</a>
-          <a href="#contact">Contact</a>
+    <header class="site-header" id="top">
+      <div class="nav-shell">
+        <a class="brand" href="#top" aria-label="PrithviScan home">
+          <img class="brand-mark" src="assets/logo-mark.png?v=icon2" alt="" width="40" height="40" />
+          <span class="brand-wordmark">
+            <span class="brand-prithvi">Prithvi</span><span class="brand-scan">Scan</span>
+          </span>
+        </a>
+        <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false">
+          <span></span><span></span>
+        </button>
+        <nav class="nav" aria-label="Primary">
+          <a href="#made-with">Data</a>
+          <a href="#intelligence">Intelligence</a>
+          <a href="#how">How it works</a>
+          <a href="social.html">Social</a>
+          <span class="auth-slot" data-auth-slot>
+            <a class="nav-cta" href="auth.html">Get started</a>
+          </span>
         </nav>
       </div>
     </header>
 
     <main>
-      <section class="hero container">
-        <h2>Simple static website</h2>
-        <p>This is a minimal starter site created for your workspace.</p>
-        <a class="btn" href="#features">Learn more</a>
+      <section class="hero" aria-label="Hero">
+        <div class="hero-media" aria-hidden="true">
+          <video
+            class="hero-video"
+            autoplay
+            muted
+            playsinline
+            poster=""
+          >
+            <source src="assets/hero.mp4?v=fix2" type="video/mp4" />
+          </video>
+          <div class="hero-veil"></div>
+        </div>
+
+        <div class="hero-content">
+          <div class="hero-logo reveal" aria-hidden="true">
+            <img src="assets/logo.png" alt="" width="120" height="120" />
+          </div>
+          <h1 class="hero-brand reveal delay-1">
+            <span class="brand-prithvi">Prithvi</span><span class="brand-scan">Scan</span>
+          </h1>
+          <p class="hero-line reveal delay-2">
+            Earth intelligence for every field — fused from NASA satellites into clear farmer decisions.
+          </p>
+          <div class="hero-actions reveal delay-3">
+            <a class="btn btn-primary" href="auth.html">Get started</a>
+            <a class="btn btn-ghost" href="#made-with">See the data</a>
+          </div>
+        </div>
       </section>
 
-      <section id="features" class="container features">
-        <h3>Features</h3>
-        <ul>
-          <li>Responsive layout</li>
-          <li>Simple styles and JavaScript</li>
-          <li>Easy to extend</li>
-        </ul>
+      <section id="made-with" class="section section-made">
+        <div class="shell">
+          <p class="eyebrow reveal">Made with</p>
+          <h2 class="section-title reveal">
+            Global NASA Earth systems,<br />one agricultural lens.
+          </h2>
+          <p class="section-copy reveal">
+            Not just raw satellite feeds — missions that measure weather, vegetation, moisture, and rain, fused into field-ready intelligence.
+          </p>
+
+          <ul class="source-rail reveal">
+            <li>
+              <span class="source-name">NASA POWER</span>
+              <span class="source-use">Weather · Solar · ET</span>
+            </li>
+            <li>
+              <span class="source-name">MODIS / VIIRS</span>
+              <span class="source-use">Vegetation health</span>
+            </li>
+            <li>
+              <span class="source-name">HLS</span>
+              <span class="source-use">10m crop detail</span>
+            </li>
+            <li>
+              <span class="source-name">SMAP</span>
+              <span class="source-use">Soil moisture</span>
+            </li>
+            <li>
+              <span class="source-name">GPM</span>
+              <span class="source-use">Rainfall pulse</span>
+            </li>
+            <li>
+              <span class="source-name">Earthdata</span>
+              <span class="source-use">Imagery access</span>
+            </li>
+          </ul>
+        </div>
       </section>
 
-      <section id="contact" class="container contact">
-        <h3>Contact</h3>
-        <form id="contactForm">
-          <label>Name<input type="text" name="name" required></label>
-          <label>Email<input type="email" name="email" required></label>
-          <label>Message<textarea name="message" rows="4"></textarea></label>
-          <button type="submit" class="btn">Send</button>
-        </form>
-        <p id="formResult" class="muted"></p>
+      <section id="intelligence" class="section section-intel">
+        <div class="shell intel-grid">
+          <div class="intel-intro">
+            <p class="eyebrow light reveal">The intelligence layer</p>
+            <h2 class="section-title light reveal">
+              NASA provides the signal.<br />PrithviScan provides the meaning.
+            </h2>
+            <p class="section-copy light reveal">
+              Fusion, pattern recognition, and predictive modeling convert vegetation, moisture, rainfall, temperature, and solar radiation into recommendations a farmer can act on tomorrow morning.
+            </p>
+          </div>
+
+          <ol class="intel-list">
+            <li class="reveal">
+              <span class="intel-step">01</span>
+              <div>
+                <h3>Data fusion</h3>
+                <p>Align NDVI, soil moisture, rainfall, LST, ET, and solar into one land picture.</p>
+              </div>
+            </li>
+            <li class="reveal delay-1">
+              <span class="intel-step">02</span>
+              <div>
+                <h3>Pattern recognition</h3>
+                <p>Detect crop stress, drought progression, and abnormal vegetation change early.</p>
+              </div>
+            </li>
+            <li class="reveal delay-2">
+              <span class="intel-step">03</span>
+              <div>
+                <h3>Field decisions</h3>
+                <p>Deliver per-field maps, alerts, and plain-language irrigation guidance.</p>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section id="how" class="section section-how">
+        <div class="shell">
+          <p class="eyebrow reveal">How it works</p>
+          <h2 class="section-title reveal">From orbit to recommendation.</h2>
+          <p class="section-copy reveal">
+            Continuous NASA updates flow through a pipeline built for agriculture — not just visualization.
+          </p>
+
+          <div class="pipeline reveal" aria-label="Platform pipeline">
+            <div class="pipe-node">
+              <strong>Ingest</strong>
+              <span>POWER + Earthdata</span>
+            </div>
+            <span class="pipe-arrow" aria-hidden="true"></span>
+            <div class="pipe-node">
+              <strong>Harmonize</strong>
+              <span>Resample · mask · fill</span>
+            </div>
+            <span class="pipe-arrow" aria-hidden="true"></span>
+            <div class="pipe-node">
+              <strong>Fuse</strong>
+              <span>Unified land state</span>
+            </div>
+            <span class="pipe-arrow" aria-hidden="true"></span>
+            <div class="pipe-node">
+              <strong>Interpret</strong>
+              <span>ML + rules</span>
+            </div>
+            <span class="pipe-arrow" aria-hidden="true"></span>
+            <div class="pipe-node accent">
+              <strong>Advise</strong>
+              <span>Farmer insights</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="insights" class="section section-insights">
+        <div class="shell insights-layout">
+          <div>
+            <p class="eyebrow light reveal">Actionable recommendations</p>
+            <h2 class="section-title light reveal">
+              Clear language for real fields.
+            </h2>
+            <p class="section-copy light reveal">
+              Global coverage. Continuous refresh. Local meaning — so every latitude and longitude can become a decision, not a dataset.
+            </p>
+          </div>
+
+          <ul class="insight-quotes">
+            <li class="reveal">“Irrigate tomorrow.”</li>
+            <li class="reveal delay-1">“Crop stress detected in the north field.”</li>
+            <li class="reveal delay-2">“Rainfall deficit detected.”</li>
+            <li class="reveal delay-3">“High temperature risk — apply cooling irrigation.”</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="start" class="section section-cta">
+        <div class="shell cta-panel reveal">
+          <h2 class="section-title">Ready to scan the Earth for your farm?</h2>
+          <p class="section-copy">
+            Start with NASA POWER weather and Earthdata satellite layers — then let PrithviScan fuse them into field intelligence.
+          </p>
+          <a class="btn btn-primary" href="auth.html">Create your account</a>
+        </div>
       </section>
     </main>
 
     <footer class="site-footer">
-      <div class="container">© <span id="year"></span> PrithviScan</div>
+      <div class="shell footer-row">
+        <a class="brand" href="#top">
+          <img class="brand-mark" src="assets/logo-mark.png?v=icon2" alt="" width="40" height="40" />
+          <span class="brand-wordmark">
+            <span class="brand-prithvi">Prithvi</span><span class="brand-scan">Scan</span>
+          </span>
+        </a>
+        <p>Earth intelligence for agriculture. Built on free, global, continuously updated NASA data.</p>
+        <p class="footer-links">
+          <a href="social.html">Social</a>
+          <a href="info.html">Farm knowledge</a>
+          ·
+          <a href="privacy.html">Data ownership</a>
+          ·
+          <a href="partners.html">Partners</a>
+          ·
+          <a href="FEATURES.md">Features</a>
+        </p>
+        <p class="footer-copy">© <span id="year"></span> PrithviScan</p>
+      </div>
     </footer>
 
     <script src="script.js"></script>
+    <script type="module" src="js/a11y.js"></script>
+    <script type="module" src="js/nav-auth.js?v=social1"></script>
+      <script type="module" src="js/ui-enhance.js?v=nolottie1"></script>
   </body>
 </html>

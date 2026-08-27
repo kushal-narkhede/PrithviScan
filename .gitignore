@@ -1,0 +1,22 @@
+node_modules/
+.firebase/
+.secrets/
+.env
+.env.*
+!.env.example
+*.pem
+serviceAccount*.json
+.venv/
+ml/data/field/*
+!ml/data/field/.gitkeep
+ml/data/not_field/*
+!ml/data/not_field/.gitkeep
+ml/models/*.joblib
+ml/models/*.keras
+ml/models/*_meta.json
+ml/models/registry.json
+ml/models/versions/
+# Exported RF JSON for Cloud Functions is OK to commit (no training data inside)
+!functions/models/field_classifier.json
+__pycache__/
+*.pyc
