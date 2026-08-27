@@ -4,14 +4,10 @@
  */
 
 import { loadAiConfig } from "../ai-config.js";
-import { chatWithOllama } from "./providers/ollama.js";
-import { chatWithGemini } from "./providers/gemini.js";
-import { chatWithOpenRouter } from "./providers/openrouter.js";
-import { FUNCTIONS_ENABLED, callAiChat } from "../api.js";
 
 /** Temporary demo reply for all Ask AI questions. */
 export const FIXED_AI_RESPONSE =
-  "If the soil is still soft, sticky, or waterlogged → do NOT irrigate.\nIf the soil is firm, crumbly, and moisture is below the crop's normal threshold → irrigation can resume.";
+  "If the soil is still soft, sticky, or waterlogged → do NOT irrigate.\n\nIf the soil is firm, crumbly, and moisture is below the crop's normal threshold → irrigation can resume.";
 
 /**
  * @param {object} opts

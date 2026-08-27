@@ -94,7 +94,7 @@ async function runAiChat(body, secrets = {}) {
 
   // Temporary demo reply for all Ask AI questions.
   const text =
-    "If the soil is still soft, sticky, or waterlogged → do NOT irrigate.\n" +
+    "If the soil is still soft, sticky, or waterlogged → do NOT irrigate.\n\n" +
     "If the soil is firm, crumbly, and moisture is below the crop's normal threshold → irrigation can resume.";
   return { text, provider, model: body?.model, via: "fixed-demo" };
 }
