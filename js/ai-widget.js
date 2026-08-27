@@ -3,9 +3,8 @@
  */
 
 import { loadAiConfig, saveAiConfig, AI_PROVIDERS } from "./ai-config.js";
-import { completeChat, providerLabel } from "./ai/client.js";
+import { providerLabel, FIXED_AI_RESPONSE } from "./ai/client.js";
 import { diagnoseOllama } from "./ai/providers/ollama.js";
-import { AGRONOMIST_SYSTEM, buildAgronomistContext } from "./ai-agronomist.js";
 
 const HISTORY_KEY = "prithviscan.ai.history.v1";
 const OPEN_KEY = "prithviscan.ai.widgetOpen";
@@ -59,7 +58,6 @@ function mount() {
 
   let config = loadAiConfig();
   let history = loadHistory();
-  let abortCtrl = null;
 
   const root = document.createElement("div");
   root.id = "ps-ai-root";
@@ -275,38 +273,15 @@ function mount() {
 
     sendBtn.disabled = true;
     setStatus("Thinking…");
-    abortCtrl?.abort();
-    abortCtrl = new AbortController();
 
-    const rag = buildAgronomistContext(text);
-    const systemContent = `${AGRONOMIST_SYSTEM}\n\n${config.systemPrompt || ""}\n\n${rag}`.trim();
-    const messages = [
-      { role: "system", content: systemContent },
-      ...history.filter((m) => m.role === "user" || m.role === "assistant"),
-    ];
-
-    try {
-      const result = await completeChat({ messages, signal: abortCtrl.signal, config });
-      history.push({ role: "assistant", content: result.text });
-      saveHistory(history);
-      renderMessages();
-      setStatus(
-        `${providerLabel(result.provider)}${result.model ? ` · ${result.model}` : ""}${
-          rag.includes("Retrieved") ? " · RAG" : ""
-        }`
-      );
-    } catch (err) {
-      if (err?.name === "AbortError") return;
-      const div = document.createElement("div");
-      div.className = "ps-ai-msg error";
-      div.textContent = err.message || "Something went wrong.";
-      messagesEl.appendChild(div);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-      setStatus(err.message || "Request failed", true);
-    } finally {
-      sendBtn.disabled = false;
-      input.focus();
-    }
+    // Demo mode: always return fixed irrigation guidance (no API keys needed).
+    await new Promise((r) => setTimeout(r, 400));
+    history.push({ role: "assistant", content: FIXED_AI_RESPONSE });
+    saveHistory(history);
+    renderMessages();
+    setStatus("Demo reply");
+    sendBtn.disabled = false;
+    input.focus();
   });
 
   input.addEventListener("keydown", (e) => {

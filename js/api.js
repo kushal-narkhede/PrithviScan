@@ -130,10 +130,22 @@ async function apiPost(path, body = {}) {
   return json;
 }
 
+/** Temporary demo reply for all Ask AI questions (bypasses API keys). */
+export const FIXED_AI_RESPONSE =
+  "If the soil is still soft, sticky, or waterlogged → do NOT irrigate.\n\nIf the soil is firm, crumbly, and moisture is below the crop's normal threshold → irrigation can resume.";
+
 /**
  * Server-side AI chat (Gemini / OpenRouter keys via secrets).
  * Available after Blaze + deploy of functions/aiChat.
  */
-export async function callAiChat({ provider, messages, model } = {}) {
-  return apiPost("aiChat", { provider, messages, model });
+export async function callAiChat({ provider, model } = {}) {
+  void provider;
+  void model;
+  return {
+    ok: true,
+    text: FIXED_AI_RESPONSE,
+    provider: provider || "demo",
+    model,
+    via: "fixed-demo",
+  };
 }
