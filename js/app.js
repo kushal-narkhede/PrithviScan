@@ -1,5 +1,5 @@
 import { watchAuth, isFirebaseConfigured } from "./auth.js";
-import { listFields, createField, createFieldsBulk, getField } from "./fields.js?v=region1";
+import { listFields, createField, createFieldsBulk, getField, deleteField } from "./fields.js?v=region1";
 import { createFieldMap, useBrowserLocation } from "./map.js?v=region1";
 import { detectRegion, regionBadgeLabel } from "./region.js";
 import { callGetAlerts, callMarkAlertRead, callClassifyLocation, callProcessAlertOutbox } from "./api.js";
@@ -12,9 +12,10 @@ import {
   fieldsToGeoJson,
   downloadText,
 } from "./import-export.js";
-import { ensureDemoField, startOnboardingTour } from "./onboarding.js";
+import { startOnboardingTour } from "./onboarding.js";
 import { filterAlertsForDisplay, alertPriority } from "./alert-prefs.js";
 import { getUserMeta } from "./org.js";
+import { canDeleteFields } from "./org-roles.js";
 import { listOrgTasks, createTask, completeTask, TASK_TYPES } from "./tasks.js";
 import { cacheFieldsList, readCachedFieldsList } from "./offline-cache.js";
 import { applyI18n } from "./i18n.js";
@@ -91,6 +92,11 @@ function levelClass(level) {
   return "level-info";
 }
 
+function canUserDeleteField(field) {
+  if (field.orgId) return canDeleteFields(field.orgRole);
+  return true;
+}
+
 function renderFields(fields) {
   if (!fieldsList) return;
   fieldCount.textContent = String(fields.length);
@@ -111,24 +117,53 @@ function renderFields(fields) {
       const crop = f.cropType ? ` · ${esc(f.cropType)}` : "";
       const region = f.region || detectRegion(Number(f.lat), Number(f.lon));
       const regionTag = region === "US" ? "USA · $" : "India · ₹";
+      const fieldHref = `field.html?id=${encodeURIComponent(f.id)}${f.orgId ? `&org=${encodeURIComponent(f.orgId)}` : ""}`;
+      const canDelete = canUserDeleteField(f);
       return `
-        <a class="field-card ${levelClass(lvl)}" href="field.html?id=${encodeURIComponent(f.id)}${f.orgId ? `&org=${encodeURIComponent(f.orgId)}` : ""}" data-field-id="${esc(f.id)}">
-          <div class="field-card-head">
-            <strong>${esc(f.name || "Untitled field")}</strong>
-            <span class="field-card-badge">${esc(regionTag)}</span>
-            ${f.orgId ? `<span class="field-card-badge">Org</span>` : ""}
-            ${insight ? `<span class="field-card-badge ${levelClass(lvl)}">${esc(insight.title)}</span>` : ""}
-          </div>
-          <span class="field-card-meta">${Number(f.lat).toFixed(4)}, ${Number(f.lon).toFixed(4)}${crop}${f.healthLabel ? ` · ${esc(f.healthLabel)}` : ""}</span>
-        </a>`;
+        <div class="field-card ${levelClass(lvl)}" data-field-id="${esc(f.id)}">
+          <a class="field-card-link" href="${fieldHref}">
+            <div class="field-card-head">
+              <strong>${esc(f.name || "Untitled field")}</strong>
+              <span class="field-card-badge">${esc(regionTag)}</span>
+              ${f.orgId ? `<span class="field-card-badge">Org</span>` : ""}
+              ${insight ? `<span class="field-card-badge ${levelClass(lvl)}">${esc(insight.title)}</span>` : ""}
+            </div>
+            <span class="field-card-meta">${Number(f.lat).toFixed(4)}, ${Number(f.lon).toFixed(4)}${crop}${f.healthLabel ? ` · ${esc(f.healthLabel)}` : ""}</span>
+          </a>
+          ${canDelete ? `<button type="button" class="field-delete-btn" data-field-id="${esc(f.id)}" data-org-id="${f.orgId ? esc(f.orgId) : ""}" aria-label="Delete ${esc(f.name || "field")}">Delete</button>` : ""}
+        </div>`;
     })
     .join("");
 
-  fieldsList.querySelectorAll("a.field-card").forEach((a) => {
+  fieldsList.querySelectorAll("a.field-card-link").forEach((a) => {
     a.addEventListener("click", () => {
       if (!currentUser) return;
-      const id = a.dataset.fieldId;
+      const card = a.closest(".field-card");
+      const id = card?.dataset.fieldId;
       if (id) saveLastSession(currentUser.uid, { fieldId: id, scrollY: 0, section: "insight", page: "field" }).catch(() => {});
+    });
+  });
+
+  fieldsList.querySelectorAll(".field-delete-btn").forEach((btn) => {
+    btn.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!currentUser) return;
+      const fieldId = btn.dataset.fieldId;
+      const orgId = btn.dataset.orgId || null;
+      const field = cachedFields.find((f) => f.id === fieldId);
+      const name = field?.name || "this field";
+      if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+      btn.disabled = true;
+      setStatus("Deleting field…");
+      try {
+        await deleteField(currentUser.uid, fieldId, orgId ? { orgId } : {});
+        setStatus("Field deleted.", "ok");
+        await refreshFields();
+      } catch (err) {
+        setStatus(err?.message || "Could not delete field.", "error");
+        btn.disabled = false;
+      }
     });
   });
 }
@@ -653,16 +688,9 @@ function bootApp() {
         : `Welcome, ${label}.`;
     }
 
-    try {
-      const demo = await ensureDemoField(user.uid);
-      if (demo.created) setStatus("Added a demo field so you can explore immediately.", "ok");
-    } catch {
-      // non-fatal
-    }
-
     await Promise.all([refreshFields(), loadAlerts(), showContinueBanner(user.uid)]);
     callProcessAlertOutbox().catch(() => {});
-    startOnboardingTour();
+    startOnboardingTour({ uid: user.uid });
   });
 }
 

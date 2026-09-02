@@ -8,7 +8,6 @@ const form = document.getElementById("aiForm");
 const input = document.getElementById("aiInput");
 const sendBtn = document.getElementById("aiSendBtn");
 const statusEl = document.getElementById("aiStatus");
-const pillEl = document.getElementById("aiProviderPill");
 const settingsPanel = document.getElementById("aiSettings");
 const settingsBtn = document.getElementById("aiSettingsBtn");
 const settingsClose = document.getElementById("aiSettingsClose");
@@ -37,26 +36,10 @@ function setStatus(msg, isError = false) {
   statusEl.classList.toggle("is-error", Boolean(isError));
 }
 
-function updatePill() {
-  if (pillEl) {
-    pillEl.textContent = `Provider: ${providerLabel(config.provider)} · ${
-      config.provider === "ollama"
-        ? config.ollama.model
-        : config.provider === "gemini"
-          ? config.gemini.model
-          : config.openrouter.model
-    }`;
-  }
-}
-
 function renderMessages() {
   if (!messagesEl) return;
   if (!history.length) {
-    messagesEl.innerHTML = `
-      <div class="ai-msg system">
-        Ask about wheat MSP, urea rates, rotavator hire, irrigation, or soil tips.
-        Default engine is Ollama on your machine — open Settings to switch to Gemini or OpenRouter.
-      </div>`;
+    messagesEl.innerHTML = "";
     return;
   }
   messagesEl.innerHTML = history
@@ -149,7 +132,6 @@ settingsForm?.addEventListener("submit", (e) => {
     },
   };
   saveAiConfig(config);
-  updatePill();
   setStatus(`Saved. Using ${providerLabel(config.provider)}.`);
   settingsPanel.hidden = true;
 });
@@ -225,5 +207,4 @@ input?.addEventListener("keydown", (e) => {
 });
 
 history = loadHistory();
-updatePill();
 renderMessages();

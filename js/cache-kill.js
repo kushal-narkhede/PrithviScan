@@ -5,7 +5,7 @@
 (function () {
   "use strict";
   var KEY = "ps_cache_kill";
-  var VER = "mapfix3";
+  var VER = "aifix1";
   try {
     if (localStorage.getItem(KEY) === VER) return;
     localStorage.setItem(KEY, VER);

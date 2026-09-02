@@ -171,8 +171,38 @@ export async function respondFriendRequest(requestId, accept, currentUser) {
 }
 
 export async function removeFriend(uid, friendUid) {
+  await deleteFieldSharesBetween(uid, friendUid);
   await deleteDoc(doc(db(), "users", uid, "friends", friendUid));
   await deleteDoc(doc(db(), "users", friendUid, "friends", uid)).catch(() => {});
+}
+
+/** Remove all field shares in either direction between two users. */
+export async function deleteFieldSharesBetween(uidA, uidB) {
+  if (!uidA || !uidB || uidA === uidB) return 0;
+
+  const queries = [
+    query(
+      collection(db(), "fieldShares"),
+      where("ownerUid", "==", uidA),
+      where("sharedWithUid", "==", uidB)
+    ),
+    query(
+      collection(db(), "fieldShares"),
+      where("ownerUid", "==", uidB),
+      where("sharedWithUid", "==", uidA)
+    ),
+  ];
+
+  const snaps = await Promise.all(queries.map((q) => getDocs(q)));
+  const ids = new Set();
+  for (const snap of snaps) {
+    for (const d of snap.docs) ids.add(d.id);
+  }
+
+  await Promise.all(
+    [...ids].map((id) => deleteDoc(doc(db(), "fieldShares", id)).catch(() => {}))
+  );
+  return ids.size;
 }
 
 export function dmId(a, b) {

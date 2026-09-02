@@ -11,6 +11,7 @@ import {
   confirmPhoneOtp,
 } from "./auth.js";
 import { saveAccountMeta, claimOrgInvites } from "./org.js";
+import { markOnboardingPending } from "./onboarding.js";
 
 const form = document.getElementById("authForm");
 const statusEl = document.getElementById("authStatus");
@@ -69,9 +70,16 @@ tabs.forEach((tab) => {
 
 accountTypeSelect?.addEventListener("change", syncOrgNameVisibility);
 
+function isNewFirebaseUser(user) {
+  const created = user?.metadata?.creationTime;
+  const lastSignIn = user?.metadata?.lastSignInTime;
+  return Boolean(created && lastSignIn && created === lastSignIn);
+}
+
 async function afterAuth(user, { isNewSignup = false, accountType, orgName } = {}) {
   if (!user || navigatingAway) return;
   navigatingAway = true;
+  const newAccount = isNewSignup || isNewFirebaseUser(user);
   try {
     if (isNewSignup) {
       await saveAccountMeta(user, { accountType, orgName });
@@ -80,9 +88,9 @@ async function afterAuth(user, { isNewSignup = false, accountType, orgName } = {
   } catch {
     // non-fatal — org page can finish setup
   }
+  if (newAccount) markOnboardingPending();
   setStatus("Signed in — opening your app…", "ok");
-  const goOrg = isNewSignup && accountType === "organization";
-  window.location.href = goOrg ? "social.html#org" : "app.html";
+  window.location.href = "app.html";
 }
 
 form?.addEventListener("submit", async (event) => {

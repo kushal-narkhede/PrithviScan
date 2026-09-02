@@ -899,6 +899,38 @@
 .field-card-badge.level-watch  { background: #fefcbf; color: #744210; }
 .field-card-badge.level-info   { background: #c6f6d5; color: #22543d; }
 .field-card-meta { font-size: 0.88rem; color: #3a5646; }
+.field-card {
+  position: relative;
+  display: grid;
+  gap: 0.45rem;
+}
+.field-card-link {
+  display: grid;
+  gap: 0.3rem;
+  text-decoration: none;
+  color: inherit;
+}
+.field-delete-btn {
+  justify-self: start;
+  margin-top: 0.15rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid rgba(197, 48, 48, 0.35);
+  border-radius: 999px;
+  background: #fff5f5;
+  color: #9b2c2c;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.field-delete-btn:hover:not(:disabled) {
+  background: #fed7d7;
+  border-color: #c53030;
+}
+.field-delete-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 /* ---- Insight card ---- */
 .insight-card-wrap { margin-bottom: 1.25rem; }

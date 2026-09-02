@@ -42,6 +42,14 @@
       ]
     },
     {
+      "collectionGroup": "fieldShares",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerUid", "order": "ASCENDING" },
+        { "fieldPath": "sharedWithUid", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "orgInvites",
       "queryScope": "COLLECTION",
       "fields": [

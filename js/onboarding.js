@@ -1,10 +1,12 @@
 /**
- * Guided onboarding + demo field (feature 7.1).
+ * Guided onboarding tour for new accounts.
  */
 
-import { createField, listFields } from "./fields.js";
+const PENDING_KEY = "prithvi_onboarding_pending";
 
-const DONE_KEY = "prithvi_onboarding_done";
+function doneKey(uid) {
+  return `prithvi_onboarding_done_${uid}`;
+}
 
 const STEPS = [
   {
@@ -34,47 +36,30 @@ const STEPS = [
   },
 ];
 
-export function onboardingDone() {
-  return localStorage.getItem(DONE_KEY) === "1";
+export function onboardingDone(uid) {
+  if (!uid) return false;
+  return localStorage.getItem(doneKey(uid)) === "1";
 }
 
-export function markOnboardingDone() {
-  localStorage.setItem(DONE_KEY, "1");
+export function markOnboardingDone(uid) {
+  if (!uid) return;
+  localStorage.setItem(doneKey(uid), "1");
+  sessionStorage.removeItem(PENDING_KEY);
 }
 
-export async function ensureDemoField(uid) {
-  const fields = await listFields(uid);
-  if (fields.some((f) => f.isDemo || f.name === "Demo field (sample)")) {
-    return { created: false, fields };
-  }
-  const demo = await createField(uid, {
-    name: "Demo field (sample)",
-    cropType: "Wheat",
-    lat: 20.5937,
-    lon: 78.9629,
-    region: "IN",
-  });
-  // Tag as demo via update is nicer — createField doesn't accept isDemo; patch through updateField
-  try {
-    const { updateField } = await import("./fields.js");
-    await updateField(uid, demo.id, {
-      isDemo: true,
-      lastInsight: {
-        level: "watch",
-        title: "Sample: Moisture deficit — monitor closely",
-        action: "Scout soil moisture and plan light irrigation",
-        confidence: 0.74,
-        generatedAt: new Date().toISOString(),
-      },
-    });
-  } catch {
-    // non-fatal
-  }
-  return { created: true, fields: [demo, ...fields] };
+/** Call after signup so the tour runs on the next app visit. */
+export function markOnboardingPending() {
+  sessionStorage.setItem(PENDING_KEY, "1");
 }
 
-export function startOnboardingTour({ onDone } = {}) {
-  if (onboardingDone()) {
+export function shouldShowOnboardingTour(uid) {
+  if (!uid) return false;
+  if (sessionStorage.getItem(PENDING_KEY) === "1") return true;
+  return !onboardingDone(uid);
+}
+
+export function startOnboardingTour({ uid, onDone } = {}) {
+  if (!uid || !shouldShowOnboardingTour(uid)) {
     onDone?.();
     return;
   }
@@ -121,7 +106,7 @@ export function startOnboardingTour({ onDone } = {}) {
   function finish() {
     clearHighlight();
     overlay.remove();
-    markOnboardingDone();
+    markOnboardingDone(uid);
     onDone?.();
   }
 

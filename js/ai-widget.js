@@ -67,7 +67,6 @@ function mount() {
       <div class="ps-ai-head">
         <div>
           <strong>AI Agronomist</strong>
-          <span id="psAiPill">Ollama</span>
         </div>
         <div class="ps-ai-head-actions">
           <button type="button" class="ps-ai-icon-btn" id="psAiSettingsBtn" title="Settings" aria-label="Settings">⚙</button>
@@ -141,31 +140,18 @@ function mount() {
   const input = root.querySelector("#psAiInput");
   const sendBtn = root.querySelector("#psAiSend");
   const statusEl = root.querySelector("#psAiStatus");
-  const pillEl = root.querySelector("#psAiPill");
   const settingsEl = root.querySelector("#psAiSettings");
 
   function setStatus(msg, isError = false) {
-    statusEl.textContent = msg || "";
-    statusEl.classList.toggle("is-error", Boolean(isError));
-  }
-
-  function updatePill() {
-    const model =
-      config.provider === "ollama"
-        ? config.ollama.model
-        : config.provider === "gemini"
-          ? config.gemini.model
-          : config.openrouter.model;
-    pillEl.textContent = `${providerLabel(config.provider)} · ${model}`;
+    const text = String(msg || "").trim();
+    statusEl.textContent = text;
+    statusEl.hidden = !text;
+    statusEl.classList.toggle("is-error", Boolean(isError && text));
   }
 
   function renderMessages() {
     if (!history.length) {
-      messagesEl.innerHTML = `
-        <div class="ps-ai-msg system">
-          Ask about MSP prices, fertilizers, tractors, irrigation, or soils.
-          Uses Ollama by default — tap ⚙ to switch to Gemini or OpenRouter.
-        </div>`;
+      messagesEl.innerHTML = "";
       return;
     }
     messagesEl.innerHTML = history
@@ -256,7 +242,6 @@ function mount() {
       },
     };
     saveAiConfig(config);
-    updatePill();
     settingsEl.hidden = true;
     setStatus(`Using ${providerLabel(config.provider)}.`);
   });
@@ -272,14 +257,12 @@ function mount() {
     saveHistory(history);
 
     sendBtn.disabled = true;
-    setStatus("Thinking…");
 
-    // Demo mode: always return fixed irrigation guidance (no API keys needed).
     await new Promise((r) => setTimeout(r, 400));
     history.push({ role: "assistant", content: FIXED_AI_RESPONSE });
     saveHistory(history);
     renderMessages();
-    setStatus("Demo reply");
+    setStatus("");
     sendBtn.disabled = false;
     input.focus();
   });
@@ -291,7 +274,6 @@ function mount() {
     }
   });
 
-  updatePill();
   renderMessages();
 
   // Restore open state only if user left it open; default closed

@@ -3,7 +3,7 @@ import {
   logOut,
   isFirebaseConfigured,
 } from "./auth.js";
-import "./ai-widget.js";
+import "./ai-widget.js?v=ai3";
 
 async function syncProfile(user) {
   try {

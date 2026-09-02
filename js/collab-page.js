@@ -163,7 +163,7 @@ async function refreshFriends() {
   });
   friendsEl.querySelectorAll("[data-unfriend]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (!confirm("Remove this friend?")) return;
+      if (!confirm("Remove this friend? Any fields shared between you will also be removed.")) return;
       await removeFriend(currentUser.uid, btn.dataset.unfriend);
       setStatus("Friend removed.", "ok");
       await refreshAll();
