@@ -28,8 +28,12 @@ import {
 import { applyI18n, t } from "./i18n.js";
 import { cacheFieldOffline } from "./offline-cache.js";
 import { bindSessionPersistence, restoreScroll } from "./session.js";
-import { submitGroundTruth, compressPhotoToDataUrl } from "./feedback.js";
+import { submitGroundTruth, compressPhotoToDataUrl, submitInsightFeedback } from "./feedback.js";
 import { simulateScenario } from "./scenario.js";
+import { listFieldEvents, eventsToCsv, recordFieldEvent } from "./audit.js";
+import { createTask } from "./tasks.js";
+import { getUserMeta } from "./org.js";
+import { renderRecommendationCard, bindRecommendationCard } from "./recommendation-card.js";
 import { assessInsightRisk, confirmRiskyAction } from "./safety.js";
 import { matchCropGuide, predictHarvest, listGuideOptions } from "./crop-guides.js";
 import {
@@ -59,8 +63,6 @@ import {
   fuelCostEstimate,
 } from "./urtc-field-ui.js?v=urtc1";
 import { renderTomorrowWeather } from "./tomorrow-weather.js?v=tmrw2";
-import { createTask } from "./tasks.js";
-import { getUserMeta } from "./org.js";
 import "./a11y.js";
 
 const titleEl  = document.getElementById("fieldTitle");
@@ -537,6 +539,13 @@ function wireUrtcControls(user) {
         { orgId: currentField.orgId }
       );
       currentField = { ...currentField, boundary: pendingBoundaryFeature };
+      await recordFieldEvent({
+        orgId: currentField.orgId || null,
+        uid: user.uid,
+        fieldId: currentField.id,
+        type: "boundary.saved",
+        payload: { confidence: pendingBoundaryFeature?.properties?.confidence },
+      }).catch(() => {});
       setStatus("Field boundary saved.", "ok");
     } catch (err) {
       setStatus(err?.message || "Could not save boundary.", "error");
@@ -863,6 +872,7 @@ const historyTrack = document.getElementById("historyTrack");
 let currentField = null;
 let currentUser = null;
 let currentMeta = null;
+let lastScenarioResult = null;
 let archiveData = null;
 let selectedGranuleId = null;
 
@@ -1940,10 +1950,14 @@ document.addEventListener("DOMContentLoaded", () => {
           irrigateMm: document.getElementById("scenarioMm")?.value,
           fertilizerKgHa: document.getElementById("scenarioFert")?.value,
           fieldHa: document.getElementById("scenarioHa")?.value,
+          sensitivity: document.getElementById("scenarioSensitivity")?.value || "medium",
           cropId: guide?.mspId || "wheat",
           fertId: "urea",
           region,
         });
+        lastScenarioResult = result;
+        const toTaskBtn = document.getElementById("scenarioToTaskBtn");
+        if (toTaskBtn) toTaskBtn.hidden = false;
         if (!scenarioResult) return;
         scenarioResult.hidden = false;
         const cur = result.currency || getRegionMeta(region).currency;
@@ -1962,6 +1976,77 @@ document.addEventListener("DOMContentLoaded", () => {
           <ul>${result.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>
           <p class="app-muted">${esc(cur)} rates for ${region === "US" ? "US cash + custom-hire" : "India MSP + notified fertilizer"} — heuristic with uncertainty bands, not a full crop model. ${esc(result.priceBasis || "")}</p>`;
       });
+
+      document.getElementById("scenarioToTaskBtn")?.addEventListener("click", async () => {
+        if (!currentUser || !currentField || !lastScenarioResult) return;
+        const orgId = currentField.orgId || currentMeta?.orgId;
+        if (!orgId) {
+          setStatus("Join an organization to create tasks.", "error");
+          return;
+        }
+        const irrigateWhen = document.getElementById("scenarioIrrigate")?.value;
+        const type = irrigateWhen === "none" ? "scout" : "irrigate";
+        try {
+          await createTask(
+            orgId,
+            currentUser,
+            {
+              type,
+              title: type === "irrigate" ? "Scenario: irrigate" : "Scenario follow-up",
+              fieldId: currentField.id,
+              fieldName: currentField.name,
+              note: `What-if ROI ${lastScenarioResult.roi != null ? (lastScenarioResult.roi * 100).toFixed(0) + "%" : "n/a"} · yield ${lastScenarioResult.expectedYieldKgHa} kg/ha`,
+            },
+            currentMeta?.orgRole || "scout"
+          );
+          await recordFieldEvent({
+            orgId,
+            uid: currentUser.uid,
+            fieldId: currentField.id,
+            type: "task.created",
+            payload: { source: "scenario", roi: lastScenarioResult.roi },
+          });
+          setStatus("Scenario converted to task.", "ok");
+        } catch (err) {
+          setStatus(err?.message || "Could not create task.", "error");
+        }
+      });
+
+      async function loadFieldHistory() {
+        const listEl = document.getElementById("fieldHistoryList");
+        const emptyEl = document.getElementById("fieldHistoryEmpty");
+        if (!listEl || !currentField || !currentUser) return;
+        const events = await listFieldEvents({
+          orgId: currentField.orgId || null,
+          uid: currentUser.uid,
+          fieldId: currentField.id,
+        });
+        if (!events.length) {
+          listEl.innerHTML = "";
+          if (emptyEl) emptyEl.hidden = false;
+          return;
+        }
+        if (emptyEl) emptyEl.hidden = true;
+        listEl.innerHTML = events
+          .map((ev) => {
+            const when = ev.createdAt?.toDate?.()?.toLocaleString?.() || "";
+            return `<li class="usage-row"><div><strong>${esc(ev.type)}</strong><span>${when}</span></div></li>`;
+          })
+          .join("");
+      }
+
+      document.getElementById("exportHistoryBtn")?.addEventListener("click", async () => {
+        if (!currentField || !currentUser) return;
+        const events = await listFieldEvents({
+          orgId: currentField.orgId || null,
+          uid: currentUser.uid,
+          fieldId: currentField.id,
+        });
+        downloadText(`${currentField.name || "field"}-history.csv`, eventsToCsv(events), "text/csv");
+        setStatus("History exported.", "ok");
+      });
+
+      await loadFieldHistory();
 
       printReportBtn?.addEventListener("click", () => {
         document.body.classList.add("print-report");
@@ -1990,7 +2075,7 @@ document.addEventListener("DOMContentLoaded", () => {
             photoName: photoFile?.name || null,
             lat: field.lat,
             lon: field.lon,
-          });
+          }, field.orgId || null);
           feedbackForm.reset();
           const pn = document.getElementById("fbPhotoNote");
           if (pn) pn.textContent = "";

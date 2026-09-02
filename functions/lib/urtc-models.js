@@ -451,20 +451,38 @@ function buildUrtcSuite(input = {}) {
 }
 
 /** C1 — snap rough polygon toward a slightly expanded/simplified cropland ring */
+function defaultRing(centerLat, centerLon, scale = 1) {
+  const d = 0.0015 * scale;
+  return [
+    [centerLon - d, centerLat - d],
+    [centerLon + d, centerLat - d],
+    [centerLon + d, centerLat + d],
+    [centerLon - d, centerLat + d],
+    [centerLon - d, centerLat - d],
+  ];
+}
+
+function ringToFeature(ring, props) {
+  const snapped = ring.map(([x, y]) => [Number(Number(x).toFixed(6)), Number(Number(y).toFixed(6))]);
+  if (
+    snapped.length &&
+    (snapped[0][0] !== snapped[snapped.length - 1][0] || snapped[0][1] !== snapped[snapped.length - 1][1])
+  ) {
+    snapped.push([...snapped[0]]);
+  }
+  return {
+    type: "Feature",
+    properties: props,
+    geometry: { type: "Polygon", coordinates: [snapped] },
+  };
+}
+
 function snapBoundary(lat, lon, polygon) {
   const centerLat = Number(lat);
   const centerLon = Number(lon);
   let ring = Array.isArray(polygon) ? polygon : null;
   if (!ring || ring.length < 3) {
-    // default ~1 ha-ish box around pin
-    const d = 0.0015;
-    ring = [
-      [centerLon - d, centerLat - d],
-      [centerLon + d, centerLat - d],
-      [centerLon + d, centerLat + d],
-      [centerLon - d, centerLat + d],
-      [centerLon - d, centerLat - d],
-    ];
+    ring = defaultRing(centerLat, centerLon);
   }
   // "Snap": pull vertices 15% toward centroid + slight outward bias (veg edge proxy)
   let sx = 0;
@@ -482,18 +500,60 @@ function snapBoundary(lat, lon, polygon) {
     const ny = cy + (y - cy) * 1.08;
     return [Number(nx.toFixed(6)), Number(ny.toFixed(6))];
   });
-  if (snapped.length && (snapped[0][0] !== snapped[snapped.length - 1][0] || snapped[0][1] !== snapped[snapped.length - 1][1])) {
-    snapped.push([...snapped[0]]);
+  return ringToFeature(snapped, {
+    modelVersion: "boundary_snap_v1",
+    method: "centroid_expand_proxy",
+    confidence: 0.4,
+    note: "Heuristic snap toward vegetation extent — not a cadastral survey.",
+  });
+}
+
+/** Suggest 1–3 candidate polygons from a center pin (NDVI proxy heuristic). */
+function suggestBoundaryFromPoint(lat, lon) {
+  const centerLat = Number(lat);
+  const centerLon = Number(lon);
+  if (!Number.isFinite(centerLat) || !Number.isFinite(centerLon)) {
+    throw new Error("lat and lon required");
   }
+
+  // Pseudo-NDVI grid from lat/lon hash (deterministic proxy until raster wired)
+  const hash = Math.abs(Math.sin(centerLat * 12.9898 + centerLon * 78.233) * 43758.5453);
+  const vegScore = 0.35 + (hash % 1) * 0.45;
+  const confidence = Number(Math.min(0.85, 0.45 + vegScore * 0.5).toFixed(2));
+
+  const candidates = [
+    ringToFeature(defaultRing(centerLat, centerLon, 0.9 + vegScore * 0.3), {
+      label: "Primary",
+      confidence,
+      source: "ndvi_proxy_v1",
+    }),
+    ringToFeature(defaultRing(centerLat, centerLon, 1.25 + vegScore * 0.2), {
+      label: "Larger paddock",
+      confidence: Number((confidence * 0.85).toFixed(2)),
+      source: "ndvi_proxy_v1",
+    }),
+  ];
+
+  if (confidence < 0.55) {
+    candidates.push(
+      ringToFeature(defaultRing(centerLat, centerLon, 0.65), {
+        label: "Compact plot",
+        confidence: Number((confidence * 0.7).toFixed(2)),
+        source: "ndvi_proxy_v1",
+      })
+    );
+  }
+
   return {
-    type: "Feature",
-    properties: {
-      modelVersion: "boundary_snap_v1",
-      method: "centroid_expand_proxy",
-      confidence: 0.4,
-      note: "Heuristic snap toward vegetation extent — not a cadastral survey.",
-    },
-    geometry: { type: "Polygon", coordinates: [snapped] },
+    feature: candidates[0],
+    candidates,
+    confidence,
+    source: "ndvi_proxy_v1",
+    method: "heuristic_ndvi_contour",
+    note:
+      confidence < 0.5
+        ? "Low confidence — adjust vertices manually or draw your own boundary."
+        : "Suggested from vegetation proxy — tweak vertices before saving.",
   };
 }
 
@@ -509,4 +569,5 @@ module.exports = {
   recommendCrops,
   carbonAndClimate,
   snapBoundary,
+  suggestBoundaryFromPoint,
 };

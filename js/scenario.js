@@ -17,6 +17,8 @@ import { getRegionMeta } from "./region.js";
  */
 export function simulateScenario(metrics = {}, opts = {}) {
   const region = opts.region === "US" ? "US" : "IN";
+  const sensitivity = opts.sensitivity || "medium"; // low | medium | high
+  const uncertaintyScale = sensitivity === "low" ? 0.1 : sensitivity === "high" ? 0.3 : 0.2;
   const meta = getRegionMeta(region);
   const rain = Number(metrics.totalRain_mm) || 0;
   const et = Number(metrics.totalET_mm) || 0;
@@ -61,7 +63,7 @@ export function simulateScenario(metrics = {}, opts = {}) {
   const expectedYieldKgHa = baselineYieldKgHa * yieldIndex;
   const yieldDeltaPct = (yieldIndex - 1) * 100;
 
-  const uncertainty = Math.min(0.35, 0.08 + stress * 0.2 + (et === 0 ? 0.1 : 0));
+  const uncertainty = Math.min(0.35, uncertaintyScale + stress * 0.2 + (et === 0 ? 0.1 : 0));
   const yieldLow = Math.round(expectedYieldKgHa * (1 - uncertainty));
   const yieldHigh = Math.round(expectedYieldKgHa * (1 + uncertainty * 0.6));
 
@@ -86,6 +88,7 @@ export function simulateScenario(metrics = {}, opts = {}) {
     yieldLowKgHa: yieldLow,
     yieldHighKgHa: yieldHigh,
     uncertaintyPct: Number((uncertainty * 100).toFixed(0)),
+    sensitivity,
     yieldDeltaPct: Number(yieldDeltaPct.toFixed(1)),
     waterUse_mm: Number(appliedMm.toFixed(1)),
     estimatedCost: Math.round(totalCost),

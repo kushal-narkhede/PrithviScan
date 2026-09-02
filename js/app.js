@@ -2,7 +2,7 @@ import { watchAuth, isFirebaseConfigured } from "./auth.js";
 import { listFields, createField, createFieldsBulk, getField, deleteField } from "./fields.js?v=region1";
 import { createFieldMap, useBrowserLocation } from "./map.js?v=region1";
 import { detectRegion, regionBadgeLabel } from "./region.js";
-import { callGetAlerts, callMarkAlertRead, callClassifyLocation, callProcessAlertOutbox } from "./api.js";
+import { callGetAlerts, callMarkAlertRead, callAcknowledgeAlert, callClassifyLocation, callProcessAlertOutbox, callSnapFieldBoundary } from "./api.js";
 import { loadLastSession, saveLastSession } from "./session.js";
 import {
   parseFieldsCsv,
@@ -13,10 +13,19 @@ import {
   downloadText,
 } from "./import-export.js";
 import { startOnboardingTour } from "./onboarding.js";
-import { filterAlertsForDisplay, alertPriority } from "./alert-prefs.js";
+import { filterAlertsForDisplay } from "./alert-prefs.js";
 import { getUserMeta } from "./org.js";
 import { canDeleteFields } from "./org-roles.js";
 import { listOrgTasks, createTask, completeTask, TASK_TYPES } from "./tasks.js";
+import { renderRecommendationCard, bindRecommendationCard } from "./recommendation-card.js";
+import { submitInsightFeedback } from "./feedback.js";
+import {
+  listTaskTemplates,
+  saveTaskTemplate,
+  createTaskFromTemplate,
+  saveRecurrence,
+} from "./task-templates.js";
+import { recordFieldEvent } from "./audit.js";
 import { cacheFieldsList, readCachedFieldsList } from "./offline-cache.js";
 import { applyI18n } from "./i18n.js";
 import "./a11y.js";
@@ -255,7 +264,7 @@ async function refreshTasks() {
       .join("");
     taskList.querySelectorAll("[data-done]").forEach((btn) => {
       btn.addEventListener("click", async () => {
-        await completeTask(currentMeta.orgId, btn.dataset.done);
+        await completeTask(currentMeta.orgId, btn.dataset.done, currentUser?.uid);
         await refreshTasks();
         setStatus("Task marked done.", "ok");
       });
@@ -334,26 +343,45 @@ function renderAlerts(rawAlerts) {
   alertsList.innerHTML =
     muteNote +
     alerts
-      .map((a) => {
-        const lvl = a.level || "info";
-        const pri = alertPriority(lvl);
-        const when = a.createdAt?.toDate?.()?.toLocaleDateString?.() || "";
-        return `
-        <div class="alert-item ${levelClass(lvl)} ${a.read ? "is-read" : ""}" data-id="${esc(a.id)}">
-          <div class="alert-item-head">
-            <span class="alert-dot ${levelClass(lvl)}"></span>
-            <span class="alert-priority">${esc(pri)}</span>
-            <strong>${esc(a.title)}</strong>
-            ${when ? `<span class="alert-when">${when}</span>` : ""}
-          </div>
-          <p class="alert-msg">${esc(a.message)}</p>
-          <div class="alert-actions">
-            ${a.fieldId ? `<a class="app-btn-ghost alert-goto" href="field.html?id=${encodeURIComponent(a.fieldId)}">View field</a>` : ""}
-            ${!a.read ? `<button type="button" class="app-btn-ghost mark-read-btn" data-alertid="${esc(a.id)}">Mark read</button>` : ""}
-          </div>
-        </div>`;
-      })
+      .map((a) =>
+        renderRecommendationCard(
+          {
+            ...a,
+            alertId: a.id,
+            why: a.message,
+            evidence: (a.factors || []).map((f) => ({ label: "Signal", value: f })),
+          },
+          { showAcknowledge: a.level === "action" || a.level === "watch" }
+        )
+      )
       .join("");
+
+  bindRecommendationCard(alertsList, {
+    onAcknowledge: async (alertId) => {
+      const res = await callAcknowledgeAlert(alertId);
+      if (res.ok) {
+        setStatus("Alert acknowledged.", "ok");
+        await loadAlerts();
+      } else {
+        setStatus(res.error || "Could not acknowledge.", "error");
+      }
+    },
+    onCreateTask: ({ fieldId }) => {
+      switchTab("actions");
+      if (taskField && fieldId) taskField.value = fieldId;
+    },
+    onFeedback: async ({ fieldId, helpful, wrongAction }) => {
+      if (!currentUser) return;
+      const field = cachedFields.find((f) => f.id === fieldId);
+      await submitInsightFeedback(currentUser.uid, fieldId, {
+        insightId: "latest",
+        helpful,
+        wrongAction,
+        orgId: field?.orgId || null,
+      });
+      setStatus("Thanks for your feedback.", "ok");
+    },
+  });
 
   alertsList.querySelectorAll(".mark-read-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
@@ -390,7 +418,10 @@ function switchTab(tab) {
   if (actionsTab) actionsTab.hidden = which !== "actions";
   tabBtns.forEach((b) => b.classList.toggle("is-active", b.dataset.tab === which));
   if (which === "alerts") loadAlerts();
-  if (which === "actions") refreshTasks();
+  if (which === "actions") {
+    refreshTasks();
+    refreshTemplates();
+  }
   if (which === "fields") {
     // Map was hidden — Leaflet needs a size refresh or tiles stay gray/blank
     const refresh = () => {
@@ -405,6 +436,83 @@ function switchTab(tab) {
 tabBtns.forEach((btn) => {
   btn.addEventListener("click", () => switchTab(btn.dataset.tab));
 });
+
+async function refreshTemplates() {
+  const listEl = document.getElementById("templateList");
+  if (!listEl || !currentMeta?.orgId) {
+    if (listEl) listEl.innerHTML = "";
+    return;
+  }
+  try {
+    const templates = await listTaskTemplates(currentMeta.orgId);
+    if (!templates.length) {
+      listEl.innerHTML = `<p class="app-muted">No templates yet — save a task as a template when creating one.</p>`;
+      return;
+    }
+    listEl.innerHTML = templates
+      .map(
+        (t) => `
+      <div class="template-row">
+        <div>
+          <strong>${esc(t.name)}</strong>
+          <span>${esc(t.type)} · ${esc(t.title || "")}</span>
+        </div>
+        <button type="button" class="app-btn-ghost" data-apply-template="${esc(t.id)}">Apply</button>
+      </div>`
+      )
+      .join("");
+    listEl.querySelectorAll("[data-apply-template]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const fieldId = taskField?.value;
+        const field = cachedFields.find((f) => f.id === fieldId);
+        if (!field) {
+          setStatus("Select a field first.", "error");
+          return;
+        }
+        try {
+          await createTaskFromTemplate(
+            currentMeta.orgId,
+            currentUser,
+            btn.dataset.applyTemplate,
+            field,
+            currentMeta.orgRole || "scout"
+          );
+          await refreshTasks();
+          setStatus("Task created from template.", "ok");
+        } catch (err) {
+          setStatus(err?.message || "Could not apply template.", "error");
+        }
+      });
+    });
+  } catch {
+    listEl.innerHTML = `<p class="app-muted">Could not load templates.</p>`;
+  }
+}
+
+async function suggestBoundaryFromPin() {
+  const lat = Number(latInput?.value);
+  const lon = Number(lonInput?.value);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    setStatus("Place a pin on the map first.", "error");
+    return;
+  }
+  setStatus("Suggesting field boundary…");
+  try {
+    const res = await callSnapFieldBoundary({ lat, lon, mode: "suggest" });
+    if (!res.ok) {
+      setStatus(res.error || "Could not suggest boundary.", "error");
+      return;
+    }
+    const conf = Math.round((res.confidence || 0) * 100);
+    setFieldCheckBanner(
+      res.note || `Suggested boundary (${conf}% confidence). Save field to store boundary later on field page.`,
+      conf >= 50 ? "ok" : "warn"
+    );
+    setStatus(`Boundary suggested (${conf}% confidence).`, "ok");
+  } catch (err) {
+    setStatus(err?.message || "Boundary suggest failed.", "error");
+  }
+}
 
 async function validateLocation(lat, lon) {
   lastLocationValid = false;
@@ -653,29 +761,61 @@ function bootApp() {
     }
     const fieldId = taskField?.value;
     const field = cachedFields.find((f) => f.id === fieldId);
+    const taskType = document.getElementById("taskType")?.value;
+    const taskPayload = {
+      type: taskType,
+      title: TASK_TYPES.find((t) => t.id === taskType)?.label,
+      fieldId,
+      fieldName: field?.name,
+      assigneeUid: document.getElementById("taskAssignee")?.value?.trim() || currentUser.uid,
+      assigneeName: currentUser.displayName || currentUser.email || "Me",
+      dueAt: document.getElementById("taskDue")?.value || null,
+      note: document.getElementById("taskNote")?.value,
+    };
     try {
-      await createTask(
-        currentMeta.orgId,
-        currentUser,
-        {
-          type: document.getElementById("taskType")?.value,
-          title: TASK_TYPES.find((t) => t.id === document.getElementById("taskType")?.value)?.label,
-          fieldId,
-          fieldName: field?.name,
-          assigneeUid: document.getElementById("taskAssignee")?.value?.trim() || currentUser.uid,
-          assigneeName: currentUser.displayName || currentUser.email || "Me",
-          dueAt: document.getElementById("taskDue")?.value || null,
-          note: document.getElementById("taskNote")?.value,
-        },
-        currentMeta.orgRole || "scout"
-      );
+      await createTask(currentMeta.orgId, currentUser, taskPayload, currentMeta.orgRole || "scout");
+      if (field?.id) {
+        await recordFieldEvent({
+          orgId: currentMeta.orgId,
+          uid: currentUser.uid,
+          fieldId: field.id,
+          type: "task.created",
+          payload: { type: taskType },
+        });
+      }
+      if (document.getElementById("taskSaveTemplate")?.checked) {
+        await saveTaskTemplate(currentMeta.orgId, currentUser, {
+          name: taskPayload.title || "Task template",
+          type: taskType,
+          title: taskPayload.title,
+          note: taskPayload.note,
+          defaultAssigneeUid: taskPayload.assigneeUid,
+          defaultAssigneeName: taskPayload.assigneeName,
+        });
+      }
+      const recFreq = document.getElementById("taskRecurrence")?.value;
+      if (recFreq && recFreq !== "none" && document.getElementById("taskSaveTemplate")?.checked) {
+        const templates = await listTaskTemplates(currentMeta.orgId);
+        const latest = templates[0];
+        if (latest) {
+          await saveRecurrence(currentMeta.orgId, currentUser, {
+            templateId: latest.id,
+            fieldIds: fieldId ? [fieldId] : "all",
+            frequency: recFreq,
+          });
+        }
+      }
       document.getElementById("taskNote").value = "";
+      document.getElementById("taskSaveTemplate").checked = false;
       await refreshTasks();
+      await refreshTemplates();
       setStatus("Task created for your crew.", "ok");
     } catch (err) {
       setStatus(err?.message || "Could not create task.", "error");
     }
   });
+
+  document.getElementById("suggestBoundaryBtn")?.addEventListener("click", suggestBoundaryFromPin);
 
   watchAuth(async (user) => {
     if (!user) { window.location.href = "auth.html"; return; }

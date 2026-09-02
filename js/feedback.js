@@ -9,6 +9,14 @@ import {
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 import { getDb } from "./firebase-db.js";
+import { recordFieldEvent } from "./audit.js";
+
+function feedbackCol(uid, fieldId, orgId = null) {
+  if (orgId) {
+    return collection(getDb(), "organizations", orgId, "fields", fieldId, "feedback");
+  }
+  return collection(getDb(), "users", uid, "fields", fieldId, "feedback");
+}
 
 /** Compress image file to a small JPEG data URL for Firestore storage. */
 export function compressPhotoToDataUrl(file, { maxEdge = 480, quality = 0.65 } = {}) {
@@ -58,8 +66,8 @@ export function compressPhotoToDataUrl(file, { maxEdge = 480, quality = 0.65 } =
   });
 }
 
-export async function submitGroundTruth(uid, fieldId, payload) {
-  const col = collection(getDb(), "users", uid, "fields", fieldId, "feedback");
+export async function submitGroundTruth(uid, fieldId, payload, orgId = null) {
+  const col = feedbackCol(uid, fieldId, orgId);
   const doc = {
     kind: String(payload.kind || "note"),
     soilMoisture: payload.soilMoisture === "" || payload.soilMoisture == null
@@ -87,4 +95,26 @@ export async function submitGroundTruth(uid, fieldId, payload) {
   }
   const ref = await addDoc(col, doc);
   return { id: ref.id, ...doc };
+}
+
+/** Per-insight helpful / not helpful / wrong action feedback. */
+export async function submitInsightFeedback(uid, fieldId, { insightId, helpful, wrongAction, reason, orgId = null } = {}) {
+  const col = feedbackCol(uid, fieldId, orgId);
+  const body = {
+    type: "insight_rating",
+    insightId: String(insightId || "latest"),
+    helpful: helpful === true ? true : helpful === false ? false : null,
+    wrongAction: Boolean(wrongAction),
+    reason: String(reason || "").trim().slice(0, 300),
+    createdAt: serverTimestamp(),
+  };
+  const ref = await addDoc(col, body);
+  await recordFieldEvent({
+    orgId,
+    uid,
+    fieldId,
+    type: "feedback.submitted",
+    payload: { insightId: body.insightId, helpful: body.helpful, wrongAction: body.wrongAction },
+  }).catch(() => {});
+  return { id: ref.id, ...body };
 }

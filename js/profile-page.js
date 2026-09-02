@@ -21,7 +21,7 @@ import {
   savePrivacyPrefs,
   readExportLog,
 } from "./privacy-data.js";
-import { callProcessAlertOutbox } from "./api.js";
+import { callProcessAlertOutbox, callSendTestSms } from "./api.js";
 import {
   doc,
   getDoc,
@@ -92,6 +92,7 @@ function gatherAlertForm() {
     pushEnabled: Boolean(document.getElementById("prefPush")?.checked),
     emailEnabled: Boolean(document.getElementById("prefEmailAlert")?.checked),
     smsEnabled: Boolean(document.getElementById("prefSms")?.checked),
+    smsConsent: Boolean(document.getElementById("prefSmsConsent")?.checked),
     whatsappEnabled: Boolean(document.getElementById("prefWhatsapp")?.checked),
     phoneE164: String(document.getElementById("prefAlertPhone")?.value || "").trim(),
     email: currentUser?.email || "",
@@ -131,6 +132,25 @@ function bindLocalPrefs() {
     snoozeAlerts(6);
     if (currentUser) await syncAlertPrefsToCloud(currentUser.uid, gatherAlertForm());
     setStatus("Alerts snoozed for 6 hours.", "ok");
+  });
+
+  document.getElementById("prefTestSmsBtn")?.addEventListener("click", async () => {
+    if (!currentUser) return;
+    const phone = String(document.getElementById("prefAlertPhone")?.value || "").trim();
+    if (!/^\+[1-9]\d{7,14}$/.test(phone)) {
+      setStatus("Enter a valid phone in E.164 format (+91…).", "error");
+      return;
+    }
+    if (!document.getElementById("prefSmsConsent")?.checked) {
+      setStatus("Check SMS consent before sending a test message.", "error");
+      return;
+    }
+    try {
+      const res = await callSendTestSms(phone);
+      setStatus(res.ok ? "Test SMS sent." : res.error || "Test SMS failed.", res.ok ? "ok" : "error");
+    } catch (err) {
+      setStatus(err?.message || "Test SMS failed.", "error");
+    }
   });
 
   document.getElementById("prefSyncAlertsBtn")?.addEventListener("click", async () => {
@@ -230,6 +250,7 @@ async function fillAlertForm(uid) {
   const push = document.getElementById("prefPush");
   const email = document.getElementById("prefEmailAlert");
   const sms = document.getElementById("prefSms");
+  const smsConsent = document.getElementById("prefSmsConsent");
   const wa = document.getElementById("prefWhatsapp");
   const phone = document.getElementById("prefAlertPhone");
   if (critical) critical.checked = alerts.showCriticalOnly;
@@ -237,6 +258,7 @@ async function fillAlertForm(uid) {
   if (push) push.checked = alerts.pushEnabled !== false;
   if (email) email.checked = alerts.emailEnabled !== false;
   if (sms) sms.checked = Boolean(alerts.smsEnabled);
+  if (smsConsent) smsConsent.checked = Boolean(alerts.smsConsent);
   if (wa) wa.checked = Boolean(alerts.whatsappEnabled);
   if (phone) phone.value = alerts.phoneE164 || "";
 }

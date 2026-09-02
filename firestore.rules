@@ -136,6 +136,11 @@ service cloud.firestore {
           allow read, create, delete: if isSelf(userId);
           allow update: if false;
         }
+
+        match /events/{eventId} {
+          allow read, create: if isSelf(userId);
+          allow update, delete: if false;
+        }
       }
 
       match /alerts/{alertId} {
@@ -266,6 +271,23 @@ service cloud.firestore {
         allow create: if canWriteOrgFields(orgId);
         allow update: if isOrgMember(orgId);
         allow delete: if canDeleteOrgFields(orgId);
+      }
+
+      match /taskTemplates/{templateId} {
+        allow read: if isOrgMember(orgId);
+        allow create, update, delete: if canWriteOrgFields(orgId);
+      }
+
+      match /recurrences/{recurrenceId} {
+        allow read: if isOrgMember(orgId);
+        allow create, update: if canWriteOrgFields(orgId);
+        allow delete: if canDeleteOrgFields(orgId);
+      }
+
+      match /fieldEvents/{eventId} {
+        allow read: if isOrgMember(orgId);
+        allow create: if isOrgMember(orgId);
+        allow update, delete: if false;
       }
 
       match /audit/{entryId} {

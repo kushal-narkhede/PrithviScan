@@ -57,6 +57,9 @@ export async function createTask(orgId, actor, payload, actorRole) {
     dueAt: payload.dueAt || null,
     status: "open",
     note: String(payload.note || "").trim().slice(0, 500),
+    checklist: Array.isArray(payload.checklist) ? payload.checklist : [],
+    templateId: payload.templateId || null,
+    sourceAlertId: payload.sourceAlertId || null,
     createdBy: actor.uid,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -65,10 +68,11 @@ export async function createTask(orgId, actor, payload, actorRole) {
   return { id: ref.id, ...body };
 }
 
-export async function completeTask(orgId, taskId) {
+export async function completeTask(orgId, taskId, actorUid = null) {
   await updateDoc(doc(getDb(), "organizations", orgId, "tasks", taskId), {
     status: "done",
     completedAt: serverTimestamp(),
+    completedBy: actorUid || null,
     updatedAt: serverTimestamp(),
   });
 }

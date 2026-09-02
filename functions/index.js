@@ -1,6 +1,7 @@
 "use strict";
 
 const { onRequest } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const { initializeApp, getApps } = require("firebase-admin/app");
@@ -9,9 +10,10 @@ const { getAuth } = require("firebase-admin/auth");
 const { analyzePowerBundle } = require("./lib/trends");
 const { classifyLatLon } = require("./lib/vision");
 const { runAiChat } = require("./lib/ai-chat");
-const { buildUrtcSuite, snapBoundary } = require("./lib/urtc-models");
+const { buildUrtcSuite, snapBoundary, suggestBoundaryFromPoint } = require("./lib/urtc-models");
 const { buildTomorrowFieldWeather } = require("./lib/tomorrow");
 const { buildIndiaFieldPack, indiaStatus } = require("./lib/india-layers");
+const { isTwilioConfigured, formatSmsBody, sendSms } = require("./lib/twilio");
 
 setGlobalOptions({ region: "us-central1", invoker: "public" });
 
@@ -27,6 +29,9 @@ const bhoonidhiUser = defineSecret("BHOONIDHI_USER");
 const bhoonidhiPassword = defineSecret("BHOONIDHI_PASSWORD");
 const imdApiKey = defineSecret("IMD_API_KEY");
 const dataGovInApiKey = defineSecret("DATA_GOV_IN_API_KEY");
+const twilioAccountSid = defineSecret("TWILIO_ACCOUNT_SID");
+const twilioAuthToken = defineSecret("TWILIO_AUTH_TOKEN");
+const twilioFromNumber = defineSecret("TWILIO_FROM_NUMBER");
 
 function indiaSecretsFromEnv() {
   return {
@@ -70,6 +75,42 @@ function checkRateLimit(key) {
   }
   rateMap.set(key, now);
   return 0;
+}
+
+const SMS_DAILY_LIMIT = 5;
+const smsDailyMap = new Map(); // uid → { day, count }
+
+function checkSmsDailyLimit(uid) {
+  const day = new Date().toISOString().slice(0, 10);
+  const entry = smsDailyMap.get(uid) || { day, count: 0 };
+  if (entry.day !== day) {
+    entry.day = day;
+    entry.count = 0;
+  }
+  if (entry.count >= SMS_DAILY_LIMIT) return false;
+  entry.count += 1;
+  smsDailyMap.set(uid, entry);
+  return true;
+}
+
+function isValidE164(phone) {
+  return /^\+[1-9]\d{7,14}$/.test(String(phone || "").trim());
+}
+
+async function appendFieldEvent(db, { orgId, uid, fieldId, type, payload = {} }) {
+  const event = {
+    type,
+    fieldId: fieldId || null,
+    orgId: orgId || null,
+    actorUid: uid,
+    payload,
+    createdAt: FieldValue.serverTimestamp(),
+  };
+  if (orgId) {
+    await db.collection("organizations").doc(orgId).collection("fieldEvents").add(event);
+  } else if (fieldId && uid) {
+    await db.collection("users").doc(uid).collection("fields").doc(fieldId).collection("events").add(event);
+  }
 }
 
 // ---------- POWER parameters ----------
@@ -1158,9 +1199,14 @@ exports.fieldHealthIndex = onRequest(
   }
 );
 
-// ---------- Function: processAlertOutbox (email/push/SMS/WhatsApp fan-out) ----------
+// ---------- Function: processAlertOutbox (email/push/SMS fan-out) ----------
 exports.processAlertOutbox = onRequest(
-  { cors: true, timeoutSeconds: 120, invoker: "public" },
+  {
+    cors: true,
+    timeoutSeconds: 120,
+    invoker: "public",
+    secrets: [twilioAccountSid, twilioAuthToken, twilioFromNumber],
+  },
   async (req, res) => {
     try {
       const decoded = await verifyIdToken(req);
@@ -1168,6 +1214,11 @@ exports.processAlertOutbox = onRequest(
       const uid = decoded.uid;
       const userSnap = await db.collection("users").doc(uid).get();
       const prefs = userSnap.data()?.alertPrefs || {};
+      const sid = twilioAccountSid.value();
+      const token = twilioAuthToken.value();
+      const from = twilioFromNumber.value();
+      const twilioReady = isTwilioConfigured(sid, token, from);
+
       const outbox = await db
         .collection("users")
         .doc(uid)
@@ -1180,7 +1231,6 @@ exports.processAlertOutbox = onRequest(
       for (const docSnap of outbox.docs) {
         const item = docSnap.data();
         const channels = [];
-        // Quiet hours: only critical
         const hour = new Date().getHours();
         const quiet =
           prefs.quietHoursEnabled &&
@@ -1219,39 +1269,179 @@ exports.processAlertOutbox = onRequest(
               : "Add email in alert preferences",
           });
         }
-        if (prefs.smsEnabled && prefs.phoneE164) {
-          channels.push({
-            channel: "sms",
-            status: "stub_twilio",
-            detail: `Would SMS ${prefs.phoneE164}: ${item.title}`,
-          });
+
+        let smsDelivery = null;
+        if (prefs.smsEnabled && prefs.smsConsent && prefs.phoneE164 && isValidE164(prefs.phoneE164)) {
+          if (twilioReady && (item.level === "action" || item.level === "watch")) {
+            if (checkSmsDailyLimit(uid)) {
+              const body = formatSmsBody(item);
+              const result = await sendSms({
+                accountSid: sid,
+                authToken: token,
+                from,
+                to: prefs.phoneE164,
+                body,
+              });
+              smsDelivery = result;
+              channels.push({
+                channel: "sms",
+                status: result.ok ? "sent" : "failed",
+                messageId: result.messageId || null,
+                error: result.error || null,
+                detail: result.ok ? `SMS sent to ${prefs.phoneE164}` : result.error,
+              });
+              if (item.alertId) {
+                await db
+                  .collection("users")
+                  .doc(uid)
+                  .collection("alerts")
+                  .doc(String(item.alertId))
+                  .set(
+                    {
+                      delivery: {
+                        sms: {
+                          status: result.ok ? "sent" : "failed",
+                          sentAt: result.sentAt || null,
+                          messageId: result.messageId || null,
+                          error: result.error || null,
+                        },
+                      },
+                    },
+                    { merge: true }
+                  )
+                  .catch(() => {});
+              }
+            } else {
+              channels.push({
+                channel: "sms",
+                status: "rate_limited",
+                detail: `Daily SMS limit (${SMS_DAILY_LIMIT}) reached`,
+              });
+            }
+          } else if (!twilioReady) {
+            channels.push({
+              channel: "sms",
+              status: "not_configured",
+              detail: `Would SMS ${prefs.phoneE164}: ${item.title}`,
+            });
+          }
         }
+
         if (prefs.whatsappEnabled && prefs.phoneE164) {
           channels.push({
             channel: "whatsapp",
-            status: "stub_meta",
-            detail: `Would WhatsApp ${prefs.phoneE164}: ${item.title}`,
+            status: "deferred",
+            detail: "WhatsApp delivery deferred — SMS only in this release",
           });
         }
 
+        const retries = Number(item.smsRetries || 0);
+        const smsFailed = channels.some((c) => c.channel === "sms" && c.status === "failed");
+        const nextStatus = smsFailed && retries < 3 ? "queued" : "processed";
+
         await docSnap.ref.update({
-          status: "processed",
+          status: nextStatus,
           channels,
-          processedAt: FieldValue.serverTimestamp(),
+          smsRetries: smsFailed ? retries + 1 : retries,
+          processedAt: nextStatus === "processed" ? FieldValue.serverTimestamp() : null,
         });
-        deliveries.push({ id: docSnap.id, title: item.title, channels });
+        deliveries.push({ id: docSnap.id, title: item.title, channels, smsDelivery });
       }
 
       jsonRes(res, 200, {
         ok: true,
         processed: deliveries.length,
         deliveries,
-        note: "Push/email/SMS/WhatsApp use prefs; SMS/WhatsApp require provider keys in a later harden pass.",
+        twilioConfigured: twilioReady,
       });
     } catch (err) {
       if (err.status === 401) return jsonRes(res, 401, { error: "Unauthenticated" });
       console.error("processAlertOutbox error", err);
       jsonRes(res, 500, { ok: false, error: err.message });
+    }
+  }
+);
+
+// ---------- Function: acknowledgeAlert ----------
+exports.acknowledgeAlert = onRequest(
+  { cors: true, timeoutSeconds: 30, invoker: "public" },
+  async (req, res) => {
+    try {
+      const decoded = await verifyIdToken(req);
+      const alertId = String(req.query.alertId || req.body?.alertId || "");
+      if (!alertId) return jsonRes(res, 400, { error: "alertId required" });
+
+      const db = getFirestore();
+      const ref = db.collection("users").doc(decoded.uid).collection("alerts").doc(alertId);
+      const snap = await ref.get();
+      if (!snap.exists) return jsonRes(res, 404, { error: "Alert not found" });
+
+      const data = snap.data();
+      await ref.update({
+        read: true,
+        acknowledgedAt: FieldValue.serverTimestamp(),
+        acknowledgedBy: decoded.uid,
+        status: "acknowledged",
+      });
+
+      await appendFieldEvent(db, {
+        orgId: data.orgId || null,
+        uid: decoded.uid,
+        fieldId: data.fieldId || null,
+        type: "alert.acknowledged",
+        payload: {
+          alertId,
+          title: data.title || null,
+          level: data.level || null,
+        },
+      });
+
+      jsonRes(res, 200, { ok: true, alertId });
+    } catch (err) {
+      if (err.status === 401) return jsonRes(res, 401, { error: "Unauthenticated" });
+      console.error("acknowledgeAlert error", err);
+      jsonRes(res, 500, { error: err.message });
+    }
+  }
+);
+
+// ---------- Function: sendTestSms ----------
+exports.sendTestSms = onRequest(
+  {
+    cors: true,
+    timeoutSeconds: 30,
+    invoker: "public",
+    secrets: [twilioAccountSid, twilioAuthToken, twilioFromNumber],
+  },
+  async (req, res) => {
+    try {
+      const decoded = await verifyIdToken(req);
+      const phone = String(req.query.phone || req.body?.phone || "").trim();
+      if (!isValidE164(phone)) {
+        return jsonRes(res, 400, { error: "Valid E.164 phone required (e.g. +9198XXXXXXXX)" });
+      }
+      if (!checkSmsDailyLimit(decoded.uid)) {
+        return jsonRes(res, 429, { error: `Daily SMS limit (${SMS_DAILY_LIMIT}) reached` });
+      }
+
+      const sid = twilioAccountSid.value();
+      const token = twilioAuthToken.value();
+      const from = twilioFromNumber.value();
+      const result = await sendSms({
+        accountSid: sid,
+        authToken: token,
+        from,
+        to: phone,
+        body: "PrithviScan test alert — SMS delivery is working. https://prithviscan.web.app",
+      });
+
+      if (!result.ok) {
+        return jsonRes(res, 502, { ok: false, error: result.error, status: result.status });
+      }
+      jsonRes(res, 200, { ok: true, messageId: result.messageId });
+    } catch (err) {
+      if (err.status === 401) return jsonRes(res, 401, { error: "Unauthenticated" });
+      jsonRes(res, 500, { error: err.message });
     }
   }
 );
@@ -1390,6 +1580,7 @@ exports.snapFieldBoundary = onRequest(
         return jsonRes(res, 400, { error: "lat and lon required" });
       }
       let polygon = body.polygon || null;
+      const mode = String(body.mode || "snap");
       if (typeof polygon === "string") {
         try {
           polygon = JSON.parse(polygon);
@@ -1397,7 +1588,13 @@ exports.snapFieldBoundary = onRequest(
           polygon = null;
         }
       }
-      const feature = snapBoundary(lat, lon, polygon);
+      let feature;
+      if (mode === "suggest") {
+        const result = suggestBoundaryFromPoint(lat, lon);
+        jsonRes(res, 200, { ok: true, ...result });
+        return;
+      }
+      feature = snapBoundary(lat, lon, polygon);
       jsonRes(res, 200, { ok: true, feature });
     } catch (err) {
       if (err.status === 401) return jsonRes(res, 401, { error: "Unauthenticated" });
@@ -1575,6 +1772,125 @@ exports.fieldTomorrowWeather = onRequest(
         error: err.message || "Tomorrow.io request failed",
         detail: err.body || null,
       });
+    }
+  }
+);
+
+// ---------- Scheduled: expandRecurringTasks (hourly) ----------
+function parseRecurrenceFreq(rrule) {
+  const s = String(rrule || "").toUpperCase();
+  if (s.includes("FREQ=DAILY")) return "daily";
+  if (s.includes("FREQ=WEEKLY")) return "weekly";
+  return "weekly";
+}
+
+function shouldRunRecurrence(rec, now = new Date()) {
+  if (!rec.active) return false;
+  const next = rec.nextRunAt?.toDate?.() || (rec.nextRunAt ? new Date(rec.nextRunAt) : null);
+  if (!next) return true;
+  return now >= next;
+}
+
+function computeNextRunAt(rrule, from = new Date()) {
+  const freq = parseRecurrenceFreq(rrule);
+  const next = new Date(from);
+  if (freq === "daily") {
+    next.setDate(next.getDate() + 1);
+  } else {
+    next.setDate(next.getDate() + 7);
+  }
+  return next;
+}
+
+exports.expandRecurringTasks = onSchedule(
+  { schedule: "every 60 minutes", timeZone: "Asia/Kolkata" },
+  async () => {
+    const db = getFirestore();
+    const orgsSnap = await db.collection("organizations").limit(50).get();
+
+    for (const orgDoc of orgsSnap.docs) {
+      const orgId = orgDoc.id;
+      const recSnap = await db
+        .collection("organizations")
+        .doc(orgId)
+        .collection("recurrences")
+        .where("active", "==", true)
+        .limit(20)
+        .get();
+
+      for (const recDoc of recSnap.docs) {
+        const rec = recDoc.data();
+        if (!shouldRunRecurrence(rec)) continue;
+
+        const templateSnap = await db
+          .collection("organizations")
+          .doc(orgId)
+          .collection("taskTemplates")
+          .doc(rec.templateId)
+          .get();
+        if (!templateSnap.exists) continue;
+        const template = templateSnap.data();
+
+        let fieldIds = rec.fieldIds;
+        if (fieldIds === "all" || !Array.isArray(fieldIds) || !fieldIds.length) {
+          const fieldsSnap = await db.collection("organizations").doc(orgId).collection("fields").limit(30).get();
+          fieldIds = fieldsSnap.docs.map((d) => d.id);
+        }
+
+        const since = Date.now() - 24 * 60 * 60 * 1000;
+        for (const fieldId of fieldIds) {
+          const openSnap = await db
+            .collection("organizations")
+            .doc(orgId)
+            .collection("tasks")
+            .where("fieldId", "==", fieldId)
+            .where("type", "==", template.type || "other")
+            .where("status", "==", "open")
+            .limit(5)
+            .get();
+
+          const duplicate = openSnap.docs.some((d) => {
+            const created = d.data().createdAt?.toDate?.()?.getTime?.() || 0;
+            return created > since;
+          });
+          if (duplicate) continue;
+
+          const fieldSnap = await db.collection("organizations").doc(orgId).collection("fields").doc(fieldId).get();
+          const fieldName = fieldSnap.data()?.name || fieldId;
+
+          await db.collection("organizations").doc(orgId).collection("tasks").add({
+            type: template.type || "other",
+            title: template.title || template.name || "Recurring task",
+            fieldId,
+            fieldName,
+            orgId,
+            assigneeUid: template.defaultAssigneeUid || rec.createdBy || orgDoc.data().ownerUid,
+            assigneeName: template.defaultAssigneeName || "Crew",
+            dueAt: null,
+            status: "open",
+            note: String(template.note || "").slice(0, 500),
+            checklist: template.checklist || [],
+            templateId: rec.templateId,
+            recurrenceId: recDoc.id,
+            createdBy: rec.createdBy || orgDoc.data().ownerUid,
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+
+          await appendFieldEvent(db, {
+            orgId,
+            uid: rec.createdBy || orgDoc.data().ownerUid,
+            fieldId,
+            type: "task.created",
+            payload: { source: "recurrence", recurrenceId: recDoc.id, templateId: rec.templateId },
+          });
+        }
+
+        await recDoc.ref.update({
+          lastRunAt: FieldValue.serverTimestamp(),
+          nextRunAt: computeNextRunAt(rec.rrule),
+        });
+      }
     }
   }
 );

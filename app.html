@@ -79,6 +79,7 @@
               <h2>Action Center</h2>
             </div>
             <p class="app-muted">Assign irrigate, spray, scout, or harvest jobs to org members. Open tasks for your crew.</p>
+            <div id="templateList" class="template-list"></div>
             <form id="taskForm" class="field-input-form">
               <label>
                 Type
@@ -104,6 +105,17 @@
               <label class="span-2">
                 Note
                 <input id="taskNote" type="text" maxlength="200" placeholder="Optional" />
+              </label>
+              <label class="check-row span-2">
+                <input type="checkbox" id="taskSaveTemplate" /> Save as template
+              </label>
+              <label>
+                Recurrence (with template)
+                <select id="taskRecurrence">
+                  <option value="none">None</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                </select>
               </label>
               <button type="submit" class="app-btn-primary">Create task</button>
             </form>
@@ -143,7 +155,10 @@
             <div class="app-panel app-panel-map" id="addFieldPanel">
               <div class="app-panel-head">
                 <h2>Place a field</h2>
-                <button type="button" class="app-btn-ghost" id="useLocationBtn">📍 My location</button>
+                <div class="map-head-actions">
+                  <button type="button" class="app-btn-ghost" id="suggestBoundaryBtn">Suggest boundary</button>
+                  <button type="button" class="app-btn-ghost" id="useLocationBtn">📍 My location</button>
+                </div>
               </div>
               <p class="app-muted map-hint">
                 Satellite map for India &amp; USA — click cropland to set the field center. Currency and markets follow the pin (₹ MSP in India, $ cash in the US).

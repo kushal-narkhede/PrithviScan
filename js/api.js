@@ -102,14 +102,22 @@ export async function callProcessAlertOutbox() {
   return apiFetch("processAlertOutbox");
 }
 
+export async function callAcknowledgeAlert(alertId) {
+  return apiPost("acknowledgeAlert", { alertId });
+}
+
+export async function callSendTestSms(phone) {
+  return apiPost("sendTestSms", { phone });
+}
+
 /** URTC science suite — soil moisture, risks, irrigation, yield, soil intel, crop pick */
 export async function callFieldUrtcSuite(params = {}) {
   return apiFetch("fieldUrtcSuite", params);
 }
 
-/** Heuristic field boundary snap */
-export async function callSnapFieldBoundary({ lat, lon, polygon } = {}) {
-  return apiPost("snapFieldBoundary", { lat, lon, polygon });
+/** Heuristic field boundary snap or suggest-from-pin */
+export async function callSnapFieldBoundary({ lat, lon, polygon, mode } = {}) {
+  return apiPost("snapFieldBoundary", { lat, lon, polygon, mode });
 }
 
 /** POST helper for chat / larger bodies */

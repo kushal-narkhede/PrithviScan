@@ -480,6 +480,14 @@
                 </select>
               </label>
               <label>
+                Uncertainty band
+                <select id="scenarioSensitivity">
+                  <option value="low">Low (±10%)</option>
+                  <option value="medium" selected>Medium (±20%)</option>
+                  <option value="high">High (±30%)</option>
+                </select>
+              </label>
+              <label>
                 Irrigation depth (mm)
                 <input id="scenarioMm" type="number" min="0" max="80" step="1" value="20" />
               </label>
@@ -492,8 +500,19 @@
                 <input id="scenarioHa" type="number" min="0.1" max="500" step="0.1" value="1" />
               </label>
               <button type="submit" class="app-btn-primary">Run scenario</button>
+              <button type="button" class="app-btn-ghost" id="scenarioToTaskBtn" hidden>Convert to task</button>
             </form>
             <div class="scenario-result" id="scenarioResult" hidden></div>
+          </section>
+
+          <section class="app-panel" id="fieldHistoryPanel">
+            <div class="app-panel-head">
+              <h2>Action history</h2>
+              <button type="button" class="app-btn-ghost" id="exportHistoryBtn">Export CSV</button>
+            </div>
+            <p class="app-muted">Alerts, tasks, feedback, and boundary changes for this field.</p>
+            <ul class="usage-list" id="fieldHistoryList"></ul>
+            <p class="app-muted" id="fieldHistoryEmpty" hidden>No history yet.</p>
           </section>
 
           <!-- Ground-truth feedback (3.3) -->
@@ -623,6 +642,7 @@
           <div class="boundary-tools">
             <p class="app-muted">Draw a rough shape (or use the default box), then snap to a vegetation-edge proxy.</p>
             <button type="button" class="app-btn-ghost" id="drawBoundaryBtn">Start draw</button>
+            <button type="button" class="app-btn-ghost" id="suggestBoundaryBtn">Suggest from pin</button>
             <button type="button" class="app-btn-primary" id="snapBoundaryBtn">AI snap boundary</button>
             <button type="button" class="app-btn-ghost" id="saveBoundaryBtn" hidden>Save boundary</button>
           </div>
