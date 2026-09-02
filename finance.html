@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Farm finances — PrithviScan</title>
+    <meta name="description" content="Track farm costs, revenue, profit, ROI, loans, and insurance tips." />
+    <link rel="icon" type="image/png" href="assets/favicon.png?v=icon2" />
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=icon2" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=icon2" />
+    <link rel="stylesheet" href="app.css?v=icon2" />
+    <link rel="stylesheet" href="ui-enhance.css?v=nolottie1" />
+  </head>
+  <body class="app-body">
+    <header class="app-top">
+      <div class="app-top-inner">
+        <a class="brand" href="index.html" aria-label="PrithviScan home">
+          <img class="brand-mark" src="assets/logo-mark.png?v=icon2" alt="" width="40" height="40" />
+          <span class="brand-wordmark"><span class="brand-prithvi">Prithvi</span><span class="brand-scan">Scan</span></span>
+        </a>
+        <nav class="app-nav" aria-label="App">
+          <a href="app.html">Fields</a>
+          <a class="is-active" href="finance.html">Finance</a>
+          <a href="social.html">Social</a>
+          <a href="prices.html">Prices</a>
+          <span data-auth-slot></span>
+        </nav>
+      </div>
+    </header>
+    <main class="app-main">
+      <div class="app-shell">
+        <header class="app-page-head">
+          <div>
+            <p class="app-kicker">Business</p>
+            <h1>Farm financial dashboard</h1>
+            <p class="app-lead">Roll up input costs, estimated revenue, profit, and ROI. Loan &amp; insurance helpers included.</p>
+          </div>
+        </header>
+        <p id="financeStatus" class="app-status" role="status"></p>
+        <div class="app-grid">
+          <section class="app-panel">
+            <h2>P&amp;L snapshot</h2>
+            <div id="financeSummary" class="outlook-stats harvest-stats"></div>
+            <ul id="financeFieldList" class="usage-list"></ul>
+          </section>
+          <section class="app-panel">
+            <h2>Loan calculator</h2>
+            <form id="loanForm" class="field-input-form">
+              <label>Principal <input id="loanPrincipal" type="number" min="0" step="100" value="100000" /></label>
+              <label>Annual interest % <input id="loanRate" type="number" min="0" step="0.1" value="9" /></label>
+              <label>Years <input id="loanYears" type="number" min="1" step="1" value="3" /></label>
+              <button type="submit" class="app-btn-primary">Estimate EMI</button>
+            </form>
+            <p id="loanResult" class="urtc-card" hidden></p>
+            <h2>Insurance tips</h2>
+            <p class="app-muted" id="insuranceTips">Sign in to personalize by region.</p>
+          </section>
+        </div>
+      </div>
+    </main>
+    <script type="module" src="js/nav-auth.js?v=ai3"></script>
+    <script type="module" src="js/finance-page.js?v=urtc1"></script>
+      <script type="module" src="js/ui-enhance.js?v=nolottie1"></script>
+  </body>
+</html>

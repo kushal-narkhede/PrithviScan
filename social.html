@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Social — PrithviScan</title>
+    <meta
+      name="description"
+      content="Farm organization, friends, chat, shared fields, and community — one social hub."
+    />
+    <link rel="icon" type="image/png" href="assets/favicon.png?v=icon2" />
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=icon2" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=icon2" />
+    <link rel="stylesheet" href="app.css?v=icon2" />
+    <link rel="stylesheet" href="org.css?v=social1" />
+    <link rel="stylesheet" href="collab.css?v=social1" />
+    <link rel="stylesheet" href="ui-enhance.css?v=nolottie1" />
+  </head>
+  <body class="app-body org-body">
+    <header class="app-top">
+      <div class="app-top-inner">
+        <a class="brand" href="index.html" aria-label="PrithviScan home">
+          <img class="brand-mark" src="assets/logo-mark.png?v=icon2" alt="" width="40" height="40" />
+          <span class="brand-wordmark">
+            <span class="brand-prithvi">Prithvi</span><span class="brand-scan">Scan</span>
+          </span>
+        </a>
+        <nav class="app-nav" aria-label="App">
+          <a href="index.html">Home</a>
+          <a href="app.html">Fields</a>
+          <a href="prices.html">Prices</a>
+          <a href="finance.html">Finance</a>
+          <a href="social.html" aria-current="page">Social</a>
+          <a href="info.html">Info</a>
+          <span data-auth-slot></span>
+        </nav>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <div class="app-shell social-shell">
+        <header class="app-page-head">
+          <div>
+            <p class="app-kicker">People &amp; teams</p>
+            <h1>Social</h1>
+            <p class="app-lead">Organization for your farm group, plus friends, chat, sharing, and community.</p>
+          </div>
+        </header>
+
+        <div class="social-tabs" role="tablist" aria-label="Social sections">
+          <button type="button" class="social-tab is-active" role="tab" aria-selected="true" data-social="org" id="socialTabOrg">
+            Organization
+          </button>
+          <button type="button" class="social-tab" role="tab" aria-selected="false" data-social="community" id="socialTabCommunity">
+            Community
+          </button>
+        </div>
+
+        <!-- Organization -->
+        <section class="social-panel" id="socialPanelOrg" data-social-panel="org" role="tabpanel" aria-labelledby="socialTabOrg">
+          <header class="org-hero social-panel-hero">
+            <p class="eyebrow">Farm groups</p>
+            <h2>Organization</h2>
+            <p>
+              Most farms work as groups — FPOs, family holdings, or custom-hire teams.
+              Create an organization when you sign up, then the owner can add people by email.
+            </p>
+          </header>
+
+          <div id="orgGate" class="org-card">
+            <p>Sign in to view or manage your organization.</p>
+            <a class="btn btn-primary" href="auth.html">Sign in</a>
+          </div>
+
+          <div id="orgContent" hidden>
+            <section class="org-card" id="orgSummary"></section>
+
+            <section class="org-card" id="orgMembersCard" hidden>
+              <h2>Members</h2>
+              <ul class="org-member-list" id="orgMemberList"></ul>
+            </section>
+
+            <section class="org-card" id="orgOwnerTools" hidden>
+              <h2>Add people</h2>
+              <p class="muted">
+                Enter a teammate’s email. If they already have a PrithviScan account, they join immediately.
+                Otherwise we send a pending invite they claim when they sign up.
+              </p>
+              <form class="org-form" id="orgInviteForm">
+                <label>
+                  Email
+                  <input id="orgInviteEmail" type="email" required placeholder="member@farm.org" autocomplete="email" />
+                </label>
+                <button class="btn btn-primary" type="submit">Add to organization</button>
+              </form>
+              <p id="orgInviteStatus" class="org-status" role="status"></p>
+              <div id="orgPendingInvites"></div>
+            </section>
+
+            <section class="org-card" id="orgCreateCard" hidden>
+              <h2>Start an organization</h2>
+              <p class="muted">You don’t have an organization yet. Create one to add your team.</p>
+              <form class="org-form" id="orgCreateForm">
+                <label>
+                  Organization name
+                  <input id="orgCreateName" type="text" required maxlength="80" placeholder="e.g. Green Valley FPO" />
+                </label>
+                <button class="btn btn-primary" type="submit">Create organization</button>
+              </form>
+              <p id="orgCreateStatus" class="org-status" role="status"></p>
+            </section>
+          </div>
+        </section>
+
+        <!-- Community / collaborate -->
+        <section class="social-panel" id="socialPanelCommunity" data-social-panel="community" role="tabpanel" aria-labelledby="socialTabCommunity" hidden>
+          <header class="app-page-head social-panel-hero">
+            <div>
+              <p class="app-kicker">Community</p>
+              <h2>Friends, chat &amp; sharing</h2>
+              <p class="app-lead">Add farmer friends, chat in groups, and share field data.</p>
+            </div>
+          </header>
+
+          <p id="collabStatus" class="app-status" role="status" aria-live="polite"></p>
+
+          <div class="collab-tabs" role="tablist">
+            <button type="button" class="collab-tab is-active" data-panel="friends">Friends</button>
+            <button type="button" class="collab-tab" data-panel="chat">Chat</button>
+            <button type="button" class="collab-tab" data-panel="share">Share fields</button>
+            <button type="button" class="collab-tab" data-panel="community">Community</button>
+          </div>
+
+          <section class="collab-panel" id="panel-friends">
+            <div class="collab-grid">
+              <div class="collab-card">
+                <h2>Add a friend</h2>
+                <form class="collab-form" id="friendRequestForm">
+                  <label>
+                    Their PrithviScan email
+                    <input id="friendEmail" type="email" required placeholder="farmer@email.com" />
+                  </label>
+                  <button type="submit">Send friend request</button>
+                </form>
+                <p class="app-muted">They must already have a PrithviScan account with that email.</p>
+              </div>
+
+              <div class="collab-card">
+                <h2>Requests</h2>
+                <div id="requestsList" class="collab-list">
+                  <div class="collab-empty">No pending requests</div>
+                </div>
+              </div>
+
+              <div class="collab-card" style="grid-column: 1 / -1">
+                <h2>Your friends</h2>
+                <div id="friendsList" class="collab-list">
+                  <div class="collab-empty">No friends yet — send a request to get started.</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="collab-panel" id="panel-chat" hidden>
+            <div class="collab-card" style="margin-bottom: 1rem">
+              <h2>Create a group</h2>
+              <form class="collab-form" id="groupForm">
+                <label>
+                  Group name
+                  <input id="groupName" type="text" required maxlength="60" placeholder="North block farmers" />
+                </label>
+                <label>
+                  Add friends (hold Ctrl/Cmd to select multiple)
+                  <select id="groupMembers" multiple size="4"></select>
+                </label>
+                <button type="submit">Create group</button>
+              </form>
+            </div>
+
+            <div class="collab-card">
+              <h2>Messages</h2>
+              <div class="collab-chat-layout">
+                <div class="collab-chat-list" id="chatList">
+                  <div class="collab-empty">No chats yet</div>
+                </div>
+                <div class="collab-chat-thread">
+                  <div class="collab-messages" id="chatMessages">
+                    <div class="collab-empty">Select a chat</div>
+                  </div>
+                  <form class="collab-compose" id="composeForm">
+                    <input id="composeInput" type="text" maxlength="2000" placeholder="Write a message…" disabled />
+                    <button type="submit" class="collab-btn" disabled id="composeBtn">Send</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="collab-panel" id="panel-share" hidden>
+            <div class="collab-grid">
+              <div class="collab-card">
+                <h2>Share a field</h2>
+                <form class="collab-form" id="shareForm">
+                  <label>
+                    Field
+                    <select id="shareField" required></select>
+                  </label>
+                  <label>
+                    Share with friend
+                    <select id="shareFriend" required></select>
+                  </label>
+                  <label>
+                    Note (optional)
+                    <textarea id="shareNote" maxlength="500" placeholder="Irrigation schedule, crop variety…"></textarea>
+                  </label>
+                  <button type="submit">Share field</button>
+                </form>
+              </div>
+              <div class="collab-card">
+                <h2>Shared with you</h2>
+                <div id="sharesInList" class="collab-list">
+                  <div class="collab-empty">No shared fields yet</div>
+                </div>
+              </div>
+              <div class="collab-card" style="grid-column: 1 / -1">
+                <h2>You shared</h2>
+                <div id="sharesOutList" class="collab-list">
+                  <div class="collab-empty">You haven’t shared a field yet</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="collab-panel" id="panel-community" hidden>
+            <div class="collab-grid">
+              <div class="collab-card">
+                <h2>Ask the community</h2>
+                <p class="app-muted">Safe, moderated posts — share updates or ask for advice. No hate/spam.</p>
+                <form class="collab-form" id="communityForm">
+                  <label>
+                    Type
+                    <select id="communityKind">
+                      <option value="question">Question</option>
+                      <option value="update">Field update</option>
+                      <option value="advice">Advice</option>
+                    </select>
+                  </label>
+                  <label>
+                    Post
+                    <textarea id="communityBody" maxlength="800" required placeholder="How are you managing heat stress this week?"></textarea>
+                  </label>
+                  <button type="submit">Post</button>
+                </form>
+              </div>
+              <div class="collab-card" style="grid-column: 1 / -1">
+                <h2>Recent posts</h2>
+                <div id="communityFeed" class="collab-list">
+                  <div class="collab-empty">No posts yet</div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </section>
+      </div>
+    </main>
+
+    <script type="module" src="js/a11y.js"></script>
+    <script type="module" src="js/tenant.js"></script>
+    <script type="module" src="js/nav-auth.js?v=ai3"></script>
+    <script type="module" src="js/social-page.js?v=social1"></script>
+    <script type="module" src="js/org-page.js?v=social1"></script>
+    <script type="module" src="js/collab-page.js?v=urtc1"></script>
+    <script type="module" src="js/ui-enhance.js?v=nolottie1"></script>
+  </body>
+</html>

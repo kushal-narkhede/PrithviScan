@@ -1,0 +1,328 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isChatMember(chatId) {
+      return signedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/conversations/$(chatId)).data.memberIds;
+    }
+
+    // Public discoverable profiles (email lookup for friend requests)
+    function authEmailLower() {
+      return signedIn() && request.auth.token.email != null
+        ? request.auth.token.email.lower()
+        : "";
+    }
+
+    function isOrgOwner(orgId) {
+      return signedIn()
+        && orgId is string
+        && get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerUid
+          == request.auth.uid;
+    }
+
+    function isOrgMember(orgId) {
+      return signedIn()
+        && orgId is string
+        && request.auth.uid in get(/databases/$(database)/documents/organizations/$(orgId)).data.memberIds;
+    }
+
+    function orgRoleOf(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.get("orgRole", "viewer");
+    }
+
+    function canWriteOrgFields(orgId) {
+      return isOrgOwner(orgId)
+        || (isOrgMember(orgId)
+          && orgRoleOf(request.auth.uid) in ["owner", "agronomist", "scout", "member"]);
+    }
+
+    function canDeleteOrgFields(orgId) {
+      return isOrgOwner(orgId)
+        || (isOrgMember(orgId)
+          && orgRoleOf(request.auth.uid) in ["owner", "agronomist"]);
+    }
+
+    function orgMembershipKeysOnly() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(["orgId", "orgRole", "accountType", "orgName", "updatedAt"]);
+    }
+
+    match /profiles/{userId} {
+      allow read: if signedIn();
+      allow create: if isSelf(userId)
+        && request.resource.data.uid == userId
+        && request.resource.data.emailLower is string;
+      allow update: if (
+          isSelf(userId)
+          && request.resource.data.uid == userId
+          && request.resource.data.emailLower is string
+        )
+        || (
+          // Organization owner assigning / clearing membership on a profile
+          signedIn()
+          && orgMembershipKeysOnly()
+          && (
+            (request.resource.data.orgId is string
+              && isOrgOwner(request.resource.data.orgId))
+            || (resource.data.orgId is string
+              && isOrgOwner(resource.data.orgId))
+          )
+        );
+      allow delete: if isSelf(userId);
+    }
+
+    match /users/{userId} {
+      allow read: if isSelf(userId);
+      allow create: if isSelf(userId);
+      allow update: if isSelf(userId)
+        || (
+          signedIn()
+          && orgMembershipKeysOnly()
+          && (
+            (request.resource.data.orgId is string
+              && isOrgOwner(request.resource.data.orgId))
+            || (resource.data.orgId is string
+              && isOrgOwner(resource.data.orgId))
+          )
+        );
+      allow delete: if isSelf(userId);
+
+      match /friends/{friendId} {
+        allow read: if isSelf(userId);
+        // Either side may write friendship docs during accept / remove
+        allow create, update: if signedIn()
+          && (request.auth.uid == userId || request.auth.uid == friendId);
+        allow delete: if signedIn()
+          && (request.auth.uid == userId || request.auth.uid == friendId);
+      }
+
+      match /fields/{fieldId} {
+        allow read, write: if isSelf(userId);
+
+        match /snapshots/{dateId} {
+          allow read: if isSelf(userId);
+          allow create, update: if isSelf(userId);
+          allow delete: if isSelf(userId);
+        }
+
+        match /prescriptions/{rxId} {
+          allow read, create, update, delete: if isSelf(userId);
+        }
+
+        match /insights/{insightId} {
+          allow read: if isSelf(userId);
+          allow write: if false;
+        }
+
+        match /feedback/{feedbackId} {
+          allow read, create: if isSelf(userId);
+          allow update, delete: if false;
+        }
+
+        match /usages/{usageId} {
+          allow read, create, delete: if isSelf(userId);
+          allow update: if false;
+        }
+
+        match /events/{eventId} {
+          allow read, create: if isSelf(userId);
+          allow update, delete: if false;
+        }
+      }
+
+      match /alerts/{alertId} {
+        allow read: if isSelf(userId);
+        allow write: if false;
+      }
+
+      match /alertOutbox/{outboxId} {
+        allow read: if isSelf(userId);
+        allow write: if false;
+      }
+    }
+
+    match /friendRequests/{requestId} {
+      allow read: if signedIn()
+        && (resource.data.fromUid == request.auth.uid
+            || resource.data.toUid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.toUid is string
+        && request.resource.data.status == "pending";
+      allow update: if signedIn()
+        && resource.data.toUid == request.auth.uid
+        && resource.data.status == "pending"
+        && request.resource.data.status in ["accepted", "declined"];
+      allow delete: if signedIn()
+        && (resource.data.fromUid == request.auth.uid
+            || resource.data.toUid == request.auth.uid);
+    }
+
+    match /conversations/{chatId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.memberIds;
+      allow create: if signedIn()
+        && request.auth.uid in request.resource.data.memberIds
+        && request.resource.data.memberIds is list
+        && request.resource.data.memberIds.size() >= 2
+        && request.resource.data.memberIds.size() <= 30;
+      allow update: if signedIn() && request.auth.uid in resource.data.memberIds;
+
+      match /messages/{messageId} {
+        allow read: if isChatMember(chatId);
+        allow create: if isChatMember(chatId)
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 2000;
+        allow update, delete: if false;
+      }
+    }
+
+    match /fieldShares/{shareId} {
+      allow read: if signedIn()
+        && (resource.data.ownerUid == request.auth.uid
+            || resource.data.sharedWithUid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.sharedWithUid is string
+        && request.resource.data.fieldId is string;
+      allow delete: if signedIn()
+        && (resource.data.ownerUid == request.auth.uid
+            || resource.data.sharedWithUid == request.auth.uid);
+      allow update: if false;
+    }
+
+    match /organizations/{orgId} {
+      allow read: if signedIn() && (
+        request.auth.uid in resource.data.memberIds
+        || (authEmailLower() != ""
+            && authEmailLower() in resource.data.get("pendingEmails", []))
+      );
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.auth.uid in request.resource.data.memberIds
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80;
+      allow update: if signedIn() && (
+        resource.data.ownerUid == request.auth.uid
+        || (
+          // Claim pending invite: add self + remove own email from pendingEmails
+          authEmailLower() != ""
+          && authEmailLower() in resource.data.get("pendingEmails", [])
+          && request.auth.uid in request.resource.data.memberIds
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["memberIds", "pendingEmails", "updatedAt"])
+        )
+      );
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+
+      match /fields/{fieldId} {
+        allow read: if isOrgMember(orgId);
+        allow create: if canWriteOrgFields(orgId)
+          && request.resource.data.lat is number
+          && request.resource.data.lon is number;
+        allow update: if canWriteOrgFields(orgId);
+        allow delete: if canDeleteOrgFields(orgId);
+
+        match /snapshots/{dateId} {
+          allow read: if isOrgMember(orgId);
+          allow create, update: if canWriteOrgFields(orgId);
+          allow delete: if canDeleteOrgFields(orgId);
+        }
+
+        match /insights/{insightId} {
+          allow read: if isOrgMember(orgId);
+          allow write: if false;
+        }
+
+        match /feedback/{feedbackId} {
+          allow read, create: if isOrgMember(orgId);
+          allow update, delete: if false;
+        }
+
+        match /usages/{usageId} {
+          allow read, create, delete: if canWriteOrgFields(orgId);
+          allow update: if false;
+        }
+
+        match /prescriptions/{rxId} {
+          allow read: if isOrgMember(orgId);
+          allow create, update: if canWriteOrgFields(orgId);
+          allow delete: if canDeleteOrgFields(orgId);
+        }
+      }
+
+      match /tasks/{taskId} {
+        allow read: if isOrgMember(orgId);
+        allow create: if canWriteOrgFields(orgId);
+        allow update: if isOrgMember(orgId);
+        allow delete: if canDeleteOrgFields(orgId);
+      }
+
+      match /taskTemplates/{templateId} {
+        allow read: if isOrgMember(orgId);
+        allow create, update, delete: if canWriteOrgFields(orgId);
+      }
+
+      match /recurrences/{recurrenceId} {
+        allow read: if isOrgMember(orgId);
+        allow create, update: if canWriteOrgFields(orgId);
+        allow delete: if canDeleteOrgFields(orgId);
+      }
+
+      match /fieldEvents/{eventId} {
+        allow read: if isOrgMember(orgId);
+        allow create: if isOrgMember(orgId);
+        allow update, delete: if false;
+      }
+
+      match /audit/{entryId} {
+        allow read: if isOrgMember(orgId);
+        allow create: if isOrgMember(orgId);
+        allow update, delete: if false;
+      }
+    }
+
+    match /orgInvites/{inviteId} {
+      allow read: if signedIn()
+        && (resource.data.fromUid == request.auth.uid
+            || resource.data.emailLower == authEmailLower());
+      allow create: if signedIn()
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.orgId is string
+        && request.resource.data.emailLower is string
+        && request.resource.data.status == "pending"
+        && isOrgOwner(request.resource.data.orgId);
+      allow update: if signedIn()
+        && (resource.data.fromUid == request.auth.uid
+            || resource.data.emailLower == authEmailLower());
+      allow delete: if signedIn() && resource.data.fromUid == request.auth.uid;
+    }
+
+    // Moderated farmer community feed
+    match /communityPosts/{postId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && request.resource.data.body.size() <= 800;
+      allow update, delete: if signedIn()
+        && resource.data.authorUid == request.auth.uid;
+    }
+  }
+}
